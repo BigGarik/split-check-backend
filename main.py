@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
@@ -26,5 +27,14 @@ def recognize_check():
     print(response.content[0].text)
 
 
+def upload_photo():
+    UPLOAD_DIRECTORY = "images"
+    uuid_dir = uuid.uuid4()
+    file_path = os.path.join(UPLOAD_DIRECTORY, str(uuid_dir), 'photo.jpg')
+    path = os.path.join(UPLOAD_DIRECTORY, str(uuid_dir))
+    print(path)
+    # print(file_path)
+
+
 if __name__ == '__main__':
-    recognize_check()
+    upload_photo()
