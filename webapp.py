@@ -1,21 +1,21 @@
 import json
+import logging
 import os
-# from fastapi.staticfiles import StaticFiles
-# from fastapi.templating import Jinja2Templates
+from redis import Redis
 import shutil
 import uuid
-
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-
 from external_services.api_anthropic import recognize_check
+
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-# templates = Jinja2Templates(directory="static")
 
-# app.include_router(payment_router, prefix="/payment")
+redis_client = Redis(host='localhost', port=6379, db=0)
+
 # app.include_router(webhook_router, prefix="/payment")
 
 
@@ -41,7 +41,21 @@ async def upload_image(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     response = recognize_check(upload_directory)
 
+    # Данные для сохранения в Redis
+    redis_data = {
+        "message": f"Successfully uploaded {file.filename}",
+        "response": response
+    }
+
+    # Сериализуем данные в JSON
+    json_data = json.dumps(redis_data)
+
+    # Сохраняем данные в Redis
     uuid_str = str(uuid_dir)
+    await redis_client.set(uuid_str, json_data)
+
+    # Устанавливаем время жизни ключа (например, 1 час = 3600 секунд)
+    await redis_client.expire(uuid_str, 3600*24)
 
     response_data = {
         "message": f"Successfully uploaded {file.filename}",
@@ -50,9 +64,17 @@ async def upload_image(file: UploadFile = File(...)):
     }
 
     final_json_string = json.dumps(response_data, ensure_ascii=False, indent=2)
-
-    print(final_json_string)
+    logger.info(final_json_string)
     return JSONResponse(content=final_json_string, status_code=200)
+
+
+@app.get("/get_check/{key}")
+async def get_value(key: str):
+    value = await redis_client.get(key)
+    logger.info(value)
+    if value is None:
+        return {"message": "Key not found"}
+    return {"value": value.decode("utf-8")}
 
 
 if __name__ == '__main__':
