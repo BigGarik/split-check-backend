@@ -22,12 +22,26 @@ def form_message(image_folder, prompt=""):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
             img_path = os.path.join(image_folder, filename)
             with Image.open(img_path) as img:
+                # Определяем текущие размеры
+                width, height = img.size
+                short_side = 1024
+                # Определяем, какая сторона короче
+                if width < height:
+                    new_width = short_side
+                    new_height = int(height * (short_side / width))
+                else:
+                    new_height = short_side
+                    new_width = int(width * (short_side / height))
+
+                # Изменяем размер изображения с сохранением пропорций
+                img = img.resize((new_width, new_height), Image.LANCZOS)
                 # Конвертируем изображение в RGB, если это необходимо
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 # Преобразуем изображение в байты
                 buffer = io.BytesIO()
                 img.save(buffer, format="JPEG")
+                img.save(('../images/' + filename), format="JPEG")
                 img_bytes = buffer.getvalue()
                 # Кодируем байты в base64
                 base64_data = base64.b64encode(img_bytes).decode('utf-8')
@@ -89,4 +103,5 @@ def recognize_check(image_folder):
 
 
 if __name__ == '__main__':
-    print(recognize_check("../images/ee40b27a-9e80-4850-bd05-47bd2c652490"))
+
+    print(recognize_check("../images/f2c63269-7faa-4e33-ae81-15da4dc3b65e"))

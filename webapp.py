@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from redis import Redis
+from redis import asyncio as aioredis
 import shutil
 import uuid
 from fastapi import FastAPI, File, UploadFile
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
-redis_client = Redis(host='localhost', port=6379, db=0)
+redis_client = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
 
 # app.include_router(webhook_router, prefix="/payment")
 

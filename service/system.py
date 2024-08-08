@@ -15,46 +15,6 @@ def convert_to_png(img):
         return buffer.getvalue()
 
 
-def form_message(image_folder, prompt="Распознай чек."):
-    message_list = []
-    content = []
-
-    # Получаем список всех файлов в папке
-    files = os.listdir(image_folder)
-
-    # Фильтруем только изображения
-    image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp')
-    image_files = [f for f in files if f.lower().endswith(image_extensions)]
-
-    for image_file in image_files:
-        image_path = os.path.join(image_folder, image_file)
-        with Image.open(image_path) as img:
-            # Конвертируем изображение в PNG
-            png_data = convert_to_png(img)
-            # Кодируем в base64
-            base64_data = base64.b64encode(png_data).decode('utf-8')
-            # Добавляем в content
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/png",
-                    "data": base64_data
-                }
-            })
-
-    # Добавляем текстовое сообщение
-    content.append({"type": "text", "text": prompt})
-
-    # Формируем итоговое сообщение
-    message_list.append({
-        "role": "user",
-        "content": content
-    })
-
-    return message_list
-
-
 def convert_img(input_path, output_path=None, short_side=None):
     try:
         # Открываем изображение
@@ -99,6 +59,5 @@ def get_base64_encoded_image(image_path):
 
 
 if __name__ == '__main__':
-    message = form_message("../images")
-    print(message)
     # convert_img("../images/IMG_0833.JPEG", short_side=1024)
+    pass
