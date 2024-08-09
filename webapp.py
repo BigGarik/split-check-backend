@@ -4,7 +4,7 @@ import os
 from redis import asyncio as aioredis
 import shutil
 import uuid
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse
 from external_services.api_anthropic import recognize_check
 
@@ -68,13 +68,23 @@ async def upload_image(file: UploadFile = File(...)):
     return JSONResponse(content=final_json_string, status_code=200)
 
 
-@app.get("/get_check/{key}")
-async def get_value(key: str):
+@app.get("/get_check")
+@app.post("/get_check")
+async def get_value(key: str = Query(None), request: dict = None):
+    if request and "key" in request:
+        key = request["key"]
+
+    if not key:
+        raise HTTPException(status_code=400, detail="Key is required")
+
     value = await redis_client.get(key)
-    logger.info(value)
+    logger.info(f"Retrieved value for key '{key}': {value}")
+
     if value is None:
-        return {"message": "Key not found"}
-    return {"value": value.decode("utf-8")}
+        return JSONResponse(content={"message": "Key not found"}, status_code=404)
+
+    response = json.loads(value)
+    return response
 
 
 if __name__ == '__main__':

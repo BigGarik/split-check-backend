@@ -7,3 +7,4 @@ uvicorn~=0.30.5
 setuptools
 python-multipart
 redis~=5.0.8
+opencv-python

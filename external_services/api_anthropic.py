@@ -18,6 +18,7 @@ MODEL_NAME = "claude-3-5-sonnet-20240620"
 
 def form_message(image_folder, prompt=""):
     images = []
+    print(image_folder)
     for filename in os.listdir(image_folder):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
             img_path = os.path.join(image_folder, filename)
@@ -41,7 +42,7 @@ def form_message(image_folder, prompt=""):
                 # Преобразуем изображение в байты
                 buffer = io.BytesIO()
                 img.save(buffer, format="JPEG")
-                img.save(('../images/' + filename), format="JPEG")
+                # img.save(('../images/' + filename), format="JPEG")
                 img_bytes = buffer.getvalue()
                 # Кодируем байты в base64
                 base64_data = base64.b64encode(img_bytes).decode('utf-8')
@@ -58,11 +59,11 @@ def form_message(image_folder, prompt=""):
         {
             "role": "user",
             "content": [
+                *images,
                 {
                     "type": "text",
                     "text": prompt
                 },
-                *images
             ]
         }
     ]
@@ -76,7 +77,8 @@ def recognize_check(image_folder):
         # 'Before you provide your answer in <answer> tags in the json format, think step by step in <thinking> tags and analyze each part of the cash register receipt.'
 
         "Распознай чек. Пришли ответ со структурой: номер позиции, наименование, количество, цена, сумма. "
-        "Итого сумма чека. В ответ пришли только данные в формате json со структурой:"
+        "Итого сумма чека. Проверь, что сумма всех позиций равна итоговой сумме. "
+        "В ответ пришли только данные в формате json без комментариев со структурой:"
         '{'
         '"items": ['
         '{'
@@ -91,6 +93,36 @@ def recognize_check(image_folder):
         '}'
     )
     message = form_message(image_folder, prompt=prompt)
+
+    response = client.messages.create(
+        model=MODEL_NAME,
+        max_tokens=2048,
+        messages=message
+    )
+    print(response.content[0].text)
+    # response_data = json.loads(response.content[0].text)
+    try:
+        response = json.loads(response.content[0].text)
+        return response
+    except Exception as e:
+        logger.error(e)
+        return None
+    # return response.content[0].text
+
+
+def test_claude():
+
+    message = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "prompt"
+                },
+            ]
+        }
+    ]
 
     response = client.messages.create(
         model=MODEL_NAME,
