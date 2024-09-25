@@ -1,5 +1,6 @@
 import os
 
+import nats
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -9,6 +10,16 @@ from redis import asyncio as aioredis
 load_dotenv()
 
 redis_client = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
+
+
+# Подключение к NATS
+nats_client = None
+
+
+async def connect_to_nats():
+    global nats_client
+    nats_client = await nats.connect("nats://127.0.0.1:4222")
+
 
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')

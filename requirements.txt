@@ -18,3 +18,4 @@ passlib~=1.7.4
 alembic~=1.13.2
 python-jose
 bcrypt
+nats-py~=2.9.0

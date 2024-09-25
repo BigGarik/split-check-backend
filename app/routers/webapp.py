@@ -8,7 +8,7 @@ import uuid
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from app.database import redis_client
+from app.database import redis_client, nats_client
 from app.routers.ws import ws_manager
 from external_services.api_anthropic import recognize_check
 from fastapi import APIRouter
@@ -242,3 +242,15 @@ async def send_message_to_user(user_id: str, message: str):
 async def broadcast_message(message: str):
     await ws_manager.broadcast(message)
     return {"message": "Message broadcasted to all users"}
+
+
+@router_webapp.post("/update")
+async def broadcast_message_to_all(message: str):
+    """
+    Отправляет сообщение в топик 'broadcast' в NATS. Все WebSocket-подключения его получат.
+    """
+    # Отправляем сообщение в NATS в топик 'broadcast'
+    await nats_client.publish("broadcast", message.encode())
+    return {"status": "Message sent to all users"}
+
+
