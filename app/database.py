@@ -11,16 +11,6 @@ load_dotenv()
 
 redis_client = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
 
-
-# Подключение к NATS
-nats_client = None
-
-
-async def connect_to_nats():
-    global nats_client
-    nats_client = await nats.connect("nats://127.0.0.1:4222")
-
-
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')
 db_host = os.getenv('DB_HOST')
@@ -30,7 +20,6 @@ database = os.getenv('DATABASE')
 DATABASE_URL = "postgresql://{user}:{password}@{host}/{db}".format(
     user=db_user, password=db_password, host=db_host, db=database
 )
-
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

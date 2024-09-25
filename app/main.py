@@ -2,9 +2,10 @@ from fastapi import Depends, FastAPI, HTTPException, status, WebSocket, WebSocke
 from sqlalchemy.orm import Session
 from app import crud, schemas, models, auth
 from app.auth import verify_token
-from app.database import engine, get_db, connect_to_nats, nats_client
+from app.database import engine, get_db
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
+from app.nats import connect_to_nats
 from app.routers.test import router_test
 from app.routers.webapp import router_webapp
 from app.routers.ws import router_ws, ws_manager
@@ -26,21 +27,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def startup_event():
     await connect_to_nats()
 
-
-async def message_handler(msg):
-    data = msg.data.decode()
-    print(f"Broadcast message received: {data}")
-
-    # Отправляем сообщение всем подключённым пользователям
-    for session_id, websockets in ws_manager.active_connections:
-        for websocket in websockets:
-            await websocket.send_text(data)
-
-
-@app.on_event("startup")
-async def start_consumer():
-    # Подписываемся на топик 'broadcast'
-    await nats_client.subscribe("broadcast", cb=message_handler)
 
 
 @app.post("/users/", response_model=schemas.User)
