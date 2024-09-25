@@ -1,7 +1,13 @@
 ## Загрузка изображений
 ### Mобильное приложение должно отправить POST-запрос на /upload-image/ с изображением в теле запроса. Файл должен быть отправлен как multipart/form-data
+https://biggarik.ru/split_check/split_check
+https://biggarik.ru/split_check/split_check/upload-image/
 
-https://3896-212-3-131-87.ngrok-free.app/upload-image/
+GET запрос: https://biggarik.ru/split_check/get_check?key=your_key
+POST запрос: https://biggarik.ru/split_check/get_check с телом запроса {"key": "uid"}
 
-GET запрос: http://3896-212-3-131-87.ngrok-free.app/get_check?key=your_key
-POST запрос: http://3896-212-3-131-87.ngrok-free.app/get_check с телом запроса {"key": "uid"}
+
+
+cd c:\Users\big\Downloads\ngrok-v3-stable-windows-amd64\
+
+ngrok http 8080
