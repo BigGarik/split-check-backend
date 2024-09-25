@@ -1,11 +1,13 @@
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from app import crud, schemas, models, auth
+from app.auth import verify_token
 from app.database import engine, get_db
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from app.routes import router_test
-from app.webapp import router_webapp
+from app.routers.test import router_test
+from app.routers.webapp import router_webapp
+from app.routers.ws import router_ws
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -15,6 +17,7 @@ app = FastAPI(root_path="/split_check")
 # app.include_router(webhook_router, prefix="/payment")
 app.include_router(router_test)
 app.include_router(router_webapp)
+app.include_router(router_ws)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

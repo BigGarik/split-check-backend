@@ -3,11 +3,13 @@ import logging
 import os
 import random
 
-from redis import asyncio as aioredis
 import shutil
 import uuid
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse
+
+from app.database import redis_client
+from app.routers.ws import ws_manager
 from external_services.api_anthropic import recognize_check
 from fastapi import APIRouter
 
@@ -15,7 +17,6 @@ router_webapp = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-redis_client = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
 
 UPLOAD_DIRECTORY = "images"
 
@@ -227,3 +228,17 @@ async def get_value(key: str = Query(None), request: dict = None):
 
     response = json.loads(value)
     return response
+
+
+# Маршрут для отправки сообщения конкретному пользователю
+@router_webapp.post("/send-message/{user_id}")
+async def send_message_to_user(user_id: str, message: str):
+    await ws_manager.send_personal_message(message, user_id)
+    return {"message": f"Message sent to {user_id}"}
+
+
+# Маршрут для отправки сообщения всем подключенным пользователям
+@router_webapp.post("/broadcast")
+async def broadcast_message(message: str):
+    await ws_manager.broadcast(message)
+    return {"message": "Message broadcasted to all users"}

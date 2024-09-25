@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from app.crud import get_user_by_email
 import os
-
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
 
+from app.database import get_db
+from app.schemas import TokenData
 
 load_dotenv()
 
@@ -29,6 +32,7 @@ def authenticate_user(db: Session, email: str, password: str):
     return user
 
 
+# Создание JWT токена
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -37,3 +41,25 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.now() + timedelta(minutes=access_token_expire_minutes)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, secret_key, algorithm=algorithm)
+
+
+# Проверка токена
+def verify_token(token: str, db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+
+    user = get_user_by_email(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
+    return user
