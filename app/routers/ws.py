@@ -1,9 +1,11 @@
+import asyncio
 import logging
 import os
 import uuid
+from datetime import datetime
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth import verify_token
@@ -22,6 +24,7 @@ class RedisConnectionManager:
         self.redis = redis
         self.prefix = "ws_connections:"  # Префикс для хранения сессий в Redis
         self.active_connections = {}  # Локальный словарь для хранения WebSocket по session_id
+        self.time_task = None  # Задача для отправки времени
 
     async def connect(self, user_id: str, websocket: WebSocket):
         # Создаем уникальный идентификатор сессии
@@ -33,8 +36,9 @@ class RedisConnectionManager:
         # Сохраняем WebSocket соединение в локальном словаре по session_id
         self.active_connections[session_id] = websocket
 
-        # Принимаем соединение
-        await websocket.accept()
+        # Если задача отправки времени ещё не запущена, запускаем её
+        if not self.time_task:
+            self.time_task = asyncio.create_task(self.send_time_periodically())
 
         return session_id
 
@@ -45,40 +49,89 @@ class RedisConnectionManager:
         # Удаляем сессию пользователя из Redis
         await self.redis.delete(f"{self.prefix}{user_id}")
 
+        # Если больше нет подключений, отменяем задачу отправки времени
+        if not self.active_connections:
+            if self.time_task:
+                self.time_task.cancel()
+                self.time_task = None
+
+    async def send_time_periodically(self):
+        try:
+            while True:
+                current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                await self.broadcast(f"Current time: {current_time}")
+                await asyncio.sleep(1)  # Отправляем время каждые 1 секунду
+        except asyncio.CancelledError:
+            print("Task send_time_periodically cancelled")
+
     async def send_personal_message(self, message: str, user_id: str):
         # Получаем session_id пользователя из Redis
         session_id = await self.redis.get(f"{self.prefix}{user_id}")
         if session_id and session_id in self.active_connections:
             websocket = self.active_connections[session_id]
-            await websocket.send_text(message)
+            try:
+                await websocket.send_text(message)
+            except Exception as e:
+                print(f"Error sending message to session {session_id}: {e}")
+        else:
+            print(f"Session not found for user_id: {user_id}")
 
     async def broadcast(self, message: str):
         # Широковещательная рассылка всем подключенным пользователям
         for session_id, websocket in self.active_connections.items():
-            await websocket.send_text(message)
+            try:
+                await websocket.send_text(message)
+            except Exception as e:
+                print(f"Error sending message to session {session_id}: {e}")
 
 
 # Создаем экземпляр Redis менеджера
 ws_manager = RedisConnectionManager(redis_client)
 
 
-@router_ws.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str = Depends(verify_token), db: Session = Depends(get_db)):
-    # Аутентификация пользователя и получение user_id (например, email)
-    user = verify_token(token, db)
-    user_id = user.email  # Используем email как идентификатор пользователя
+async def send_time_periodically():
+    while True:
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        await ws_manager.broadcast(f"Current time: {current_time}")
+        await asyncio.sleep(1)  # Отправляем время каждые 1 секунду
 
-    # Сохраняем WebSocket-соединение и создаем session_id
-    session_id = await ws_manager.connect(user_id, websocket)
+
+@router_ws.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Depends(get_db)):
+    # Пробуем принять соединение сразу
+    await websocket.accept()
 
     try:
-        while True:
-            data = await websocket.receive_text()
-            print(f"Received message from {user_id}: {data}")
-    except WebSocketDisconnect:
-        # Удаление соединения при отключении пользователя
-        await ws_manager.disconnect(session_id, user_id)
-        print(f"User {user_id} disconnected")
+        # Пытаемся верифицировать токен
+        user = verify_token(token, db)
+
+        # Если токен валиден, продолжаем работу с WebSocket
+        user_id = user.email  # Используем email пользователя
+
+        # Подключаем пользователя
+        session_id = await ws_manager.connect(user_id, websocket)
+
+        try:
+            while True:
+                # Получаем данные от клиента
+                data = await websocket.receive_text()
+                print(f"Received message from {user_id}: {data}")
+                # Отправляем сообщение всем подключённым пользователям
+                await ws_manager.broadcast(f"{user_id}: {data}")
+        except WebSocketDisconnect:
+            # Отключаем пользователя
+            await ws_manager.disconnect(session_id, user_id)
+            print(f"User {user_id} disconnected")
+
+    except HTTPException as e:
+        # Если аутентификация не удалась, возвращаем сообщение об ошибке и закрываем соединение
+        await websocket.send_text(f"Authentication failed: {e.detail}")
+        await websocket.close()
+
+    except Exception as e:
+        # Любая другая ошибка
+        print(f"Error occurred: {e}")
+        await websocket.close()
 
 
 if __name__ == '__main__':

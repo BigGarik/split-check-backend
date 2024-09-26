@@ -50,15 +50,18 @@ def verify_token(token: str, db: Session = Depends(get_db)):
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
+        # Декодируем токен
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        email: str = payload.get("sub")
+        email: str = payload.get("sub")  # Обычно идентификатор пользователя хранится в 'sub'
         if email is None:
             raise credentials_exception
         token_data = TokenData(email=email)
     except JWTError:
         raise credentials_exception
 
+    # Получаем пользователя по email
     user = get_user_by_email(db, email=token_data.email)
     if user is None:
         raise credentials_exception

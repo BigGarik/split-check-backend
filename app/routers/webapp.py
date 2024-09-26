@@ -8,7 +8,8 @@ import uuid
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.responses import JSONResponse
 
-from app.database import redis_client, nats_client
+from app.database import redis_client
+from app.nats import nats_client
 from app.routers.ws import ws_manager
 from external_services.api_anthropic import recognize_check
 from fastapi import APIRouter
@@ -252,5 +253,3 @@ async def broadcast_message_to_all(message: str):
     # Отправляем сообщение в NATS в топик 'broadcast'
     await nats_client.publish("broadcast", message.encode())
     return {"status": "Message sent to all users"}
-
-

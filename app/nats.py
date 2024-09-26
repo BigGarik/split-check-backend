@@ -12,18 +12,14 @@ logger = logging.getLogger(__name__)
 #Константы для названий очередей
 IMAGE_PROCESS_QUEUE = "image_process_queue"
 
-# Подключение к NATS
+
 nats_client = None
 
 
 async def connect_to_nats():
     global nats_client
     nats_client = await nats.connect("nats://127.0.0.1:4222")
-    create_subscriptions()
-
-
-async def create_subscriptions():
-    await nats_client.subscribe("broadcast", cb=message_handler)
+    await create_subscriptions()
 
 
 async def message_handler(msg):
@@ -32,8 +28,14 @@ async def message_handler(msg):
     ws_manager.broadcast(data)
 
 
+async def create_subscriptions():
+    global nats_client
+    await nats_client.subscribe("broadcast", cb=message_handler)
+
+
 # Асинхронная функция для отправки сообщений в NATS
 async def send_message_to_nats(subject: str, message: str):
+    global nats_client
     await nats_client.publish(subject, message.encode())  # Отправка сообщения
     await nats_client.flush()
     await nats_client.close()
