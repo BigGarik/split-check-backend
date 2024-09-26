@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth import verify_token
+from app.auth import get_current_user
 from app.database import get_db, redis_client
 
 load_dotenv()
@@ -37,8 +37,8 @@ class RedisConnectionManager:
         self.active_connections[session_id] = websocket
 
         # Если задача отправки времени ещё не запущена, запускаем её
-        if not self.time_task:
-            self.time_task = asyncio.create_task(self.send_time_periodically())
+        # if not self.time_task:
+        #     self.time_task = asyncio.create_task(self.send_time_periodically())
 
         return session_id
 
@@ -58,7 +58,7 @@ class RedisConnectionManager:
     async def send_time_periodically(self):
         try:
             while True:
-                current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 await self.broadcast(f"Current time: {current_time}")
                 await asyncio.sleep(1)  # Отправляем время каждые 1 секунду
         except asyncio.CancelledError:
@@ -103,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Dep
 
     try:
         # Пытаемся верифицировать токен
-        user = verify_token(token, db)
+        user = await get_current_user(token, db)
 
         # Если токен валиден, продолжаем работу с WebSocket
         user_id = user.email  # Используем email пользователя

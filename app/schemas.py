@@ -17,3 +17,10 @@ class User(BaseModel):
 # Схема для токена
 class TokenData(BaseModel):
     email: str | None = None
+
+
+# Модель для возвращения статуса задачи
+class TaskStatus(BaseModel):
+    task_id: str
+    status: str
+    result: str = None

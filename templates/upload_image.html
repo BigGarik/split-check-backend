@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket and Celery Example</title>
+</head>
+<body>
+    <h1>Upload Image and Get Result via WebSocket</h1>
+
+    <div>
+        <label for="message">Message to send:</label>
+        <input type="file" id="file" />
+        <button onclick="uploadImage()">Upload Image</button>
+    </div>
+
+    <div>
+        <h3>Messages from server:</h3>
+        <pre id="messages"></pre>
+    </div>
+
+    <script>
+        let socket;
+
+        function openWebSocket(websocketId) {
+            socket = new WebSocket(`ws://localhost:8000/ws/${websocketId}`);
+            socket.onmessage = function(event) {
+                const messages = document.getElementById("messages");
+                messages.textContent += `\nServer: ${event.data}`;
+            };
+            socket.onopen = function() {
+                console.log("WebSocket connection established");
+                const messages = document.getElementById("messages");
+                messages.textContent += "\nWebSocket connection established";
+            };
+            socket.onerror = function(error) {
+                console.error("WebSocket error:", error);
+                const messages = document.getElementById("messages");
+                messages.textContent += `\nError: ${error.message}`;
+            };
+            socket.onclose = function(event) {
+                console.log("WebSocket connection closed");
+                const messages = document.getElementById("messages");
+                messages.textContent += "\nWebSocket connection closed";
+            };
+        }
+
+        function uploadImage() {
+            const fileInput = document.getElementById("file");
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            const websocketId = Math.random().toString(36).substring(2, 15); // Генерируем случайный ID WebSocket
+            openWebSocket(websocketId);
+
+            fetch(`/upload-image?session_id=${websocketId}`, {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Image uploaded, task started:", data);
+            });
+        }
+    </script>
+</body>
+</html>

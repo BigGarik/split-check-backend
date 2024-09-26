@@ -15,6 +15,12 @@
     </div>
 
     <div>
+        <h3>Upload file:</h3>
+        <input type="file" id="fileInput">
+        <button onclick="uploadFile()">Upload File</button>
+    </div>
+
+    <div>
         <h3>Messages:</h3>
         <pre id="messages"></pre>
     </div>
@@ -22,10 +28,12 @@
     <script>
         let socket;
 
+        // Функция для получения токена из localStorage
         function getToken() {
             return localStorage.getItem('access_token');
         }
 
+        // Открытие WebSocket-соединения
         function openWebSocket() {
             const token = getToken();
             if (!token) {
@@ -59,6 +67,7 @@
             };
         }
 
+        // Отправка сообщения через WebSocket
         function sendMessage() {
             const message = document.getElementById("message").value;
             if (socket && socket.readyState === WebSocket.OPEN) {
@@ -70,6 +79,54 @@
             }
         }
 
+        // Загрузка файла через API и WebSocket для получения результата
+        function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please select a file to upload.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            // Запрашиваем session_id для соединения (можно создать случайный)
+            const websocketId = Math.random().toString(36).substring(2, 15);
+
+            // Открываем WebSocket
+            openWebSocket();
+
+            // Загружаем файл на сервер
+            fetch(`/split_check/upload-image/?session_id=${websocketId}`, {
+                method: "POST",
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`  // Добавляем токен для аутентификации
+                }
+            })
+            .then(response => {
+                // Проверяем, вернул ли сервер корректный JSON
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status} (${response.statusText})`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                const messages = document.getElementById("messages");
+                messages.textContent += `\nFile uploaded. Task started. Task ID: ${data.task_id}`;
+            })
+            .catch(error => {
+                // Отладка: выводим полный текст ошибки
+                console.error("File upload failed:", error);
+                const messages = document.getElementById("messages");
+                messages.textContent += `\nError: ${error.message}`;
+            });
+        }
+
+
+        // Открываем WebSocket при загрузке страницы
         window.onload = openWebSocket;
     </script>
 </body>

@@ -5,13 +5,16 @@ import random
 
 import shutil
 import uuid
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Depends, status
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
-from app.database import redis_client
+from app.auth import get_current_user
+from app.database import redis_client, get_db
+from app.models import User
 from app.nats import nats_client
 from app.routers.ws import ws_manager
-from external_services.api_anthropic import recognize_check
+from external_services.api_anthropic import recognize_check, recognize
 from fastapi import APIRouter
 
 router_webapp = APIRouter()
@@ -29,147 +32,32 @@ def test():
 
 
 @router_webapp.post("/upload-image/")
-async def upload_image():
-    recognized_json = {
-        "restaurant": "Веранда",
-        "table_number": "110",
-        "order_number": "57",
-        "date": "17.08.2024",
-        "time": "17:28",
-        "waiter": "Нурсултан А.",
-        "items": [
-            {
-                "id": 1,
-                "name": "Мохито 300 мл б/а",
-                "quantity": 1,
-                "price": 65000
-            },
-            {
-                "id": 2,
-                "name": "Вода Chortog 750мл без газа холодный",
-                "quantity": 1,
-                "price": 38000
-            },
-            {
-                "id": 3,
-                "name": "Paulaner",
-                "quantity": 2,
-                "price": 330000
-            },
-            {
-                "id": 4,
-                "name": "пиво Eggenberg Freibie г 330 мл",
-                "quantity": 2,
-                "price": 190000
-            },
-            {
-                "id": 5,
-                "name": "Ризотто с трюфелем",
-                "quantity": 1,
-                "price": 186000
-            },
-            {
-                "id": 6,
-                "name": "Наггетсы из индейки 5 шт",
-                "quantity": 2,
-                "price": 144000
-            },
-            {
-                "id": 7,
-                "name": "Картофель фри",
-                "quantity": 1,
-                "price": 45000
-            },
-            {
-                "id": 8,
-                "name": "Суши лосось",
-                "quantity": 6,
-                "price": 270000
-            },
-            {
-                "id": 9,
-                "name": "Кейк-попс с декором",
-                "quantity": 2,
-                "price": 70000
-            },
-            {
-                "id": 10,
-                "name": "Пицца с грушей с горго нзолой",
-                "quantity": 1,
-                "price": 155000
-            },
-            {
-                "id": 11,
-                "name": "Чай Ассам",
-                "quantity": 1,
-                "price": 45000
-            },
-            {
-                "id": 12,
-                "name": "Лимон добавка",
-                "quantity": 1,
-                "price": 12000
-            },
-            {
-                "id": 13,
-                "name": "Куриная котлета с гарн иром картофельное пюре",
-                "quantity": 1,
-                "price": 84000
-            },
-            {
-                "id": 14,
-                "name": "Макаронс малина",
-                "quantity": 2,
-                "price": 50000
-            },
-            {
-                "id": 15,
-                "name": "Макаронс шоколад",
-                "quantity": 3,
-                "price": 75000
-            },
-            {
-                "id": 16,
-                "name": "Вода Chortog 750мл без газа холодный",
-                "quantity": 1,
-                "price": 38000
-            },
-            {
-                "id": 17,
-                "name": "кетчуп добавка",
-                "quantity": 1,
-                "price": 20000
-            }
-        ],
-        "subtotal": 1817000,
-        "service_charge": {
-            "name": "Сервисный сбор 12%",
-            "amount": 218040
-        },
-        "vat": {
-            "rate": 0,
-            "amount": 0
-        },
-        "total": 2035040
-    }
-    response_data = {
-        "message": f"Successfully uploaded image.jpg",
-        "uuid": "9d0dd3fc-86e1-401a-bf0e-9f2d511b2442",
-        "recognized_json": recognized_json
-    }
+async def upload_image(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+    session_id: str = None  # Получаем ID WebSocket подключения
+):
+    print(file.filename)
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
-    number = random.randrange(1, 11)
+    # Сохраняем файл
+    file_location = f"images/{file.filename}"
+    with open(file_location, "wb+") as file_object:
+        file_object.write(file.file.read())
 
-    if number < 4:
-        return JSONResponse(content={"message": f"random {number}. No file response"}, status_code=400)
-    else:
-        return JSONResponse(content=response_data, status_code=200)
+    # Добавляем задачу в очередь Celery
+    task = recognize.delay(session_id)
+    print(task.id)
+
+    return {"task_id": task.id, "message": "File uploaded successfully, processing..."}
+
+
 
 
 # @router_webapp.post("/upload-image/")
 # async def upload_image(file: UploadFile = File(...)):
-#     uuid_dir = uuid.uuid4()
-#     upload_directory = os.path.join(UPLOAD_DIRECTORY, str(uuid_dir))
 #     if not file:
 #         return JSONResponse(content={"message": "No file sent"}, status_code=400)
 #
@@ -178,7 +66,9 @@ async def upload_image():
 #
 #     if not os.path.exists(upload_directory):
 #         os.makedirs(upload_directory)
-#
+
+#     uuid_dir = uuid.uuid4()
+#     upload_directory = os.path.join(UPLOAD_DIRECTORY, str(uuid_dir))
 #     file_path = os.path.join(upload_directory, file.filename)
 #
 #     with open(file_path, "wb") as buffer:
