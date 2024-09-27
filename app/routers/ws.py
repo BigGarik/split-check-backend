@@ -110,7 +110,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Dep
 
         # Подключаем пользователя
         session_id = await ws_manager.connect(user_id, websocket)
-
+        print(session_id)
         try:
             while True:
                 # Получаем данные от клиента

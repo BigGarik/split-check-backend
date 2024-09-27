@@ -1,11 +1,8 @@
 import json
 import logging
-import os
-import random
 
-import shutil
-import uuid
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Depends, status
+from fastapi import APIRouter
+from fastapi import File, UploadFile, HTTPException, Query, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -14,8 +11,7 @@ from app.database import redis_client, get_db
 from app.models import User
 from app.nats import nats_client
 from app.routers.ws import ws_manager
-from external_services.api_anthropic import recognize_check, recognize
-from fastapi import APIRouter
+from external_services.tasks import recognize
 
 router_webapp = APIRouter()
 
@@ -36,9 +32,11 @@ async def upload_image(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     file: UploadFile = File(...),
-    session_id: str = None  # Получаем ID WebSocket подключения
 ):
-    print(file.filename)
+    user_id = current_user.email
+    prefix = "ws_connections:"
+    session_id = await redis_client.get(f"{prefix}{user_id}")
+    print(f"session_id: {session_id}")
     if not current_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
@@ -49,11 +47,9 @@ async def upload_image(
 
     # Добавляем задачу в очередь Celery
     task = recognize.delay(session_id)
-    print(task.id)
+    print(f"task_id: {task.id}")
 
     return {"task_id": task.id, "message": "File uploaded successfully, processing..."}
-
-
 
 
 # @router_webapp.post("/upload-image/")
