@@ -21,4 +21,7 @@ bcrypt==4.2.0
 nats-py~=2.9.0
 jinja2~=3.1.4
 
+psycopg2
+uvicorn
+
 celery~=5.4.0

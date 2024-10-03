@@ -1,13 +1,23 @@
 import random
+import asyncio
+from datetime import datetime
 
 from fastapi.responses import JSONResponse
 
-from app.routers.ws import ws_manager
 from celery_app import celery_app
 
 
+
+
+
+
 @celery_app.task
-async def recognize(session_id: str):
+async def recognize(uuid_filename: str, user_id: str):
+    #1. Получаем изображение из папки по uuid
+    #2. Распознаем его через нейронку и получаем в ответ JSON
+    #......
+    #8. параметрах также передаем user_id, который загружал чек
+
     recognized_json = {
         "restaurant": "Веранда",
         "table_number": "110",
@@ -130,6 +140,7 @@ async def recognize(session_id: str):
         },
         "total": 2035040
     }
+
     response_data = {
         "message": f"Successfully uploaded image.jpg",
         "uuid": "9d0dd3fc-86e1-401a-bf0e-9f2d511b2442",
@@ -143,11 +154,16 @@ async def recognize(session_id: str):
 
     if number < 4:
         result = JSONResponse(content={"message": f"random {number}. No file response"}, status_code=400)
-        print(result)
-        ws_manager.send_personal_message(result, session_id)
-        return response_data
     else:
         result = JSONResponse(content=response_data, status_code=200)
-        print(result)
-        ws_manager.send_personal_message(result, session_id)
-        return result
+
+    print(result)
+
+    msg = {
+        "target_user_id": user_id,
+        "payload": result
+    }
+
+    #redis_pubsub.lpush("msg_bus", msg)
+
+    return result

@@ -14,6 +14,15 @@
         <button onclick="sendMessage()">Send Message</button>
     </div>
 
+    <br/>
+    <hr/>
+    <br/>
+    <div>
+        <label for="message">Message to send via API:</label>
+        <input type="text" id="message_api" placeholder="Message to send">
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+
     <div>
         <h3>Upload file:</h3>
         <input type="file" id="fileInput">
@@ -41,7 +50,7 @@
                 return;
             }
 
-            socket = new WebSocket(`wss://biggarik.ru/split_check/ws?token=${token}`);
+            socket = new WebSocket(`/ws?token=${token}`);
 
             socket.onmessage = function(event) {
                 const messages = document.getElementById("messages");

@@ -1,52 +1,42 @@
 import json
 import logging
+import uuid
 
 from fastapi import APIRouter
 from fastapi import File, UploadFile, HTTPException, Query, Depends, status
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
-from app.database import redis_client, get_db
+from app import schemas
+from app.auth import get_current_user, authenticate_user, create_access_token
+from app.crud import get_user_by_email
+from app.database import get_db
 from app.models import User
-from app.nats import nats_client
-from app.routers.ws import ws_manager
 from external_services.tasks import recognize
 
 router_webapp = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-
 UPLOAD_DIRECTORY = "images"
-
-
-@router_webapp.get("/test/")
-def test():
-    print("Hello World")
-    return {"message": "Hello World"}
-
 
 @router_webapp.post("/upload-image/")
 async def upload_image(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    file: UploadFile = File(...),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+        file: UploadFile = File(...),
 ):
     user_id = current_user.email
-    prefix = "ws_connections:"
-    session_id = await redis_client.get(f"{prefix}{user_id}")
-    print(f"session_id: {session_id}")
-    if not current_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
+    uuid_filename = uuid.uuid4()
     # Сохраняем файл
-    file_location = f"images/{file.filename}"
+    file_location = f"images/{uuid_filename}"
     with open(file_location, "wb+") as file_object:
         file_object.write(file.file.read())
 
     # Добавляем задачу в очередь Celery
-    task = recognize.delay(session_id)
+    task = recognize.delay(uuid_filename, user_id)
     print(f"task_id: {task.id}")
 
     return {"task_id": task.id, "message": "File uploaded successfully, processing..."}
@@ -98,7 +88,7 @@ async def upload_image(
 #     return JSONResponse(content=final_json_string, status_code=200)
 
 
-@router_webapp.get("/get_check")
+
 @router_webapp.post("/get_check")
 async def get_value(key: str = Query(None), request: dict = None):
     if request and "key" in request:
@@ -107,7 +97,9 @@ async def get_value(key: str = Query(None), request: dict = None):
     if not key:
         raise HTTPException(status_code=400, detail="Key is required")
 
-    value = await redis_client.get(key)
+
+    #value = await redisManager.get_value(key)
+    value = None
     logger.info(f"Retrieved value for key '{key}': {value}")
 
     if value is None:
@@ -117,25 +109,53 @@ async def get_value(key: str = Query(None), request: dict = None):
     return response
 
 
-# Маршрут для отправки сообщения конкретному пользователю
-@router_webapp.post("/send-message/{user_id}")
-async def send_message_to_user(user_id: str, message: str):
-    await ws_manager.send_personal_message(message, user_id)
-    return {"message": f"Message sent to {user_id}"}
+@router_webapp.get("/check/{key}")
+async def get_check(key: str):
+    #value = await redisManager.get_value(key)
+    value = None
+    if value is None:
+        return JSONResponse(content={"message": "Key not found"}, status_code=404)
+
+    return json.loads(value)
+
+@router_webapp.post("/check/inc")
+async def increment_check_pos(current_user: User = Depends(get_current_user)):
+
+    current_user.id
 
 
-# Маршрут для отправки сообщения всем подключенным пользователям
-@router_webapp.post("/broadcast")
-async def broadcast_message(message: str):
-    await ws_manager.broadcast(message)
-    return {"message": "Message broadcasted to all users"}
 
-
-@router_webapp.post("/update")
-async def broadcast_message_to_all(message: str):
-    """
-    Отправляет сообщение в топик 'broadcast' в NATS. Все WebSocket-подключения его получат.
-    """
     # Отправляем сообщение в NATS в топик 'broadcast'
-    await nats_client.publish("broadcast", message.encode())
+    # await nats_client.publish("broadcast", message.encode())
     return {"status": "Message sent to all users"}
+
+@router_webapp.post("/check/decr")
+async def decrement_check_pos(current_user: User = Depends(get_current_user)):
+
+
+    # Отправляем сообщение в NATS в топик 'broadcast'
+    # await nats_client.publish("broadcast", message.encode())
+    return {"status": "Message sent to all users"}
+
+
+@router_webapp.post("/user/create", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return create_user(db=db, user=user)
+
+
+@router_webapp.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    print(user)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.email})
+    response = {"access_token": access_token, "token_type": "bearer"}
+    return response

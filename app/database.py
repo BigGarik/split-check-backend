@@ -1,15 +1,16 @@
 import os
 
-import nats
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+import threading
 from redis import asyncio as aioredis
+
+import redis
 
 load_dotenv()
 
-redis_client = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
 
 db_user = os.getenv('DB_USER')
 db_password = os.getenv('DB_PASSWORD')
