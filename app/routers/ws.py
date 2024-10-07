@@ -40,7 +40,7 @@ class WSConnectionManager:
             try:
                 await websocket.send_text(message)
             except Exception as e:
-                print(f"Error sending message to session {session_id}: {e}")
+                logger.error(f"Error sending message to session {session_id}: {e}")
 
 
 # Создаем экземпляр Redis менеджера
@@ -80,18 +80,17 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Dep
 
         # Подключаем пользователя
         await ws_manager.connect(user_id, websocket)
-        # print(session_id)
         try:
             while True:
                 # Получаем данные от клиента
                 data = await websocket.receive_text()
-                print(f"Received message ws from {user_id}: {data}")
+                logger.info(f"Received message ws from {user_id}: {data}")
                 # Отправляем сообщение всем подключённым пользователям
                 # await ws_manager.broadcast(f"{user_id}: {data}")
         except WebSocketDisconnect:
             # Отключаем пользователя
             await ws_manager.disconnect(user_id)
-            print(f"User {user_id} disconnected")
+            logger.info(f"User {user_id} disconnected")
 
     except HTTPException as e:
         # Если аутентификация не удалась, возвращаем сообщение об ошибке и закрываем соединение
@@ -100,7 +99,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Dep
 
     except Exception as e:
         # Любая другая ошибка
-        print(f"Error occurred: {e}")
+        logger.error(f"Error occurred: {e}")
         await websocket.close()
 
 

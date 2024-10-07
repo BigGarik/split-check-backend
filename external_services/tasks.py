@@ -1,18 +1,12 @@
+import json
 import random
 import asyncio
 from datetime import datetime
 
 from fastapi.responses import JSONResponse
 
-from celery_app import celery_app
 
-
-
-
-
-
-@celery_app.task
-async def recognize(uuid_filename: str, user_id: str):
+async def recognize_image(check_uuid: str, user_id: str, file_location: str, redis_client):
     #1. Получаем изображение из папки по uuid
     #2. Распознаем его через нейронку и получаем в ответ JSON
     #......
@@ -143,12 +137,11 @@ async def recognize(uuid_filename: str, user_id: str):
 
     response_data = {
         "message": f"Successfully uploaded image.jpg",
-        "uuid": "9d0dd3fc-86e1-401a-bf0e-9f2d511b2442",
+        "uuid": check_uuid,
         "recognized_json": recognized_json
     }
 
     number = random.randrange(1, 11)
-    print(number)
     import time
     time.sleep(5)  # Симуляция длительной обработки
 
@@ -157,13 +150,12 @@ async def recognize(uuid_filename: str, user_id: str):
     else:
         result = JSONResponse(content=response_data, status_code=200)
 
-    print(result)
-
     msg = {
         "target_user_id": user_id,
         "payload": result
     }
 
-    #redis_pubsub.lpush("msg_bus", msg)
+    redis_key = f"check_uuid_{check_uuid}"
+    await redis_client.set(redis_key, json.dumps(msg))
 
     return result

@@ -1,6 +1,5 @@
 import json
 import logging
-import uuid
 
 from fastapi import APIRouter
 from fastapi import File, UploadFile, HTTPException, Query, Depends, status
@@ -10,16 +9,17 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.auth import get_current_user, authenticate_user, create_access_token
-from app.crud import get_user_by_email
+from app.crud import get_user_by_email, create_new_user
 from app.database import get_db
 from app.models import User
-from external_services.tasks import recognize
+from app.utils import upload_image_process
 
 router_webapp = APIRouter()
 
 logger = logging.getLogger(__name__)
 
 UPLOAD_DIRECTORY = "images"
+
 
 @router_webapp.post("/upload-image/")
 async def upload_image(
@@ -28,18 +28,12 @@ async def upload_image(
         file: UploadFile = File(...),
 ):
     user_id = current_user.email
+    print(user_id)
 
-    uuid_filename = uuid.uuid4()
-    # Сохраняем файл
-    file_location = f"images/{uuid_filename}"
-    with open(file_location, "wb+") as file_object:
-        file_object.write(file.file.read())
+    await upload_image_process(user_id, file)
+    print("ok")
 
-    # Добавляем задачу в очередь Celery
-    task = recognize.delay(uuid_filename, user_id)
-    print(f"task_id: {task.id}")
-
-    return {"task_id": task.id, "message": "File uploaded successfully, processing..."}
+    return {"message": "File uploaded successfully, processing..."}
 
 
 # @router_webapp.post("/upload-image/")
@@ -88,7 +82,6 @@ async def upload_image(
 #     return JSONResponse(content=final_json_string, status_code=200)
 
 
-
 @router_webapp.post("/get_check")
 async def get_value(key: str = Query(None), request: dict = None):
     if request and "key" in request:
@@ -97,8 +90,7 @@ async def get_value(key: str = Query(None), request: dict = None):
     if not key:
         raise HTTPException(status_code=400, detail="Key is required")
 
-
-    #value = await redisManager.get_value(key)
+    # value = await redisManager.get_value(key)
     value = None
     logger.info(f"Retrieved value for key '{key}': {value}")
 
@@ -111,30 +103,22 @@ async def get_value(key: str = Query(None), request: dict = None):
 
 @router_webapp.get("/check/{key}")
 async def get_check(key: str):
-    #value = await redisManager.get_value(key)
+    # value = await redisManager.get_value(key)
     value = None
     if value is None:
         return JSONResponse(content={"message": "Key not found"}, status_code=404)
 
     return json.loads(value)
 
+
 @router_webapp.post("/check/inc")
 async def increment_check_pos(current_user: User = Depends(get_current_user)):
-
-    current_user.id
-
-
-
-    # Отправляем сообщение в NATS в топик 'broadcast'
-    # await nats_client.publish("broadcast", message.encode())
+    # current_user.id
     return {"status": "Message sent to all users"}
+
 
 @router_webapp.post("/check/decr")
 async def decrement_check_pos(current_user: User = Depends(get_current_user)):
-
-
-    # Отправляем сообщение в NATS в топик 'broadcast'
-    # await nats_client.publish("broadcast", message.encode())
     return {"status": "Message sent to all users"}
 
 
@@ -143,13 +127,13 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return create_user(db=db, user=user)
+    new_user = create_new_user(db=db, user=user)
+    return new_user
 
 
 @router_webapp.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
-    print(user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -44,10 +44,10 @@ def convert_img(input_path, output_path=None, short_side=None):
             # Конвертируем и сохраняем изображение в формате PNG
             img.save(output_path, "PNG", quality=95)
 
-        print(f"Изображение успешно сконвертировано и сохранено: {output_path}")
+        logger.info(f"Изображение успешно сконвертировано и сохранено: {output_path}")
         return output_path
     except Exception as e:
-        print(f"Произошла ошибка при конвертации изображения: {str(e)}")
+        logger.error(f"Произошла ошибка при конвертации изображения: {str(e)}")
         return False
 
 

@@ -1,18 +1,12 @@
 import asyncio
 import logging
-import os
-
-from celery.signals import task_success
-from loguru import logger
-from redis import asyncio as aioredis
 
 from fastapi import FastAPI
-from app import models
-
-from app.database import engine
-from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 
+from app import models
+from app.database import engine
 from app.redis import setup_redis
 # from app.redis import redisManager
 from app.routers.test import router_test
@@ -27,7 +21,11 @@ app = FastAPI(root_path="/split_check")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://biggarik.ru"],  # Замените на конкретные домены в продакшене
+    # allow_origins=["https://biggarik.ru",
+    #                "https://3gppu4s-anonymous-8081.exp.direct",
+    #                "https://922ur5w-anonymous-8082.exp.direct",
+    #                "https://51u-i1y-anonymous-8082.exp.direct"],  # Замените на конкретные домены в продакшене
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,6 +39,7 @@ app.include_router(router_ws)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(setup_redis())
@@ -50,7 +49,7 @@ async def startup_event():
 async def shutdown_event():
     pass
     """Закрытие соединения с Redis при завершении работы приложения."""
-    #await redisManager.close()
+    # await redisManager.close()
 
 
 if __name__ == '__main__':

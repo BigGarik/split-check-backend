@@ -9,7 +9,6 @@ from PIL import Image
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
-from celery_app import celery_app
 from app.routers.ws import ws_manager
 
 load_dotenv()
@@ -22,7 +21,6 @@ MODEL_NAME = "claude-3-5-sonnet-20240620"
 
 def form_message(image_folder, prompt=""):
     images = []
-    print(image_folder)
     for filename in os.listdir(image_folder):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
             img_path = os.path.join(image_folder, filename)
@@ -107,7 +105,6 @@ def recognize_check(image_folder):
         max_tokens=2048,
         messages=message
     )
-    print(response.content[0].text)
     # response_data = json.loads(response.content[0].text)
     try:
         response = json.loads(response.content[0].text)
@@ -137,7 +134,6 @@ def test_claude():
         max_tokens=2048,
         messages=message
     )
-    # print(response.content[0].text)
     # response_data = json.loads(response.content[0].text)
     return json.loads(response.content[0].text)
 

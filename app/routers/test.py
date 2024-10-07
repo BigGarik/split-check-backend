@@ -1,4 +1,3 @@
-from celery import chain
 from fastapi import APIRouter
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
@@ -11,6 +10,11 @@ router_test = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
+@router_test.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+
 @router_test.get("/test/{val}")
 async def read_test(val: str):
     msg = {
@@ -21,7 +25,7 @@ async def read_test(val: str):
     }
 
     str_msg = json.dumps(msg)
-    #Отправляем сообщение в очередь
+    # Отправляем сообщение в очередь
     await redis_queue_publish(str_msg)
 
     return {"message": "Test route working!"}
