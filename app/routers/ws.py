@@ -25,22 +25,25 @@ class WSConnectionManager:
         await websocket.accept()
         # Сохраняем WebSocket соединение в локальном словаре по user_id
         self.active_connections[user_id] = websocket
+        logger.info(f"User {user_id} connected to WebSocket")
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    def disconnect(self, user_id: str):
+        if user_id in self.active_connections:
+            del self.active_connections[user_id]
+            logger.info(f"User {user_id} disconnected from WebSocket")
 
     async def send_personal_message(self, message: str, user_id: str):
-        if user_id and user_id in self.active_connections:
+        if user_id in self.active_connections:
             websocket = self.active_connections[user_id]
             await websocket.send_text(message)
 
     async def broadcast(self, message: str):
         # Широковещательная рассылка всем подключенным пользователям
-        for session_id, websocket in self.active_connections.items():
+        for user_id, websocket in self.active_connections.items():
             try:
                 await websocket.send_text(message)
             except Exception as e:
-                logger.error(f"Error sending message to session {session_id}: {e}")
+                logger.error(f"Error sending message to user {user_id}: {e}")
 
 
 # Создаем экземпляр Redis менеджера
@@ -65,7 +68,8 @@ ws_manager = WSConnectionManager()
 #     # Подписка на канал сообщений msg_bus
 #     await ws_broadcast_redis_manager.subscribe(redis_message_handler)
 #
-#     # Запускаем слушатель Redis в отдельной задаче, запускается каждый раз когда в очередь с названием to_user_msgs приходит сообщение
+#     # Запускаем слушатель Redis в отдельной задаче,
+#     запускается каждый раз когда в очередь с названием to_user_msgs приходит сообщение
 #     asyncio.create_task(redis_message_handler())
 
 

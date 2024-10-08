@@ -6,6 +6,7 @@ from loguru import logger
 
 import redis.asyncio as aioredis
 
+from app.routers.ws import ws_manager
 from external_services.tasks import recognize_image
 
 WS_BROAD_CAST_REDIS_CHANNEL = "wsocket_msg_broadcast"
@@ -31,8 +32,27 @@ async def setup_redis():
 async def redis_topic_consumer(message: str):
     async with topic_semaphore:  # Ограничиваем количество одновременно работающих консьюмеров
         logger.info(f"Sending message to WS: {message}")
-        # Здесь будем делать рассылку по WebSocket'ам
-        await asyncio.sleep(0.2)  # Имитация задержки обработки
+
+        # Декодируем сообщение
+        msg = json.loads(message)
+
+        # Получаем идентификатор пользователя
+        # TODO получаем всех пользователей подписанных на этот чек
+        user_id = msg.get("target_user_id")
+
+        # Проверяем, подключен ли пользователь через WebSocket
+        if user_id in ws_manager.active_connections:
+            # Получаем WebSocket-соединение пользователя
+            websocket = ws_manager.active_connections[user_id]
+
+            try:
+                # Отправляем сообщение пользователю через WebSocket
+                await websocket.send_text(json.dumps(msg["payload"]))
+                logger.info(f"Message sent to user {user_id} via WebSocket")
+            except Exception as e:
+                logger.error(f"Failed to send message to WebSocket user {user_id}: {e}")
+        else:
+            logger.warning(f"User {user_id} is not connected to WebSocket")
 
 
 async def redis_topic_subscribe():
@@ -51,22 +71,25 @@ async def redis_topic_publish(message: str):
 # Методы для работы с очередью
 async def redis_queue_consumer(message: str):
     async with queue_semaphore:  # Ограничиваем количество одновременно работающих консьюмеров
-        logger.info(f"Process message from queue: {message}")
-        # Здесь будем делать обработку длительных задач (оцифровку чека)
+        logger.info(f"Processing message from queue: {message}")
+
+        # Парсим сообщение
         msg = json.loads(message)
+
         if msg["type"] == "image_recognition":
             user_id = msg["user_id"]
             check_uuid = msg["payload"].get("check_uuid", "")
             file_location = msg["payload"].get("file_location", "")
+
+            # Обработка изображения (симуляция оцифровки чека)
             result_json = await recognize_image(check_uuid, user_id, file_location, redis_client)
+
             logger.info(f"Image recognized: {result_json}")
+
+            # Публикуем результат оцифровки в Redis
             await redis_topic_publish(json.dumps(result_json))
         else:
             logger.warning(f"Unknown message type: {msg['type']}")
-        await asyncio.sleep(0.2)  # Имитация задержки обработки
-
-        # Формируем сообщение для рассыки всем инстансам
-        await redis_topic_publish(message)
 
 
 async def redis_queue_subscribe():

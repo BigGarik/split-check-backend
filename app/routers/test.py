@@ -1,7 +1,9 @@
 from fastapi import APIRouter
 from fastapi import Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import json
+
 
 from ..redis import redis_queue_publish
 
@@ -10,9 +12,9 @@ router_test = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
-@router_test.get("/")
-async def root():
-    return {"message": "Hello World"}
+@router_test.get("/", response_class=HTMLResponse)
+async def get_websocket_page(request: Request):
+    return templates.TemplateResponse("upload_image.html", {"request": request})
 
 
 @router_test.get("/test/{val}")

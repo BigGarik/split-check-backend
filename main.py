@@ -8,7 +8,6 @@ from fastapi.security import OAuth2PasswordBearer
 from app import models
 from app.database import engine
 from app.redis import setup_redis
-# from app.redis import redisManager
 from app.routers.test import router_test
 from app.routers.webapp import router_webapp
 from app.routers.ws import router_ws

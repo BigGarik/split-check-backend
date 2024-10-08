@@ -12,6 +12,7 @@ from app.auth import get_current_user, authenticate_user, create_access_token
 from app.crud import get_user_by_email, create_new_user
 from app.database import get_db
 from app.models import User
+from app.routers.ws import ws_manager
 from app.utils import upload_image_process
 
 router_webapp = APIRouter()
@@ -28,10 +29,11 @@ async def upload_image(
         file: UploadFile = File(...),
 ):
     user_id = current_user.email
-    print(user_id)
-
+    logger.info(f"User {user_id} uploaded an image")
+    # Запускаем процесс обработки изображения
     await upload_image_process(user_id, file)
-    print("ok")
+    # Отправляем сообщение пользователю через WebSocket, если он подключен
+    await ws_manager.send_personal_message("Ваше изображение обрабатывается.", user_id)
 
     return {"message": "File uploaded successfully, processing..."}
 

@@ -28,7 +28,7 @@ async def upload_image_process(user_id, file):
             }
             и отправить в очередь пока предлагаю в общую, потом можно разнести
     """
-    check_uuid = uuid.uuid4()
+    check_uuid = str(uuid.uuid4())
 
     # Сохраняем файл
     file_location = f"{upload_directory}/{check_uuid}"

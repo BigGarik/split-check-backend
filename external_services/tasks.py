@@ -146,16 +146,20 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
     time.sleep(5)  # Симуляция длительной обработки
 
     if number < 4:
-        result = JSONResponse(content={"message": f"random {number}. No file response"}, status_code=400)
+        response_message = {"message": f"random {number}. No file response"}
+        status_code = 400
     else:
-        result = JSONResponse(content=response_data, status_code=200)
+        response_message = response_data
+        status_code = 200
 
     msg = {
         "target_user_id": user_id,
-        "payload": result
+        "payload": response_message,
+        "status_code": status_code
     }
 
+    # Сериализация и сохранение в Redis
     redis_key = f"check_uuid_{check_uuid}"
     await redis_client.set(redis_key, json.dumps(msg))
 
-    return result
+    return msg
