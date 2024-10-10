@@ -1,5 +1,5 @@
 import asyncio
-import logging
+from loguru import logger
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
@@ -12,7 +12,7 @@ load_dotenv()
 
 router_ws = APIRouter()
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 # Менеджер для работы с WebSocket

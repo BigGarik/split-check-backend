@@ -2,7 +2,7 @@ import json
 import random
 import asyncio
 from datetime import datetime
-
+from loguru import logger
 from fastapi.responses import JSONResponse
 
 
@@ -12,6 +12,7 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
     #......
     #8. параметрах также передаем user_id, который загружал чек
 
+    # Сохранить распознанные данные в Redis и базу данных
     recognized_json = {
         "restaurant": "Веранда",
         "table_number": "110",
@@ -136,9 +137,9 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
     }
 
     response_data = {
-        "message": f"Successfully uploaded image.jpg",
+        # "message": f"Successfully uploaded image.jpg",
         "uuid": check_uuid,
-        "recognized_json": recognized_json
+        # "recognized_json": recognized_json
     }
 
     number = random.randrange(1, 11)

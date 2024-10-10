@@ -1,5 +1,7 @@
 import json
-import logging
+import os
+from dotenv import load_dotenv
+from loguru import logger
 
 from fastapi import APIRouter
 from fastapi import File, UploadFile, HTTPException, Query, Depends, status
@@ -8,18 +10,24 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.auth import get_current_user, authenticate_user, create_access_token
+from app.auth import get_current_user, authenticate_user, create_token
 from app.crud import get_user_by_email, create_new_user
 from app.database import get_db
 from app.models import User
 from app.routers.ws import ws_manager
 from app.utils import upload_image_process
 
+load_dotenv()
+
 router_webapp = APIRouter()
 
-logger = logging.getLogger(__name__)
-
 UPLOAD_DIRECTORY = "images"
+
+access_secret_key = os.getenv('ACCESS_SECRET_KEY')
+refresh_secret_key = os.getenv('REFRESH_SECRET_KEY')
+algorithm = os.getenv('ALGORITHM')
+access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
+refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS'))
 
 
 @router_webapp.post("/upload-image/")
@@ -33,9 +41,9 @@ async def upload_image(
     # Запускаем процесс обработки изображения
     await upload_image_process(user_id, file)
     # Отправляем сообщение пользователю через WebSocket, если он подключен
-    await ws_manager.send_personal_message("Ваше изображение обрабатывается.", user_id)
+    # await ws_manager.send_personal_message("Ваше изображение обрабатывается.", user_id)
 
-    return {"message": "File uploaded successfully, processing..."}
+    return {"message": "Файл успешно загружен. Обработка..."}
 
 
 # @router_webapp.post("/upload-image/")
@@ -133,8 +141,10 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
+# Эндпоинт для получения access_token и refresh_token
 @router_webapp.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # 1. Аутентификация пользователя
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -142,6 +152,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": user.email})
-    response = {"access_token": access_token, "token_type": "bearer"}
-    return response
+
+    # 2. Создаем Access и Refresh токены
+    access_token = create_token(data={"sub": user.email},
+                                token_expire_minutes=access_token_expire_minutes,
+                                secret_key=access_secret_key)
+    refresh_token = create_token(data={"sub": user.email},
+                                 token_expire_minutes=refresh_token_expire_days,
+                                 secret_key=refresh_secret_key)
+
+    # 3. Возвращаем токены
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }

@@ -96,7 +96,10 @@
 
                 const data = await response.json();
 
+                // Сохраняем Access и Refresh токены в localStorage
                 localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token);
+
                 messageElement.textContent = 'Авторизация успешна!';
                 messageElement.style.color = '#28a745';
                 // Здесь можно добавить редирект на главную страницу
@@ -107,6 +110,70 @@
                 messageElement.style.color = '#dc3545';
             }
         });
+
+        // Функция для получения токена из localStorage
+        function getAccessToken() {
+            return localStorage.getItem('access_token');
+        }
+
+        // Функция для обновления токена
+        async function refreshAccessToken() {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) {
+                console.error('Отсутствует refresh_token');
+                return;
+            }
+
+            try {
+                const response = await fetch('/split_check/token/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'refresh_token': refreshToken
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Не удалось обновить токен');
+                }
+
+                const data = await response.json();
+                // Обновляем токен
+                localStorage.setItem('access_token', data.access_token);
+            } catch (error) {
+                console.error('Ошибка при обновлении токена:', error);
+            }
+        }
+
+        // Пример использования обновления токена перед запросом к API
+        async function makeAuthenticatedRequest() {
+            const token = getAccessToken();
+
+            // Если токен не найден или истек, пытаемся обновить его
+            if (!token) {
+                await refreshAccessToken();
+            }
+
+            // Далее можно выполнять защищенные запросы с использованием нового токена
+            const response = await fetch('/split_check/protected', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${getAccessToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Данные:', data);
+            } else {
+                console.error('Ошибка при запросе:', response.status);
+            }
+        }
+
+        // Пример вызова защищенного запроса
+        // makeAuthenticatedRequest();
     </script>
 </body>
 </html>

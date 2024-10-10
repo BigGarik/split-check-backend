@@ -29,6 +29,7 @@ async def setup_redis():
     asyncio.create_task(redis_queue_subscribe())
 
 
+# Функция для обработки сообщений из Redis topic
 async def redis_topic_consumer(message: str):
     async with topic_semaphore:  # Ограничиваем количество одновременно работающих консьюмеров
         logger.info(f"Sending message to WS: {message}")
@@ -92,6 +93,7 @@ async def redis_queue_consumer(message: str):
             logger.warning(f"Unknown message type: {msg['type']}")
 
 
+# Функция для подписки на Redis очередь
 async def redis_queue_subscribe():
     while True:
         message = await redis_client.lpop(WS_TASK_PROCESS_CHANNEL)  # Извлекаем из начала списка
@@ -103,3 +105,6 @@ async def redis_queue_subscribe():
 
 async def redis_queue_publish(message: str):
     await redis_client.rpush(WS_TASK_PROCESS_CHANNEL, message)
+
+
+

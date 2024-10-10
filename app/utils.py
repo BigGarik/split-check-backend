@@ -45,6 +45,7 @@ async def upload_image_process(user_id, file):
     }
     str_msg = json.dumps(msg)
     await redis_queue_publish(str_msg)
+    return check_uuid
 
 
 # 2. консьюмер очереди добавить метод recognize_Image, который принимает user_id, uuid

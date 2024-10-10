@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket and File Upload Test</title>
+    <title>WebSocket и загрузки файлов</title>
 </head>
 <body>
-    <h1>WebSocket Connection & File Upload Test</h1>
+    <h1>WebSocket и загрузки файлов</h1>
 
     <div>
-        <label for="image">Select an image:</label>
+        <label for="image">Выберите файл для загрузки:</label>
         <input type="file" id="image" accept="image/*">
-        <button onclick="uploadImage()">Upload Image</button>
+        <button onclick="uploadImage()">Загрузить изображение</button>
     </div>
 
     <div>
-        <h3>WebSocket Messages:</h3>
+        <h3>WebSocket сообщения:</h3>
         <pre id="messages"></pre>
     </div>
 
@@ -31,7 +31,7 @@
         function openWebSocket() {
             const token = getToken();
             if (!token) {
-                alert("Please login and make sure the token is saved in localStorage under 'access_token'.");
+                alert("Войдите в систему и убедитесь, что токен сохранен в localStorage в разделе «access_token».");
                 return;
             }
 
@@ -39,13 +39,13 @@
 
             socket.onmessage = function(event) {
                 const messages = document.getElementById("messages");
-                messages.textContent += `\nServer: ${event.data}`;
+                messages.textContent += `\nСервер: ${event.data}`;
             };
 
             socket.onopen = function() {
-                console.log("WebSocket connection established");
+                console.log("WebSocket подключен");
                 const messages = document.getElementById("messages");
-                messages.textContent += "\nWebSocket connection established";
+                messages.textContent += "\nWebSocket подключен";
             };
 
             socket.onerror = function(error) {
@@ -55,9 +55,9 @@
             };
 
             socket.onclose = function(event) {
-                console.log("WebSocket connection closed");
+                console.log("WebSocket отключен");
                 const messages = document.getElementById("messages");
-                messages.textContent += "\nWebSocket connection closed";
+                messages.textContent += "\nWebSocket отключен";
             };
         }
 
@@ -67,7 +67,7 @@
             const file = fileInput.files[0];
 
             if (!file) {
-                alert("Please select an image to upload.");
+                alert("Выберите изображение.");
                 return;
             }
 
@@ -84,12 +84,12 @@
             });
 
             const result = await response.json();
-            console.log("Upload result:", result);
+            console.log("Загрузка изображения", result);
             if (response.ok) {
                 const messages = document.getElementById("messages");
                 messages.textContent += `\n${result.message}`;
             } else {
-                alert("File upload failed: " + result.detail);
+                alert("Загрузка изображения не удалась: " + result.detail);
             }
         }
 

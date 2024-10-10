@@ -14,9 +14,11 @@ from app.schemas import TokenData
 
 load_dotenv()
 
-secret_key = os.getenv('SECRET_KEY')
+access_secret_key = os.getenv('ACCESS_SECRET_KEY')
+refresh_secret_key = os.getenv('REFRESH_SECRET_KEY')
 algorithm = os.getenv('ALGORITHM')
 access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
+refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS'))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -33,37 +35,39 @@ def authenticate_user(db: Session, email: str, password: str):
     return user
 
 
-# Создание JWT токена
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+# Функция для создания токена
+def create_token(data: dict, token_expire_minutes: int, secret_key: str):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now() + expires_delta
-    else:
-        expire = datetime.now() + timedelta(minutes=access_token_expire_minutes)
+    expire = datetime.now() + timedelta(minutes=token_expire_minutes)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    return encoded_jwt
 
 
 # Проверка токена
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Invalid token",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
     try:
-        # Декодируем токен
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        email: str = payload.get("sub")  # Обычно идентификатор пользователя хранится в 'sub'
+        email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-        token_data = TokenData(email=email)
+        return email
     except JWTError:
         raise credentials_exception
 
-    # Получаем пользователя по email
-    user = get_user_by_email(db, email=token_data.email)
-    if user is None:
-        raise credentials_exception
-    return user
+
+# Получаем текущего пользователя из токена
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        email = await verify_token(access_secret_key, token=token)
+        user = get_user_by_email(db, email)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
