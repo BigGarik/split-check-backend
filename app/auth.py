@@ -9,8 +9,6 @@ from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
 
 from app.database import get_db
-from app.models import User
-from app.schemas import TokenData
 
 load_dotenv()
 
@@ -18,7 +16,7 @@ access_secret_key = os.getenv('ACCESS_SECRET_KEY')
 refresh_secret_key = os.getenv('REFRESH_SECRET_KEY')
 algorithm = os.getenv('ALGORITHM')
 access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
-refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS'))
+refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_MINUTES'))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -36,7 +34,7 @@ def authenticate_user(db: Session, email: str, password: str):
 
 
 # Функция для создания токена
-def create_token(data: dict, token_expire_minutes: int, secret_key: str):
+async def create_token(data: dict, token_expire_minutes: int, secret_key: str):
     to_encode = data.copy()
     expire = datetime.now() + timedelta(minutes=token_expire_minutes)
     to_encode.update({"exp": expire})

@@ -157,7 +157,7 @@
             }
 
             // Далее можно выполнять защищенные запросы с использованием нового токена
-            const response = await fetch('/split_check/protected', {
+            const response = await fetch('/split_check/upload-image', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${getAccessToken()}`
@@ -173,7 +173,7 @@
         }
 
         // Пример вызова защищенного запроса
-        // makeAuthenticatedRequest();
+        makeAuthenticatedRequest();
     </script>
 </body>
 </html>

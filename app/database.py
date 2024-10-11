@@ -1,13 +1,8 @@
 import os
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-import threading
-from redis import asyncio as aioredis
-
-import redis
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 load_dotenv()
 
@@ -25,7 +20,9 @@ DATABASE_URL = "postgresql://{user}:{password}@{host}/{db}".format(
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 # Функция для получения сессии

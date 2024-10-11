@@ -21,25 +21,95 @@
 
     <script>
         let socket;
+        let reconnectInterval = 500000; // Интервал переподключения WebSocket
 
-        // Function to get token from localStorage
+        // Функция для получения токенов из localStorage
         function getToken() {
             return localStorage.getItem('access_token');
         }
 
-        // Open WebSocket connection
-        function openWebSocket() {
-            const token = getToken();
+        function getRefreshToken() {
+            return localStorage.getItem('refresh_token');
+        }
+
+        // Функция для обновления access_token с использованием refresh_token
+        async function refreshAccessToken() {
+            const refreshToken = getRefreshToken();
+            console.log("refreshToken:", refreshToken);
+
+            if (!refreshToken) {
+                console.log("Не удалось получить refresh_token");
+                // Если нет refresh_token, перенаправляем на страницу логина
+                // window.location.href = '/split_check/login';
+                return null;
+            }
+
+            try {
+                const response = await fetch('/split_check/refresh-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',  // Изменено на JSON, если сервер этого ожидает
+                    },
+                    body: JSON.stringify({
+                        'refresh_token': refreshToken
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json(); // Получаем данные об ошибке
+                    console.error("Ошибка ответа:", errorData);
+                    throw new Error('Не удалось обновить токен');
+                }
+
+                const data = await response.json();
+                const newAccessToken = data.access_token;
+                const newRefreshToken = data.refresh_token;
+
+                // Сохраняем новые токены в localStorage
+                localStorage.setItem('access_token', newAccessToken);
+                localStorage.setItem('refresh_token', newRefreshToken);
+
+                console.log("Токен успешно обновлен");
+                return newAccessToken;
+
+            } catch (error) {
+                console.error("Ошибка обновления токена:", error);
+                // Перенаправляем на страницу логина при ошибке
+                //window.location.href = '/split_check/login';
+                return null;
+            }
+        }
+
+
+        // Открытие WebSocket соединения
+        async function openWebSocket() {
+            let token = getToken();
             if (!token) {
-                alert("Войдите в систему и убедитесь, что токен сохранен в localStorage в разделе «access_token».");
-                return;
+                // Если токен отсутствует, пробуем обновить его
+                token = await refreshAccessToken();
+                if (!token) {
+                    return;  // Перенаправление на login произойдет в refreshAccessToken
+                }
             }
 
             socket = new WebSocket(`wss://biggarik.ru/split_check/ws?token=${token}`);
 
             socket.onmessage = function(event) {
-                const messages = document.getElementById("messages");
-                messages.textContent += `\nСервер: ${event.data}`;
+                // Преобразуем строку события в объект
+                const data = JSON.parse(event.data);
+
+                // Проверяем значение ключа error
+                if (data.error) {
+                    console.log("Ошибка:", data.error);
+                    refreshAccessToken().then(newToken => {
+                    if (newToken) {
+                        openWebSocket();  // Переподключаем WebSocket с новым токеном
+                    }
+                    });
+                } else {
+                    const messages = document.getElementById("messages");
+                    messages.textContent += `\nСервер: ${event.data}`;
+                }
             };
 
             socket.onopen = function() {
@@ -51,17 +121,31 @@
             socket.onerror = function(error) {
                 console.error("WebSocket error:", error);
                 const messages = document.getElementById("messages");
-                messages.textContent += `\nError: ${error.message}`;
+                messages.textContent += `\nОшибка: ${error.message}`;
+
+                // Если ошибка авторизации, пробуем обновить токен
+                if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    refreshAccessToken().then(newToken => {
+                        if (newToken) {
+                            openWebSocket();  // Переподключаем WebSocket с новым токеном
+                        }
+                    });
+                }
             };
 
             socket.onclose = function(event) {
                 console.log("WebSocket отключен");
                 const messages = document.getElementById("messages");
-                messages.textContent += "\nWebSocket отключен";
+                messages.textContent += "\nWebSocket отключен. Попытка переподключения через 5 секунд...";
+
+                // Попробуем переподключиться через 5 секунд
+                setTimeout(() => {
+                    openWebSocket();
+                }, reconnectInterval);
             };
         }
 
-        // Upload image to server
+        // Загрузка изображения на сервер
         async function uploadImage() {
             const fileInput = document.getElementById("image");
             const file = fileInput.files[0];
@@ -71,29 +155,49 @@
                 return;
             }
 
+            let token = getToken();
+            if (!token) {
+                // Если access_token отсутствует, пробуем обновить его
+                token = await refreshAccessToken();
+                if (!token) {
+                    return;  // Перенаправление на login произойдет в refreshAccessToken
+                }
+            }
+
             const formData = new FormData();
             formData.append("file", file);
 
-            const token = getToken();
-            const response = await fetch('/split_check/upload-image/', {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                },
-                body: formData
-            });
+            try {
+                const response = await fetch('/split_check/upload-image/', {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: formData
+                });
 
-            const result = await response.json();
-            console.log("Загрузка изображения", result);
-            if (response.ok) {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Если ошибка авторизации, пробуем обновить токен
+                        token = await refreshAccessToken();
+                        if (token) {
+                            await uploadImage();  // Повторяем загрузку с новым токеном
+                        }
+                        return;
+                    }
+                    throw new Error(`Ошибка сервера: ${response.status}`);
+                }
+
+                const result = await response.json();
                 const messages = document.getElementById("messages");
-                messages.textContent += `\n${result.message}`;
-            } else {
-                alert("Загрузка изображения не удалась: " + result.detail);
+                messages.textContent += `\nЗагрузка изображения: ${result.message}`;
+            } catch (error) {
+                console.error("Ошибка загрузки изображения:", error);
+                alert("Ошибка загрузки изображения: " + error.message);
             }
         }
 
-        // Open WebSocket connection on page load
+        // Открываем WebSocket при загрузке страницы
         window.onload = openWebSocket;
     </script>
 </body>

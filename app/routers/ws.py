@@ -1,4 +1,8 @@
 import asyncio
+import os
+
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
 from loguru import logger
 
 from dotenv import load_dotenv
@@ -10,9 +14,13 @@ from app.database import get_db
 
 load_dotenv()
 
-router_ws = APIRouter()
+access_secret_key = os.getenv('ACCESS_SECRET_KEY')
+refresh_secret_key = os.getenv('REFRESH_SECRET_KEY')
+access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
+refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_MINUTES'))
+algorithm = os.getenv('ALGORITHM')
 
-# logger = logging.getLogger(__name__)
+router_ws = APIRouter()
 
 
 # Менеджер для работы с WebSocket
@@ -46,42 +54,40 @@ class WSConnectionManager:
                 logger.error(f"Error sending message to user {user_id}: {e}")
 
 
-# Создаем экземпляр Redis менеджера
 ws_manager = WSConnectionManager()
 
 
-# Обработчик сообщений из очереди Redis
-# def redis_message_handler(message):
-#     print("recieved next msg " + message)
-#     if message and message['type'] == 'message':
-#         msg = message['data'].decode()
-#
-#         recipient = msg['target_user_id']
-#         payload = msg['payload']
-#
-#         print("message recieved: recipient is " + recipient + " and payload is " + payload)
-#         ws_manager.send_personal_message(payload, recipient)
-#
-#
-# # Подписываемся на рассылку сообщений из топика redis
-# async def subscribe_to_redis_msg_bus_channel():
-#     # Подписка на канал сообщений msg_bus
-#     await ws_broadcast_redis_manager.subscribe(redis_message_handler)
-#
-#     # Запускаем слушатель Redis в отдельной задаче,
-#     запускается каждый раз когда в очередь с названием to_user_msgs приходит сообщение
-#     asyncio.create_task(redis_message_handler())
+async def get_token_websocket(websocket: WebSocket):
+    token = websocket.query_params.get("token")
+    if not token:
+        raise WebSocketDisconnect(code=1008)
+    return token
+
+
+@router_ws.websocket("/ws-test")
+async def websocket_endpoint_test(websocket: WebSocket, token: str = Depends(get_token_websocket)):
+    await websocket.accept()
+    try:
+        payload = jwt.decode(token, access_secret_key, algorithms=[algorithm])
+        username: str = payload.get("sub")
+        if username is None:
+            await websocket.close(code=1008)
+        else:
+            await websocket.send_json({"message": f"Hello, {username}"})
+    except jwt.JWTError:
+        await websocket.close(code=1008)
+    finally:
+        await websocket.close()
 
 
 @router_ws.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Depends(get_db)):
+async def websocket_endpoint(websocket: WebSocket,
+                             token: str = Depends(get_token_websocket),
+                             db: Session = Depends(get_db)):
     try:
         # Пытаемся верифицировать токен
         user = await get_current_user(token, db)
-
-        # Если токен валиден, продолжаем работу с WebSocket
         user_id = user.email  # Используем email пользователя
-
         # Подключаем пользователя
         await ws_manager.connect(user_id, websocket)
         try:
@@ -92,15 +98,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str, db: Session = Dep
                 # Отправляем сообщение всем подключённым пользователям
                 # await ws_manager.broadcast(f"{user_id}: {data}")
         except WebSocketDisconnect:
-            # Отключаем пользователя
+            # Отключаем пользователя при разрыве соединения
             await ws_manager.disconnect(user_id)
             logger.info(f"User {user_id} disconnected")
-
-    except HTTPException as e:
-        # Если аутентификация не удалась, возвращаем сообщение об ошибке и закрываем соединение
-        await websocket.send_text(f"Authentication failed: {e.detail}")
+    except JWTError as e:
+        # Обработка ошибок JWT - отправляем сообщение о неудачной аутентификации
+        await websocket.accept()
+        await websocket.send_json({"error": "unauthorized", "message": "Invalid token. Redirect to login page."})
         await websocket.close()
-
+    except HTTPException as e:
+        # Если ошибка HTTP - перенаправляем на страницу логина через сообщение
+        await websocket.accept()
+        await websocket.send_json({"error": "unauthorized", "message": f"{e.detail}. Redirect to login page."})
+        await websocket.close()
     except Exception as e:
         # Любая другая ошибка
         logger.error(f"Error occurred: {e}")

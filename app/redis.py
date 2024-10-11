@@ -19,7 +19,7 @@ queue_semaphore = asyncio.Semaphore(10)  # Ограничиваем до 5 од�
 async def setup_redis():
     global redis_client
     # redis_url = f"redis://{os.getenv('REDIS_USERNAME')}:{os.getenv('REDIS_PASSWORD')}@{os.getenv('REDIS_HOST')}:6379"
-    redis_url = f"redis://{os.getenv('REDIS_HOST')}:6379"
+    redis_url = f"redis://{os.getenv('REDIS_HOST')}:6379/1"
 
     redis_client = await aioredis.Redis.from_url(url=redis_url, encoding="utf-8", decode_responses=True)
 
