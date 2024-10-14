@@ -1,20 +1,16 @@
 import json
-import os
-from dotenv import load_dotenv
-from loguru import logger
 
+from dotenv import load_dotenv
 from fastapi import APIRouter
-from fastapi import File, UploadFile, HTTPException, Query, Depends, status
+from fastapi import File, UploadFile, HTTPException, Query, Depends
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordRequestForm
+from loguru import logger
 from sqlalchemy.orm import Session
 
-from app import schemas
-from app.auth import get_current_user, authenticate_user, create_token
-from app.crud import get_user_by_email, create_new_user
+from app.auth import get_current_user
 from app.database import get_db
 from app.models import User
-from app.routers.ws import ws_manager
+from app.redis import queue_processor, redis_client
 from app.utils import upload_image_process
 
 load_dotenv()
@@ -29,9 +25,10 @@ async def upload_image(
         file: UploadFile = File(...),
 ):
     user_id = current_user.email
-    logger.info(f"User {user_id} uploaded an image")
     # Запускаем процесс обработки изображения
-    await upload_image_process(user_id, file)
+    task_data = await upload_image_process(user_id, file)
+    # Отправляем данные для обработки в очередь Redis
+    await queue_processor.push_task(task_data)
 
     return {"message": "Файл успешно загружен. Обработка..."}
 
@@ -46,7 +43,6 @@ async def get_value(key: str = Query(None), request: dict = None):
 
     # value = await redisManager.get_value(key)
     value = None
-    logger.info(f"Retrieved value for key '{key}': {value}")
 
     if value is None:
         return JSONResponse(content={"message": "Key not found"}, status_code=404)
@@ -55,14 +51,30 @@ async def get_value(key: str = Query(None), request: dict = None):
     return response
 
 
-@router_webapp.get("/check/{key}")
-async def get_check(key: str):
-    # value = await redisManager.get_value(key)
-    value = None
-    if value is None:
-        return JSONResponse(content={"message": "Key not found"}, status_code=404)
+@router_webapp.get("/check/{uuid}")
+async def get_check(uuid: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Ищем данные чека в Redis по uuid
+    redis_key = f"check_uuid_{uuid}"
+    check_data = await redis_client.get(redis_key)
 
-    return json.loads(value)
+    if not check_data:
+        # Если данных нет в Redis, можно попробовать найти их в базе данных
+        # Здесь должна быть логика поиска в БД
+        # Пример: check_data = db.query(Check).filter(Check.uuid == uuid).first()
+        # Если данных нет и в БД, выбрасываем исключение
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    task_data = {
+        "type": "send_check_data",
+        "user_id": user.id,
+        "check_uuid": uuid,
+        "check_data": check_data
+    }
+
+    # Отправляем данные чека в очередь Redis
+    await queue_processor.push_task(task_data)
+
+    return {"message": "Check data has been sent to WebSocket queue"}
 
 
 @router_webapp.post("/check/inc")

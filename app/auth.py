@@ -22,12 +22,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def verify_password(plain_password, hashed_password):
+async def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def authenticate_user(db: Session, email: str, password: str):
-    user = get_user_by_email(db, email)
+async def authenticate_user(db: Session, email: str, password: str):
+    user = await get_user_by_email(db, email)
     # if not user or not verify_password(password, user.hashed_password):
     #     return False
     return user
@@ -63,7 +63,7 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         email = await verify_token(access_secret_key, token=token)
-        user = get_user_by_email(db, email)
+        user = await get_user_by_email(db, email)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         return user

@@ -1,16 +1,15 @@
 import json
 import random
-import asyncio
-from datetime import datetime
 from loguru import logger
-from fastapi.responses import JSONResponse
+
+from app.routers.ws import ws_manager
 
 
 async def recognize_image(check_uuid: str, user_id: str, file_location: str, redis_client):
-    #1. Получаем изображение из папки по uuid
-    #2. Распознаем его через нейронку и получаем в ответ JSON
-    #......
-    #8. параметрах также передаем user_id, который загружал чек
+    # 1. Получаем изображение из папки по uuid
+    # 2. Распознаем его через нейронку и получаем в ответ JSON
+    # ......
+    # 8. параметрах также передаем user_id, который загружал чек
 
     # Сохранить распознанные данные в Redis и базу данных
     recognized_json = {
@@ -137,9 +136,9 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
     }
 
     response_data = {
-        # "message": f"Successfully uploaded image.jpg",
-        "uuid": check_uuid,
-        # "recognized_json": recognized_json
+        "message": f"Successfully uploaded image",
+        "check_uuid": check_uuid,
+        "recognized_json": recognized_json
     }
 
     number = random.randrange(1, 11)
@@ -153,14 +152,18 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
         response_message = response_data
         status_code = 200
 
-    msg = {
+    task_data = {
+        "type": "check_data",
         "target_user_id": user_id,
         "payload": response_message,
         "status_code": status_code
     }
 
-    # Сериализация и сохранение в Redis
+    # Сериализация и сохранение в Redis f"check_uuid_{check_uuid}"
     redis_key = f"check_uuid_{check_uuid}"
-    await redis_client.set(redis_key, json.dumps(msg))
+    task_data = json.dumps(task_data)
+    await redis_client.set(redis_key, task_data)
+    msg = json.dumps(check_uuid)
+    await ws_manager.send_personal_message(msg, user_id)
 
-    return msg
+    return task_data

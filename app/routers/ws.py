@@ -33,12 +33,10 @@ class WSConnectionManager:
         await websocket.accept()
         # Сохраняем WebSocket соединение в локальном словаре по user_id
         self.active_connections[user_id] = websocket
-        logger.info(f"User {user_id} connected to WebSocket")
 
     def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
-            logger.info(f"User {user_id} disconnected from WebSocket")
 
     async def send_personal_message(self, message: str, user_id: str):
         if user_id in self.active_connections:
@@ -94,13 +92,11 @@ async def websocket_endpoint(websocket: WebSocket,
             while True:
                 # Получаем данные от клиента
                 data = await websocket.receive_text()
-                logger.info(f"Received message ws from {user_id}: {data}")
                 # Отправляем сообщение всем подключённым пользователям
                 # await ws_manager.broadcast(f"{user_id}: {data}")
         except WebSocketDisconnect:
             # Отключаем пользователя при разрыве соединения
             await ws_manager.disconnect(user_id)
-            logger.info(f"User {user_id} disconnected")
     except JWTError as e:
         # Обработка ошибок JWT - отправляем сообщение о неудачной аутентификации
         await websocket.accept()

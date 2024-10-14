@@ -29,5 +29,10 @@ class TaskStatus(BaseModel):
     result: str | None = None
 
 
+class Task(BaseModel):
+    type: str
+    data: dict
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
