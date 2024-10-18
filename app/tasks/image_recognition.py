@@ -2,16 +2,22 @@ import json
 import random
 from loguru import logger
 
+from app.database import AsyncSessionLocal
 from app.routers.ws import ws_manager
+from app.utils import add_check_to_database
+from external_services.api_anthropic import recognize_check
 
 
-async def recognize_image(check_uuid: str, user_id: str, file_location: str, redis_client):
-    # 1. Получаем изображение из папки по uuid
-    # 2. Распознаем его через нейронку и получаем в ответ JSON
+async def recognize_image(check_uuid: str, user_id: int, file_location_directory: str, redis_client):
+    # 1. Распознаем чек через нейронку и получаем в ответ JSON
+    # recognized_json = recognize_check(file_location_directory)
     # ......
     # 8. параметрах также передаем user_id, который загружал чек
 
     # Сохранить распознанные данные в Redis и базу данных
+    async with AsyncSessionLocal() as session:
+        await add_check_to_database(check_uuid, user_id, session)
+
     recognized_json = {
         "restaurant": "Веранда",
         "table_number": "110",
@@ -142,8 +148,9 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
     }
 
     number = random.randrange(1, 11)
+
     import time
-    time.sleep(5)  # Симуляция длительной обработки
+    time.sleep(2)  # Симуляция длительной обработки
 
     if number < 4:
         response_message = {"message": f"random {number}. No file response"}
@@ -163,7 +170,13 @@ async def recognize_image(check_uuid: str, user_id: str, file_location: str, red
     redis_key = f"check_uuid_{check_uuid}"
     task_data = json.dumps(task_data)
     await redis_client.set(redis_key, task_data)
-    msg = json.dumps(check_uuid)
-    await ws_manager.send_personal_message(msg, user_id)
+    msg = {
+        "type": "imageRecognitionEvent",
+        "payload": {
+            "uuid": check_uuid,
+        },
+    }
+    msg_to_ws = json.dumps(msg)
+    await ws_manager.send_personal_message(msg_to_ws, user_id)
 
     return task_data

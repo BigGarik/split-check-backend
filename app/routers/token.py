@@ -5,10 +5,10 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from loguru import logger
 from dotenv import load_dotenv
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import authenticate_user, create_token, verify_token
-from app.database import get_db
+from app.database import get_async_db
 from app.schemas import RefreshTokenRequest
 
 load_dotenv()
@@ -25,9 +25,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 # Эндпоинт для получения access_token и refresh_token
 @router_token.post("/token")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_async_db)):
     # 1. Аутентификация пользователя
-    user = authenticate_user(db, form_data.username, form_data.password)
+    user = await authenticate_user(session, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

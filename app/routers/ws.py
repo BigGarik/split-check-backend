@@ -7,10 +7,10 @@ from loguru import logger
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
-from app.database import get_db
+from app.database import get_async_db
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ class WSConnectionManager:
         # Сохраняем WebSocket соединение в локальном словаре по user_id
         self.active_connections[user_id] = websocket
 
-    def disconnect(self, user_id: str):
+    async def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
 
@@ -81,11 +81,11 @@ async def websocket_endpoint_test(websocket: WebSocket, token: str = Depends(get
 @router_ws.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket,
                              token: str = Depends(get_token_websocket),
-                             db: Session = Depends(get_db)):
+                             session: AsyncSession = Depends(get_async_db)):
     try:
         # Пытаемся верифицировать токен
-        user = await get_current_user(token, db)
-        user_id = user.email  # Используем email пользователя
+        user = await get_current_user(token, session)
+        user_id = user.id
         # Подключаем пользователя
         await ws_manager.connect(user_id, websocket)
         try:

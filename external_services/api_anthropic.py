@@ -1,29 +1,25 @@
 import base64
 import io
 import json
-import logging
 import os
-import random
 
 from PIL import Image
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from fastapi.responses import JSONResponse
-from app.routers.ws import ws_manager
-
+from loguru import logger
 load_dotenv()
-logger = logging.getLogger(__name__)
+
 api_key = os.getenv("API_KEY")
 
 client = Anthropic(api_key=api_key)
-MODEL_NAME = "claude-3-5-sonnet-20240620"
+claude_model_name = os.getenv("CLAUDE_MODEL_NAME")
 
 
-def form_message(image_folder, prompt=""):
+def form_message(file_location_directory, prompt=""):
     images = []
-    for filename in os.listdir(image_folder):
+    for filename in os.listdir(file_location_directory):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
-            img_path = os.path.join(image_folder, filename)
+            img_path = os.path.join(file_location_directory, filename)
             with Image.open(img_path) as img:
                 # Определяем текущие размеры
                 width, height = img.size
@@ -71,12 +67,8 @@ def form_message(image_folder, prompt=""):
     ]
 
 
-
-
-
-def recognize_check(image_folder):
+def recognize_check(file_location_directory):
     prompt = (
-        #
         # 'You have perfect vision and a keen eye for detail, making you an expert at recognizing information on cash register receipts. '
         # 'What information is on this receipt? '
         # 'Before you provide your answer in <answer> tags in the json format, think step by step in <thinking> tags and analyze each part of the cash register receipt.'
@@ -98,10 +90,10 @@ def recognize_check(image_folder):
         '"total": 80000'
         '}'
     )
-    message = form_message(image_folder, prompt=prompt)
+    message = form_message(file_location_directory, prompt=prompt)
 
     response = client.messages.create(
-        model=MODEL_NAME,
+        model=claude_model_name,
         max_tokens=2048,
         messages=message
     )
@@ -130,7 +122,7 @@ def test_claude():
     ]
 
     response = client.messages.create(
-        model=MODEL_NAME,
+        model=claude_model_name,
         max_tokens=2048,
         messages=message
     )

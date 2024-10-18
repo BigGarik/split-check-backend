@@ -3,11 +3,11 @@ from loguru import logger
 from dotenv import load_dotenv
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import schemas
 from app.crud import get_user_by_email, create_new_user
-from app.database import get_db
+from app.database import get_async_db
 
 load_dotenv()
 
@@ -17,11 +17,11 @@ router_user = APIRouter()
 
 
 @router_user.post("/user/create", response_model=schemas.User)
-async def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = await get_user_by_email(db, email=user.email)
+async def create_user(user: schemas.UserCreate, session: AsyncSession = Depends(get_async_db)):
+    db_user = await get_user_by_email(session, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = await create_new_user(db=db, user=user)
+    new_user = await create_new_user(session=session, user=user)
     return new_user
 
 

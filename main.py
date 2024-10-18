@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from app import models
-from app.database import engine
+from app.database import sync_engine
 from app.redis import redis_client, queue_processor
 from app.routers.test import router_test
 from app.routers.token import router_token
@@ -21,7 +21,7 @@ from loguru import logger
 load_dotenv()
 
 
-models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=sync_engine)
 
 
 @asynccontextmanager
@@ -32,11 +32,12 @@ async def lifespan(app: FastAPI):
     queue_processor.register_handler("recognize_image", lambda task_data: recognize_image(
         task_data["payload"].get("check_uuid", ""),
         task_data["user_id"],
-        task_data["payload"].get("file_location", ""),
+        task_data["payload"].get("file_location_directory", ""),
         redis_client
     ))
     queue_processor.register_handler("send_all_checks", lambda task_data: send_all_checks(
-        task_data["user_id"]
+        task_data["user_id"],
+
     ))
     queue_processor.register_handler("send_check_data", lambda task_data: send_check_data(
         task_data["user_id"],
