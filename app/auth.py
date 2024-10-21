@@ -27,8 +27,8 @@ async def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-async def authenticate_user(session: AsyncSession, email: str, password: str):
-    user = await get_user_by_email(session, email)
+async def authenticate_user(email: str, password: str):
+    user = await get_user_by_email(email)
     if not user or not await verify_password(password, user.hashed_password):
         return False
     return user
@@ -61,10 +61,10 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
 
 
 # Получаем текущего пользователя из токена
-async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_async_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         email = await verify_token(access_secret_key, token=token)
-        user = await get_user_by_email(session, email)
+        user = await get_user_by_email(email)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         return user

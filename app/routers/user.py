@@ -17,11 +17,11 @@ router_user = APIRouter()
 
 
 @router_user.post("/user/create", response_model=schemas.User)
-async def create_user(user: schemas.UserCreate, session: AsyncSession = Depends(get_async_db)):
-    db_user = await get_user_by_email(session, email=user.email)
+async def create_user(user: schemas.UserCreate):
+    db_user = await get_user_by_email(email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = await create_new_user(session=session, user=user)
+    new_user = await create_new_user(user=user)
     return new_user
 
 

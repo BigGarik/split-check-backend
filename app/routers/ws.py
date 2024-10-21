@@ -62,29 +62,12 @@ async def get_token_websocket(websocket: WebSocket):
     return token
 
 
-@router_ws.websocket("/ws-test")
-async def websocket_endpoint_test(websocket: WebSocket, token: str = Depends(get_token_websocket)):
-    await websocket.accept()
-    try:
-        payload = jwt.decode(token, access_secret_key, algorithms=[algorithm])
-        username: str = payload.get("sub")
-        if username is None:
-            await websocket.close(code=1008)
-        else:
-            await websocket.send_json({"message": f"Hello, {username}"})
-    except jwt.JWTError:
-        await websocket.close(code=1008)
-    finally:
-        await websocket.close()
-
-
 @router_ws.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket,
-                             token: str = Depends(get_token_websocket),
-                             session: AsyncSession = Depends(get_async_db)):
+                             token: str = Depends(get_token_websocket)):
     try:
         # Пытаемся верифицировать токен
-        user = await get_current_user(token, session)
+        user = await get_current_user(token)
         user_id = user.id
         # Подключаем пользователя
         await ws_manager.connect(user_id, websocket)

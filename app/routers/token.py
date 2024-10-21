@@ -25,9 +25,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 # Эндпоинт для получения access_token и refresh_token
 @router_token.post("/token")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), session: AsyncSession = Depends(get_async_db)):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     # 1. Аутентификация пользователя
-    user = await authenticate_user(session, form_data.username, form_data.password)
+    user = await authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

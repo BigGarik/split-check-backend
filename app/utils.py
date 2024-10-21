@@ -11,6 +11,7 @@ from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import get_user_by_id
+from app.database import get_async_db
 from app.models import user_check_association, Check
 
 load_dotenv()
@@ -18,26 +19,28 @@ load_dotenv()
 upload_directory = os.getenv('UPLOAD_DIRECTORY')
 
 
-async def get_all_checks(user_id) -> list[str]:
+async def get_all_checks(user_id: int) -> list[str]:
     user = await get_user_by_id(user_id)
-    check_uuids = [check.uuid for check in user.checks]
-    return check_uuids
+    if user:
+        return [check.uuid for check in user.checks]
+    return []
 
 
-async def add_check_to_database(check_uuid: str, user_id: int, session: AsyncSession):
-    # Создаем новый чек
-    new_check = Check(uuid=check_uuid)
-    session.add(new_check)
-    await session.flush()
-    # Создаем связь между пользователем и чеком
-    stmt = insert(user_check_association).values(
-        user_id=user_id,
-        check_uuid=check_uuid
-    )
-    await session.execute(stmt)
+async def add_check_to_database(check_uuid: str, user_id: int):
+    async with get_async_db() as session:
+        # Создаем новый чек
+        new_check = Check(uuid=check_uuid)
+        session.add(new_check)
+        await session.flush()
+        # Создаем связь между пользователем и чеком
+        stmt = insert(user_check_association).values(
+            user_id=user_id,
+            check_uuid=check_uuid
+        )
+        await session.execute(stmt)
 
-    # Сохраняем изменения в базе данных
-    await session.commit()
+        # Сохраняем изменения в базе данных
+        await session.commit()
 
 
 async def upload_image_process(user_id: int, file: UploadFile):

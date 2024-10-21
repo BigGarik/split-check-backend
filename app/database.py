@@ -1,5 +1,5 @@
 import os
-
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
@@ -38,6 +38,7 @@ class Base(DeclarativeBase):
 
 
 # Функция для получения сессии
+@asynccontextmanager
 async def get_async_db():
     async with AsyncSessionLocal() as session:
         try:

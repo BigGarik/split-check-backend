@@ -18,7 +18,6 @@ router_webapp = APIRouter()
 @router_webapp.post("/upload-image/")
 async def upload_image(
         user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_async_db),
         file: UploadFile = File(...),
 ):
     user_id = user.id
@@ -49,19 +48,19 @@ async def upload_image(
 
 
 @router_webapp.get("/checks")
-async def get_all_check(session: AsyncSession = Depends(get_async_db), user: User = Depends(get_current_user)):
+async def get_all_check(user: User = Depends(get_current_user)):
     task_data = {
         "type": "send_all_checks",
-        "user": user,
+        "user_id": user.id,
     }
     # Отправляем check_uuids в очередь Redis
     await queue_processor.push_task(task_data)
 
-    return {"message": "Check uuids has been sent to WebSocket queue"}
+    return {"message": "Данные чеков отправлены в очередь для передачи через WebSocket"}
 
 
 @router_webapp.get("/check/{uuid}")
-async def get_check(uuid: str, session: AsyncSession = Depends(get_async_db), user: User = Depends(get_current_user)):
+async def get_check(uuid: str, user: User = Depends(get_current_user)):
     # Ищем данные чека в Redis по uuid
     redis_key = f"check_uuid_{uuid}"
     check_data = await redis_client.get(redis_key)

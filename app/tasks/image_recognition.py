@@ -15,8 +15,7 @@ async def recognize_image(check_uuid: str, user_id: int, file_location_directory
     # 8. параметрах также передаем user_id, который загружал чек
 
     # Сохранить распознанные данные в Redis и базу данных
-    async with AsyncSessionLocal() as session:
-        await add_check_to_database(check_uuid, user_id, session)
+    await add_check_to_database(check_uuid, user_id)
 
     recognized_json = {
         "restaurant": "Веранда",

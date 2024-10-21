@@ -1,4 +1,6 @@
 import json
+
+from app.database import get_async_db, async_engine
 from app.routers.ws import ws_manager
 from fastapi import HTTPException
 from loguru import logger
@@ -6,9 +8,7 @@ from loguru import logger
 from app.utils import get_all_checks
 
 
-async def send_all_checks(user_id):
-    # Реализация логики отправки всех чеков
-    # Получение списка uuid чеков по user_id из базы
+async def send_all_checks(user_id: int):
     check_uuids = await get_all_checks(user_id)
     msg = {
         "type": "allBillEvent",
