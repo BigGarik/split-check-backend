@@ -1,16 +1,13 @@
-from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import File, UploadFile, HTTPException, Depends
 from loguru import logger
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
-from app.database import get_async_db
-from app.models import User, Check
-from app.redis import queue_processor, redis_client
+from app.crud import add_or_update_user_selection, get_check_data_by_uuid
+from app.models import User
+from app.redis import queue_processor
+from app.schemas import CheckSelectionRequest
 from app.utils import upload_image_process
-
-load_dotenv()
 
 router_webapp = APIRouter()
 
@@ -29,24 +26,6 @@ async def upload_image(
     return {"message": "Файл успешно загружен. Обработка..."}
 
 
-# @router_webapp.post("/get_check")
-# async def get_value(key: str = Query(None), request: dict = None):
-#     if request and "key" in request:
-#         key = request["key"]
-#
-#     if not key:
-#         raise HTTPException(status_code=400, detail="Key is required")
-#
-#     # value = await redisManager.get_value(key)
-#     value = None
-#
-#     if value is None:
-#         return JSONResponse(content={"message": "Key not found"}, status_code=404)
-#
-#     response = json.loads(value)
-#     return response
-
-
 @router_webapp.get("/checks")
 async def get_all_check(user: User = Depends(get_current_user)):
     task_data = {
@@ -61,15 +40,9 @@ async def get_all_check(user: User = Depends(get_current_user)):
 
 @router_webapp.get("/check/{uuid}")
 async def get_check(uuid: str, user: User = Depends(get_current_user)):
-    # Ищем данные чека в Redis по uuid
-    redis_key = f"check_uuid_{uuid}"
-    check_data = await redis_client.get(redis_key)
-
+    check_data = await get_check_data_by_uuid(uuid)
+    # Если данных нет и в БД, выбрасываем исключение
     if not check_data:
-        # Если данных нет в Redis, можно попробовать найти их в базе данных
-        # Здесь должна быть логика поиска в БД
-        # Пример: check_data = session.query(Check).filter(Check.uuid == uuid).first()
-        # Если данных нет и в БД, выбрасываем исключение
         raise HTTPException(status_code=404, detail="Check not found")
 
     task_data = {
@@ -85,13 +58,18 @@ async def get_check(uuid: str, user: User = Depends(get_current_user)):
     return {"message": "Check data has been sent to WebSocket queue"}
 
 
-@router_webapp.post("/check/inc")
-async def increment_check_pos(current_user: User = Depends(get_current_user)):
-    # current_user.id
-    return {"status": "Message sent to all users"}
+@router_webapp.post("/check/{uuid}/select")
+async def user_selection(uuid: str,
+                         selection: CheckSelectionRequest,
+                         user: User = Depends(get_current_user)):
 
+    await add_or_update_user_selection(user_id=user.id, check_uuid=uuid, selection_data=selection)
+    # Отправляем данные чека в очередь Redis
+    task_data = {
+        "type": "send_check_selection",
+        "check_uuid": uuid,
+    }
+    logger.info(selection.dict())
+    await queue_processor.push_task(task_data)
 
-@router_webapp.post("/check/decr")
-async def decrement_check_pos(current_user: User = Depends(get_current_user)):
-    return {"status": "Message sent to all users"}
-
+    return {"message": "Check selection data has been sent to WebSocket queue"}

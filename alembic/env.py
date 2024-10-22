@@ -1,19 +1,47 @@
 from logging.config import fileConfig
 from sqlalchemy import pool
 from alembic import context
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.engine import Connection
-from app.database import Base
+from sqlalchemy.ext.asyncio import async_engine_from_config, AsyncConnection
 
-# Чтение конфигурации из alembic.ini
+# Импорт метаданных модели
+from app.database import Base  # Убедитесь, что импорт правильный и соответствует вашему проекту
+
 config = context.config
 fileConfig(config.config_file_name)
+
+# Убедитесь, что target_metadata настроен на ваши метаданные
 target_metadata = Base.metadata
 
 
-# Функция для оффлайн-миграций
+def do_run_migrations(connection):
+    """Выполнение миграций синхронно."""
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=True,  # Если используете SQLite, может быть необходимо
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_async_migrations():
+    """Асинхронное подключение для запуска миграций."""
+    connectable = async_engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+        future=True
+    )
+
+    # Асинхронное подключение
+    async with connectable.connect() as connection:
+        # Запуск синхронных миграций через run_sync
+        await connection.run_sync(do_run_migrations)
+
+
 def run_migrations_offline():
-    """Run migrations in 'offline' mode."""
+    """Оффлайн режим миграций."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -26,36 +54,9 @@ def run_migrations_offline():
         context.run_migrations()
 
 
-# Функция для онлайн-миграций
-async def run_migrations_online():
-    """Run migrations in 'online' mode."""
-    # Создаем асинхронный движок
-    connectable = create_async_engine(
-        config.get_main_option("sqlalchemy.url"),
-        poolclass=pool.NullPool,
-    )
-
-    async with connectable.connect() as connection:
-        # Настраиваем контекст для миграций
-        await connection.run_sync(do_run_migrations)
-
-    await connectable.dispose()
-
-
-# Обертка для миграций (работает как синхронная в контексте)
-def do_run_migrations(connection: Connection):
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-# Определяем режим выполнения (онлайн или оффлайн)
 if context.is_offline_mode():
     run_migrations_offline()
 else:
     import asyncio
-    asyncio.run(run_migrations_online())
+    # Запуск асинхронных миграций
+    asyncio.run(run_async_migrations())

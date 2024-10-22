@@ -1,8 +1,6 @@
 import asyncio
-import os
 from contextlib import asynccontextmanager
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -15,11 +13,8 @@ from app.routers.user import router_user
 from app.routers.webapp import router_webapp
 from app.routers.ws import router_ws
 from app.tasks.image_recognition import recognize_image
-from app.tasks.receipt_processing import send_all_checks, send_check_data
+from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection
 from loguru import logger
-
-load_dotenv()
-
 
 models.Base.metadata.create_all(bind=sync_engine)
 
@@ -41,6 +36,9 @@ async def lifespan(app: FastAPI):
     queue_processor.register_handler("send_check_data", lambda task_data: send_check_data(
         task_data["user_id"],
         task_data["check_data"],
+    ))
+    queue_processor.register_handler("send_check_selection", lambda task_data: send_check_selection(
+        task_data["check_uuid"],
     ))
 
     asyncio.create_task(queue_processor.process_queue())

@@ -1,23 +1,18 @@
-from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.crud import get_user_by_email
 import os
+from datetime import datetime, timedelta
+
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from dotenv import load_dotenv
-from loguru import logger
-from app.database import get_async_db
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+
+from app.crud import get_user_by_email
 
 load_dotenv()
 
 access_secret_key = os.getenv('ACCESS_SECRET_KEY')
-# refresh_secret_key = os.getenv('REFRESH_SECRET_KEY')
 algorithm = os.getenv('ALGORITHM')
-# access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
-# refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_MINUTES'))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

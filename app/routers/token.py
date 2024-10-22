@@ -1,14 +1,11 @@
 import os
 
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
-from loguru import logger
-from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import authenticate_user, create_token, verify_token
-from app.database import get_async_db
 from app.schemas import RefreshTokenRequest
 
 load_dotenv()

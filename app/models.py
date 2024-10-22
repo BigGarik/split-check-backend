@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Table, ForeignKey
+from typing import List
+
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -21,13 +23,31 @@ class User(Base):
 
     # Связь через промежуточную таблицу
     checks: Mapped[list["Check"]] = relationship("Check", secondary=user_check_association, back_populates="users")
+    user_selections: Mapped[List["UserSelection"]] = relationship("UserSelection", back_populates="user")
 
 
 class Check(Base):
     __tablename__ = "checks"
 
     uuid: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    check_data: Mapped[dict] = mapped_column(JSON)
 
     # Связь через промежуточную таблицу
     users: Mapped[list[User]] = relationship("User", secondary=user_check_association, back_populates="checks")
+    user_selections: Mapped[List["UserSelection"]] = relationship("UserSelection", back_populates="check")
+
+
+class UserSelection(Base):
+    __tablename__ = "user_selections"
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), primary_key=True)
+    check_uuid: Mapped[str] = mapped_column(String, ForeignKey("checks.uuid"), primary_key=True)
+    selection: Mapped[dict] = mapped_column(JSON)
+
+    user: Mapped[User] = relationship("User", back_populates="user_selections")
+    check: Mapped[Check] = relationship("Check", back_populates="user_selections")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'check_uuid', name='uq_user_check'),  # Ограничение уникальности
+    )
 

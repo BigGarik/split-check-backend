@@ -1,11 +1,16 @@
 import json
+import os
 import random
+
+from dotenv import load_dotenv
 from loguru import logger
 
-from app.database import AsyncSessionLocal
+from app.crud import add_check_to_database
 from app.routers.ws import ws_manager
-from app.utils import add_check_to_database
-from external_services.api_anthropic import recognize_check
+
+load_dotenv()
+
+redis_expiration = os.getenv("REDIS_EXPIRATION")
 
 
 async def recognize_image(check_uuid: str, user_id: int, file_location_directory: str, redis_client):
@@ -13,9 +18,6 @@ async def recognize_image(check_uuid: str, user_id: int, file_location_directory
     # recognized_json = recognize_check(file_location_directory)
     # ......
     # 8. параметрах также передаем user_id, который загружал чек
-
-    # Сохранить распознанные данные в Redis и базу данных
-    await add_check_to_database(check_uuid, user_id)
 
     recognized_json = {
         "restaurant": "Веранда",
@@ -146,6 +148,9 @@ async def recognize_image(check_uuid: str, user_id: int, file_location_directory
         "recognized_json": recognized_json
     }
 
+    # Сохранить распознанные данные в Redis и базу данных
+    await add_check_to_database(check_uuid, user_id, recognized_json)
+
     number = random.randrange(1, 11)
 
     import time
@@ -166,9 +171,9 @@ async def recognize_image(check_uuid: str, user_id: int, file_location_directory
     }
 
     # Сериализация и сохранение в Redis f"check_uuid_{check_uuid}"
-    redis_key = f"check_uuid_{check_uuid}"
+    redis_key = f"check_uuid:{check_uuid}"
     task_data = json.dumps(task_data)
-    await redis_client.set(redis_key, task_data)
+    await redis_client.set(redis_key, task_data, expire=redis_expiration)
     msg = {
         "type": "imageRecognitionEvent",
         "payload": {

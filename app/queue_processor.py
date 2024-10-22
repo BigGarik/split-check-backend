@@ -1,15 +1,10 @@
-# app/queue_processor.py
 import asyncio
 import json
 from typing import Callable, Dict
 
-import os
 from loguru import logger
-from dotenv import load_dotenv
 
 from app.redis_client import RedisClient
-
-load_dotenv()
 
 
 class QueueProcessor:
