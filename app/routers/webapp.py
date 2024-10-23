@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter
 from fastapi import File, UploadFile, HTTPException, Depends
 from loguru import logger
@@ -55,7 +57,7 @@ async def get_check(uuid: str, user: User = Depends(get_current_user)):
     # Отправляем данные чека в очередь Redis
     await queue_processor.push_task(task_data)
 
-    return {"message": "Check data has been sent to WebSocket queue"}
+    return {"message": "Данные чека отправлены в очередь для передачи через WebSocket"}
 
 
 @router_webapp.post("/check/{uuid}/select")
@@ -72,4 +74,4 @@ async def user_selection(uuid: str,
     logger.info(selection.dict())
     await queue_processor.push_task(task_data)
 
-    return {"message": "Check selection data has been sent to WebSocket queue"}
+    return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}

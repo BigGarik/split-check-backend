@@ -16,8 +16,6 @@ redis_expiration = os.getenv("REDIS_EXPIRATION")
 async def recognize_image(check_uuid: str, user_id: int, file_location_directory: str, redis_client):
     # 1. Распознаем чек через нейронку и получаем в ответ JSON
     # recognized_json = recognize_check(file_location_directory)
-    # ......
-    # 8. параметрах также передаем user_id, который загружал чек
 
     recognized_json = {
         "restaurant": "Веранда",
@@ -142,38 +140,33 @@ async def recognize_image(check_uuid: str, user_id: int, file_location_directory
         "total": 2035040
     }
 
-    response_data = {
-        "message": f"Successfully uploaded image",
-        "check_uuid": check_uuid,
-        "recognized_json": recognized_json
-    }
+    # response_data = {
+    #     "message": f"Successfully uploaded image",
+    #     "check_uuid": check_uuid,
+    #     "recognized_json": recognized_json
+    # }
 
     # Сохранить распознанные данные в Redis и базу данных
     await add_check_to_database(check_uuid, user_id, recognized_json)
 
-    number = random.randrange(1, 11)
-
-    import time
-    time.sleep(2)  # Симуляция длительной обработки
-
-    if number < 4:
-        response_message = {"message": f"random {number}. No file response"}
-        status_code = 400
-    else:
-        response_message = response_data
-        status_code = 200
-
-    task_data = {
-        "type": "check_data",
-        "target_user_id": user_id,
-        "payload": response_message,
-        "status_code": status_code
-    }
-
     # Сериализация и сохранение в Redis f"check_uuid_{check_uuid}"
     redis_key = f"check_uuid:{check_uuid}"
-    task_data = json.dumps(task_data)
+    task_data = json.dumps(recognized_json)
     await redis_client.set(redis_key, task_data, expire=redis_expiration)
+
+##################### На время тестов ############################
+    # number = random.randrange(1, 11)
+    #
+    # import time
+    # time.sleep(2)  # Симуляция длительной обработки
+    #
+    # if number < 4:
+    #     response_message = {"message": f"random {number}. No file response"}
+    #     status_code = 400
+    # else:
+    #     response_message = response_data
+    #     status_code = 200
+##################################################################
     msg = {
         "type": "imageRecognitionEvent",
         "payload": {
@@ -182,5 +175,3 @@ async def recognize_image(check_uuid: str, user_id: int, file_location_directory
     }
     msg_to_ws = json.dumps(msg)
     await ws_manager.send_personal_message(msg_to_ws, user_id)
-
-    return task_data

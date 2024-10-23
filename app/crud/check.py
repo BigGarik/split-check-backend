@@ -1,3 +1,5 @@
+import json
+
 from loguru import logger
 from sqlalchemy import select, insert
 
@@ -33,7 +35,7 @@ async def get_check_data_by_uuid(check_uuid: str):
             stmt = select(Check).filter_by(uuid=check_uuid)
             result = await session.execute(stmt)
             check = result.scalars().first()
-            check_data = check.check_data
+            check_data = json.dumps(check.check_data)
             logger.info(f"check_data из базы данных: {check_data}")
 
     return check_data

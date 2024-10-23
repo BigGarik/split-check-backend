@@ -6,6 +6,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.crud import get_users_by_check
 from app.database import get_async_db
 from app.models import UserSelection
 from app.redis import redis_client
@@ -62,3 +63,39 @@ async def get_user_selection_by_user(user_id: int):
         result = await session.execute(stmt)
         user_selections = result.scalars().first()
         return user_selections
+
+
+async def get_user_selection_by_check_uuid(check_uuid: str):
+    users = await get_users_by_check(check_uuid)
+    logger.info(f"Получили пользователей: {', '.join([str(user) for user in users])}")
+    participants = []
+    for user in users:
+        redis_key = f"user_selection:{user.id}:{check_uuid}"
+        logger.info(f"Получили redis_key: {redis_key}")
+        user_selection = await redis_client.get(redis_key)
+        logger.info(f"Получили user_selection из redis: {user_selection}")
+        if not user_selection:
+            user_selection = await get_user_selection_by_user(user.id)
+            logger.info(f"Получили user_selection из базы: {user_selection}")
+            # Преобразуем строку JSON в словарь Python
+        if user_selection:
+            selection_data = json.loads(user_selection)
+            logger.info(f"Получили selection_data: {selection_data}")
+
+            # Создаем структуру для каждого участника
+            participant = {
+                "userid": user.id,
+                "selectedItems": []
+            }
+
+            # Добавляем выбранные предметы пользователя
+            for item in selection_data.get('selected_items', []):
+                selected_item = {
+                    "itemId": item['item_id'],
+                    "quantity": item['quantity']
+                }
+                participant["selectedItems"].append(selected_item)
+
+            participants.append(participant)
+    return participants, users
+
