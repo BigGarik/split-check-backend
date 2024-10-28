@@ -40,8 +40,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     refresh_token = await create_token(
         data={"email": user.email, "user_id": user.id},
-        token_expire_minutes=access_token_expire_minutes,
-        secret_key=access_secret_key
+        token_expire_minutes=refresh_token_expire_days,
+        secret_key=refresh_secret_key
     )
 
     # 3. Возвращаем токены
@@ -68,8 +68,8 @@ async def refresh_access_token(request: RefreshTokenRequest):
         # 3. Создаем новый Refresh токен
         new_refresh_token = await create_token(
             data={"email": email, "user_id": user_id},
-            token_expire_minutes=access_token_expire_minutes,
-            secret_key=access_secret_key
+            token_expire_minutes=refresh_token_expire_days,
+            secret_key=refresh_secret_key
         )
 
         return {
