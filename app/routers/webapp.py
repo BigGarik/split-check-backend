@@ -5,7 +5,8 @@ from fastapi import File, UploadFile, HTTPException, Depends
 from loguru import logger
 
 from app.auth import get_current_user
-from app.crud import add_or_update_user_selection, get_check_data_by_uuid
+from app.crud import add_or_update_user_selection, get_check_data_by_uuid, get_user_selection_by_check_uuid, \
+    join_user_to_check
 from app.models import User
 from app.redis import queue_processor
 from app.schemas import CheckSelectionRequest
@@ -19,9 +20,8 @@ async def upload_image(
         user: User = Depends(get_current_user),
         file: UploadFile = File(...),
 ):
-    user_id = user.id
     # Запускаем процесс обработки изображения
-    task_data = await upload_image_process(user_id, file)
+    task_data = await upload_image_process(user.id, file)
     # Отправляем данные для обработки в очередь Redis
     await queue_processor.push_task(task_data)
 
@@ -42,16 +42,16 @@ async def get_all_check(user: User = Depends(get_current_user)):
 
 @router_webapp.get("/check/{uuid}")
 async def get_check(uuid: str, user: User = Depends(get_current_user)):
-    check_data = await get_check_data_by_uuid(uuid)
-    # Если данных нет и в БД, выбрасываем исключение
-    if not check_data:
-        raise HTTPException(status_code=404, detail="Check not found")
+    # check_data = await get_check_data_by_uuid(uuid)
+    # participants, _ = await get_user_selection_by_check_uuid(uuid)
+    # # Если данных нет и в БД, выбрасываем исключение
+    # if not check_data:
+    #     raise HTTPException(status_code=404, detail="Check not found")
 
     task_data = {
         "type": "send_check_data",
         "user_id": user.id,
         "check_uuid": uuid,
-        "check_data": check_data
     }
 
     # Отправляем данные чека в очередь Redis
@@ -69,9 +69,23 @@ async def user_selection(uuid: str,
     # Отправляем данные чека в очередь Redis
     task_data = {
         "type": "send_check_selection",
+        "user_id": user.id,
         "check_uuid": uuid,
     }
     logger.info(selection.dict())
     await queue_processor.push_task(task_data)
 
     return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
+
+
+@router_webapp.post("/check/join")
+async def join_check(
+    uuid: str,
+    user: User = Depends(get_current_user)
+):
+    """Присоединяет пользователя к чеку."""
+    await join_user_to_check(user.id, uuid)
+    return {
+        "status": "success",
+        "message": "User joined to the check successfully"
+    }

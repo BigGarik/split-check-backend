@@ -53,7 +53,8 @@ async def upload_image_process(user_id: int, file: UploadFile):
         "user_id": user_id,
         "payload": {
             "check_uuid": check_uuid,
-            "file_location_directory": directory
+            "file_location_directory": directory,
+            "file_name": file_name,
         }
     }
 

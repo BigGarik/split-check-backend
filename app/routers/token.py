@@ -33,12 +33,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         )
 
     # 2. Создаем Access и Refresh токены
-    access_token = await create_token(data={"sub": user.email},
-                                      token_expire_minutes=access_token_expire_minutes,
-                                      secret_key=access_secret_key)
-    refresh_token = await create_token(data={"sub": user.email},
-                                       token_expire_minutes=refresh_token_expire_days,
-                                       secret_key=refresh_secret_key)
+    access_token = await create_token(
+        data={"email": user.email, "user_id": user.id},
+        token_expire_minutes=access_token_expire_minutes,
+        secret_key=access_secret_key
+    )
+    refresh_token = await create_token(
+        data={"email": user.email, "user_id": user.id},
+        token_expire_minutes=access_token_expire_minutes,
+        secret_key=access_secret_key
+    )
 
     # 3. Возвращаем токены
     return {
@@ -53,16 +57,20 @@ async def refresh_access_token(request: RefreshTokenRequest):
     refresh_token = request.refresh_token
     try:
         # 1. Проверка Refresh токена
-        email = await verify_token(secret_key=refresh_secret_key, token=refresh_token)
+        email, user_id = await verify_token(secret_key=refresh_secret_key, token=refresh_token)
 
         # 2. Создаем новый Access токен
-        new_access_token = await create_token(data={"sub": email},
-                                              token_expire_minutes=access_token_expire_minutes,
-                                              secret_key=access_secret_key)
+        new_access_token = await create_token(
+            data={"email": email, "user_id": user_id},
+            token_expire_minutes=access_token_expire_minutes,
+            secret_key=access_secret_key
+        )
         # 3. Создаем новый Refresh токен
-        new_refresh_token = await create_token(data={"sub": email},
-                                               token_expire_minutes=refresh_token_expire_days,
-                                               secret_key=refresh_secret_key)
+        new_refresh_token = await create_token(
+            data={"email": email, "user_id": user_id},
+            token_expire_minutes=access_token_expire_minutes,
+            secret_key=access_secret_key
+        )
 
         return {
             "access_token": new_access_token,

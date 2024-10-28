@@ -11,3 +11,7 @@ POST запрос: https://biggarik.ru/split_check/get_check с телом за�
 cd c:\Users\big\Downloads\ngrok-v3-stable-windows-amd64\
 
 ngrok http 8080
+
+
+## Установка
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu

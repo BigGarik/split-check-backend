@@ -7,15 +7,28 @@ from loguru import logger
 
 from app.crud import add_check_to_database
 from app.routers.ws import ws_manager
+from services.classifier_image import classifier_image
 
 load_dotenv()
 
 redis_expiration = os.getenv("REDIS_EXPIRATION")
 
 
-async def recognize_image(check_uuid: str, user_id: int, file_location_directory: str, redis_client):
-    # 1. Распознаем чек через нейронку и получаем в ответ JSON
-    # recognized_json = recognize_check(file_location_directory)
+async def recognize_image(check_uuid: str, user_id: int, file_location_directory: str, file_name: str, redis_client):
+    # 1. сначала классифицируем изображение и если все ок, то отправляем на распознавание
+    # Классифицируем изображение
+    image = os.path.join(file_location_directory, file_name)
+    logger.info(f"Image location: {image}")
+    try:
+        result = await classifier_image(image)
+        if result == "Allowed Content":
+            logger.info(f"Image classification result: {result}")
+            # 2. Распознаем чек через нейронку и получаем в ответ JSON
+            # recognized_json = recognize_check(file_location_directory)
+        else:
+            logger.info(f"Image classification result: {result}")
+    except Exception as e:
+        logger.error(e)
 
     recognized_json = {
         "restaurant": "Веранда",

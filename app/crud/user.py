@@ -1,5 +1,6 @@
 from typing import List
 
+from fastapi import HTTPException, status
 from loguru import logger
 from passlib.hash import bcrypt
 from sqlalchemy import select
@@ -51,3 +52,50 @@ async def get_users_by_check(check_uuid: str) -> List[User]:
         users = result.scalars().all()
 
         return users
+
+
+async def join_user_to_check(user_id: int, check_uuid: str):
+    """
+    Присоединяет пользователя к чеку, проверяя существование чека
+    и отсутствие дублирующих связей.
+
+    Args:
+        user_id (int): ID пользователя
+        check_uuid (str): UUID чека
+
+    Raises:
+        HTTPException: если чек не найден или пользователь уже присоединен
+    """
+    async with get_async_db() as session:
+        # Проверяем существование чека
+        check_stmt = select(Check).where(Check.uuid == check_uuid)
+        check_result = await session.execute(check_stmt)
+        check = check_result.scalars().first()
+
+        if not check:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Check not found"
+            )
+
+        # Проверяем существующую связь
+        assoc_stmt = (
+            select(user_check_association)
+            .where(user_check_association.c.user_id == user_id)
+            .where(user_check_association.c.check_uuid == check_uuid)
+        )
+        assoc_result = await session.execute(assoc_stmt)
+
+        if assoc_result.first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User is already joined to this check"
+            )
+
+        # Создаем связь
+        join_stmt = user_check_association.insert().values(
+            user_id=user_id,
+            check_uuid=check_uuid
+        )
+        await session.execute(join_stmt)
+        await session.commit()

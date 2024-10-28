@@ -47,10 +47,11 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
     )
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        email: str = payload.get("sub")
+        email: str = payload.get("email")
+        user_id: int = payload.get("user_id")
         if email is None:
             raise credentials_exception
-        return email
+        return email, user_id
     except JWTError:
         raise credentials_exception
 
@@ -58,7 +59,7 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
 # Получаем текущего пользователя из токена
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
-        email = await verify_token(access_secret_key, token=token)
+        email, _ = await verify_token(access_secret_key, token=token)
         user = await get_user_by_email(email)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")

@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from loguru import logger
@@ -32,9 +32,17 @@ AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit=False, cla
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
 
+convention = {
+    "ix": "ix_%(column_0_label)s",                                          # Для индексов
+    "uq": "uq_%(table_name)s_%(column_0_name)s",                            # Для уникальных ограничений
+    "ck": "ck_%(table_name)s_%(constraint_name)s",                          # Для check-ограничений
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",    # Для внешних ключей
+    "pk": "pk_%(table_name)s"                                               # Для первичных ключей
+}
+
 
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(naming_convention=convention)
 
 
 # Функция для получения сессии
