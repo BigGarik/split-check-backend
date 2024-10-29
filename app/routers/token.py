@@ -15,13 +15,14 @@ refresh_secret_key = os.getenv('REFRESH_SECRET_KEY')
 access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
 refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_MINUTES'))
 
-router_token = APIRouter()
+
+router = APIRouter(prefix="/token", tags=["token"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 
 # Эндпоинт для получения access_token и refresh_token
-@router_token.post("/token")
+@router.post("")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     # 1. Аутентификация пользователя
     user = await authenticate_user(form_data.username, form_data.password)
@@ -52,7 +53,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     }
 
 
-@router_token.post("/refresh-token")
+@router.post("/refresh")
 async def refresh_access_token(request: RefreshTokenRequest):
     refresh_token = request.refresh_token
     try:
@@ -83,7 +84,3 @@ async def refresh_access_token(request: RefreshTokenRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
         )
-
-
-if __name__ == '__main__':
-    pass

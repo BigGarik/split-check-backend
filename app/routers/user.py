@@ -9,14 +9,13 @@ from app import schemas
 from app.crud import get_user_by_email, create_new_user
 from app.database import get_async_db
 
-load_dotenv()
 
 templates = Jinja2Templates(directory="templates")
 
-router_user = APIRouter()
+router = APIRouter(prefix="/user", tags=["user"])
 
 
-@router_user.post("/user/create", response_model=schemas.User)
+@router.post("/create", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate):
     db_user = await get_user_by_email(email=user.email)
     if db_user:
@@ -25,10 +24,8 @@ async def create_user(user: schemas.UserCreate):
     return new_user
 
 
-@router_user.get("/login")
+@router.get("/login")
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 
-if __name__ == '__main__':
-    pass

@@ -1,5 +1,5 @@
-from typing import List
-
+from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -25,25 +25,25 @@ class TokenData(BaseModel):
     email: str | None = None
 
 
-class TaskStatus(BaseModel):
-    task_id: str
-    status: str
-    result: str | None = None
-
-
-class Task(BaseModel):
-    type: str
-    data: dict
-
-
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
-class ItemSelection(BaseModel):
-    item_id: int
-    quantity: int
+class UserProfileBase(BaseModel):
+    nickname: Optional[str] = None
+    language: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
-class CheckSelectionRequest(BaseModel):
-    selected_items: List[ItemSelection]
+class UserProfileUpdate(UserProfileBase):
+    pass
+
+
+class UserProfileResponse(UserProfileBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException, status
 from loguru import logger
@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.database import get_async_db
-from app.models import User, user_check_association, Check
-from app.schemas import UserCreate
+from app.models import User, user_check_association, Check, UserProfile
+from app.schemas import UserCreate, UserProfileUpdate
 
 
 async def create_new_user(user: UserCreate):
@@ -99,3 +99,43 @@ async def join_user_to_check(user_id: int, check_uuid: str):
         )
         await session.execute(join_stmt)
         await session.commit()
+
+
+########################## Профиль пользователя ##########################
+
+
+async def get_user_profile(user_id: int) -> Optional[UserProfile]:
+    async with get_async_db() as session:
+        stmt = select(UserProfile).filter_by(user_id=user_id)
+        result = await session.execute(stmt)
+        return result.scalars().first()
+
+
+async def create_user_profile(
+        user_id: int,
+        profile_data: UserProfileUpdate
+) -> UserProfile:
+    async with get_async_db() as session:
+        db_profile = UserProfile(
+            user_id=user_id,
+            **profile_data.model_dump(exclude_unset=True)
+        )
+        session.add(db_profile)
+        await session.commit()
+        await session.refresh(db_profile)
+        return db_profile
+
+
+async def update_user_profile(
+        profile: UserProfile,
+        profile_data: UserProfileUpdate
+) -> UserProfile:
+    async with get_async_db() as session:
+        update_data = profile_data.model_dump(exclude_unset=True)
+
+        for field, value in update_data.items():
+            setattr(profile, field, value)
+
+        await session.commit()
+        await session.refresh(profile)
+        return profile

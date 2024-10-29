@@ -15,3 +15,10 @@ ngrok http 8080
 
 ## Установка
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+
+## Миграция
+Создать новую миграцию:
+alembic revision --autogenerate -m "add user profile table"
+Применить миграцию:
+alembic upgrade head

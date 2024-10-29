@@ -4,12 +4,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from app import models
-from app.database import sync_engine
+
+from app.database import sync_engine, Base
 from app.redis import redis_client, queue_processor
+from app.routers import profile, user, token
 from app.routers.test import router_test
-from app.routers.token import router_token
-from app.routers.user import router_user
 from app.routers.webapp import router_webapp
 from app.routers.ws import router_ws
 from app.tasks.image_recognition import recognize_image
@@ -18,7 +17,7 @@ from loguru import logger
 
 from services.classifier_instance import init_classifier
 
-models.Base.metadata.create_all(bind=sync_engine)
+Base.metadata.create_all(bind=sync_engine)
 
 
 @asynccontextmanager
@@ -72,9 +71,10 @@ app.add_middleware(
 )
 
 # Подключаем маршруты
-app.include_router(router_user)
+app.include_router(user.router)
+app.include_router(profile.router)
 app.include_router(router_test)
-app.include_router(router_token)
+app.include_router(token.router)
 app.include_router(router_webapp)
 app.include_router(router_ws)
 
