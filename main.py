@@ -7,10 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from app.database import sync_engine, Base
 from app.redis import redis_client, queue_processor
-from app.routers import profile, user, token
-from app.routers.test import router_test
-from app.routers.webapp import router_webapp
-from app.routers.ws import router_ws
+from app.routers import profile, user, token, check, ws, test
 from app.tasks.image_recognition import recognize_image
 from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection
 from loguru import logger
@@ -73,10 +70,10 @@ app.add_middleware(
 # Подключаем маршруты
 app.include_router(user.router)
 app.include_router(profile.router)
-app.include_router(router_test)
+app.include_router(test.router)
 app.include_router(token.router)
-app.include_router(router_webapp)
-app.include_router(router_ws)
+app.include_router(check.router)
+app.include_router(ws.router)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

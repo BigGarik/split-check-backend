@@ -1,16 +1,13 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
-import json
 
-from jose import JWTError
+router = APIRouter(prefix="/test", tags=["test"])
 
-
-router_test = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
@@ -24,18 +21,18 @@ refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_MINUTES'))
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-@router_test.get("/", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 async def get_websocket_page(request: Request):
     return templates.TemplateResponse("upload_image.html", {"request": request})
 
 
-@router_test.get("/test_ws")
+@router.get("/ws")
 async def test_ws_page(request: Request):
     return templates.TemplateResponse("ws.html", {"request": request})
 
 
 # Маршрут для отправки сообщения конкретному пользователю
-@router_test.post("/send-message/{user_id}")
+@router.post("/send-message/{user_id}")
 async def send_message_to_user(user_id: str, message: str):
     # await ws_manager.send_personal_message(message, user_id)
     return {"message": f"Message sent to {user_id}"}

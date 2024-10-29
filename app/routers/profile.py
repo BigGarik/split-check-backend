@@ -1,15 +1,12 @@
-import os
-from loguru import logger
-from dotenv import load_dotenv
-
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import get_async_db
-from app.schemas.user import UserProfileUpdate, UserProfileResponse
-from app.models import User, UserProfile
-from app.crud.user import get_user_profile, create_user_profile, update_user_profile
+
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends
+
 from app.auth import get_current_user
+from app.crud.user import get_user_profile, create_user_profile, update_user_profile
+from app.models import User
+from app.schemas.user import UserProfileUpdate, UserProfileResponse
 
 load_dotenv()
 

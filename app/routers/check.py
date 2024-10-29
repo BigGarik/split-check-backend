@@ -1,21 +1,18 @@
-import json
-
 from fastapi import APIRouter, Query
-from fastapi import File, UploadFile, HTTPException, Depends
+from fastapi import File, UploadFile, Depends
 from loguru import logger
 
 from app.auth import get_current_user
-from app.crud import add_or_update_user_selection, get_check_data_by_uuid, get_user_selection_by_check_uuid, \
-    join_user_to_check
+from app.crud import add_or_update_user_selection, join_user_to_check
 from app.models import User
 from app.redis import queue_processor
 from app.schemas import CheckSelectionRequest
 from app.utils import upload_image_process
 
-router_webapp = APIRouter()
+router = APIRouter(prefix="/check", tags=["check"])
 
 
-@router_webapp.post("/upload-image/")
+@router.post("/upload-image")
 async def upload_image(
         user: User = Depends(get_current_user),
         file: UploadFile = File(...),
@@ -28,7 +25,7 @@ async def upload_image(
     return {"message": "Файл успешно загружен. Обработка..."}
 
 
-@router_webapp.get("/checks")
+@router.get("/all")
 async def get_all_check(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -46,7 +43,7 @@ async def get_all_check(
     return {"message": "Данные чеков отправлены в очередь для передачи через WebSocket"}
 
 
-@router_webapp.get("/check/{uuid}")
+@router.get("/{uuid}")
 async def get_check(uuid: str, user: User = Depends(get_current_user)):
     # check_data = await get_check_data_by_uuid(uuid)
     # participants, _ = await get_user_selection_by_check_uuid(uuid)
@@ -66,7 +63,7 @@ async def get_check(uuid: str, user: User = Depends(get_current_user)):
     return {"message": "Данные чека отправлены в очередь для передачи через WebSocket"}
 
 
-@router_webapp.post("/check/{uuid}/select")
+@router.post("{uuid}/select")
 async def user_selection(uuid: str,
                          selection: CheckSelectionRequest,
                          user: User = Depends(get_current_user)):
@@ -84,7 +81,7 @@ async def user_selection(uuid: str,
     return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
 
 
-@router_webapp.post("/check/join")
+@router.post("/join")
 async def join_check(
     uuid: str,
     user: User = Depends(get_current_user)

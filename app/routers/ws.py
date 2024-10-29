@@ -1,16 +1,11 @@
-import asyncio
 import os
-
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
-from loguru import logger
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError
+from loguru import logger
 
 from app.auth import get_current_user
-from app.database import get_async_db
 
 load_dotenv()
 
@@ -20,7 +15,8 @@ access_token_expire_minutes = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
 refresh_token_expire_days = int(os.getenv('REFRESH_TOKEN_EXPIRE_MINUTES'))
 algorithm = os.getenv('ALGORITHM')
 
-router_ws = APIRouter()
+
+router = APIRouter(prefix="/ws", tags=["ws"])
 
 
 # Менеджер для работы с WebSocket
@@ -62,7 +58,7 @@ async def get_token_websocket(websocket: WebSocket):
     return token
 
 
-@router_ws.websocket("/ws")
+@router.websocket("")
 async def websocket_endpoint(websocket: WebSocket,
                              token: str = Depends(get_token_websocket)):
     try:
@@ -94,7 +90,3 @@ async def websocket_endpoint(websocket: WebSocket,
         # Любая другая ошибка
         logger.error(f"Error occurred: {e}")
         await websocket.close()
-
-
-if __name__ == '__main__':
-    pass
