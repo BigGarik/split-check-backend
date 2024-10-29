@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-
+from loguru import logger
 from app.crud import get_user_by_email
 
 load_dotenv()
@@ -33,8 +33,10 @@ async def authenticate_user(email: str, password: str):
 async def create_token(data: dict, token_expire_minutes: int, secret_key: str):
     to_encode = data.copy()
     expire = datetime.now() + timedelta(minutes=token_expire_minutes)
+    logger.info(f"expire: {expire}")
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    logger.info(f"encoded_jwt token:{jwt.decode(encoded_jwt, secret_key, algorithms=[algorithm])}")
     return encoded_jwt
 
 
@@ -49,6 +51,10 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         email: str = payload.get("email")
         user_id: int = payload.get("user_id")
+        expires = payload.get("exp")
+        logger.info(f"User: {email}, expires: {datetime.fromtimestamp(expires)}")
+        if expires < datetime.now().timestamp():
+            raise credentials_exception
         if email is None:
             raise credentials_exception
         return email, user_id

@@ -39,3 +39,8 @@ async def get_check_data_by_uuid(check_uuid: str):
             logger.info(f"check_data из базы данных: {check_data}")
 
     return check_data
+
+
+async def update_item_quantity(check_uuid: str, item_id: int, quantity: int):
+
+    pass

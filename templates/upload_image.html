@@ -45,7 +45,7 @@
             }
 
             try {
-                const response = await fetch('/split_check/refresh-token', {
+                const response = await fetch('/split_check/token/refresh', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',  // Изменено на JSON, если сервер этого ожидает
@@ -75,7 +75,7 @@
             } catch (error) {
                 console.error("Ошибка обновления токена:", error);
                 // Перенаправляем на страницу логина при ошибке
-                //window.location.href = '/split_check/login';
+                window.location.href = '/split_check/test/login';
                 return null;
             }
         }
@@ -168,7 +168,7 @@
             formData.append("file", file);
 
             try {
-                const response = await fetch('/split_check/upload-image/', {
+                const response = await fetch('/split_check/check/upload-image', {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${token}`

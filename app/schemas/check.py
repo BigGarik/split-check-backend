@@ -10,3 +10,9 @@ class ItemSelection(BaseModel):
 
 class CheckSelectionRequest(BaseModel):
     selected_items: List[ItemSelection]
+
+
+class UpdateItemQuantity(BaseModel):
+    check_uuid: str
+    item_id: int
+    quantity: int

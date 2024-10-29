@@ -2,7 +2,7 @@ import json
 
 from loguru import logger
 
-from app.crud import get_user_selection_by_check_uuid, get_check_data_by_uuid
+from app.crud import get_user_selection_by_check_uuid, get_check_data_by_uuid, update_item_quantity
 from app.routers.ws import ws_manager
 from app.utils import get_all_checks
 
@@ -101,3 +101,10 @@ async def send_check_data(user_id, check_uuid: str):
         message=json.dumps(msg),
         user_id=user_id
     )
+
+
+async def split_item(user_id: int, check_uuid: str, item_id: int, quantity: int):
+    await update_item_quantity(check_uuid, item_id, quantity)
+
+
+    pass

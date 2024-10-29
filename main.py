@@ -9,7 +9,7 @@ from app.database import sync_engine, Base
 from app.redis import redis_client, queue_processor
 from app.routers import profile, user, token, check, ws, test
 from app.tasks.image_recognition import recognize_image
-from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection
+from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection, split_item
 from loguru import logger
 
 from services.classifier_instance import init_classifier
@@ -45,6 +45,12 @@ async def lifespan(app: FastAPI):
     queue_processor.register_handler("send_check_selection", lambda task_data: send_check_selection(
         task_data["user_id"],
         task_data["check_uuid"],
+    ))
+    queue_processor.register_handler("split_item", lambda task_data: split_item(
+        task_data["user_id"],
+        task_data["check_uuid"],
+        task_data["item_id"],
+        task_data["quantity"],
     ))
 
     asyncio.create_task(queue_processor.process_queue())

@@ -31,6 +31,11 @@ async def test_ws_page(request: Request):
     return templates.TemplateResponse("ws.html", {"request": request})
 
 
+@router.get("/login")
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
 # Маршрут для отправки сообщения конкретному пользователю
 @router.post("/send-message/{user_id}")
 async def send_message_to_user(user_id: str, message: str):

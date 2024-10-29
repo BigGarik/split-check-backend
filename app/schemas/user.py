@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreate(BaseModel):
@@ -30,9 +30,9 @@ class RefreshTokenRequest(BaseModel):
 
 
 class UserProfileBase(BaseModel):
-    nickname: Optional[str] = None
-    language: Optional[str] = None
-    avatar_url: Optional[str] = None
+    nickname: Optional[str] = Field(None, max_length=50)
+    language: Optional[str] = Field(None, max_length=10)
+    avatar_url: Optional[str] = Field(None, max_length=255)
 
 
 class UserProfileUpdate(UserProfileBase):

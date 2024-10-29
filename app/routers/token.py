@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
-
+from loguru import logger
 from app.auth import authenticate_user, create_token, verify_token
 from app.schemas import RefreshTokenRequest
 
@@ -59,7 +59,7 @@ async def refresh_access_token(request: RefreshTokenRequest):
     try:
         # 1. Проверка Refresh токена
         email, user_id = await verify_token(secret_key=refresh_secret_key, token=refresh_token)
-
+        logger.info(access_token_expire_minutes)
         # 2. Создаем новый Access токен
         new_access_token = await create_token(
             data={"email": email, "user_id": user_id},

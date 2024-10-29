@@ -3,10 +3,10 @@ from fastapi import File, UploadFile, Depends
 from loguru import logger
 
 from app.auth import get_current_user
-from app.crud import add_or_update_user_selection, join_user_to_check
+from app.crud import add_or_update_user_selection, join_user_to_check, update_item_quantity
 from app.models import User
 from app.redis import queue_processor
-from app.schemas import CheckSelectionRequest
+from app.schemas import CheckSelectionRequest, UpdateItemQuantity
 from app.utils import upload_image_process
 
 router = APIRouter(prefix="/check", tags=["check"])
@@ -27,9 +27,9 @@ async def upload_image(
 
 @router.get("/all")
 async def get_all_check(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    user: User = Depends(get_current_user)
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        user: User = Depends(get_current_user)
 ):
     task_data = {
         "type": "send_all_checks",
@@ -63,11 +63,10 @@ async def get_check(uuid: str, user: User = Depends(get_current_user)):
     return {"message": "Данные чека отправлены в очередь для передачи через WebSocket"}
 
 
-@router.post("{uuid}/select")
+@router.post("/{uuid}/select")
 async def user_selection(uuid: str,
                          selection: CheckSelectionRequest,
                          user: User = Depends(get_current_user)):
-
     await add_or_update_user_selection(user_id=user.id, check_uuid=uuid, selection_data=selection)
     # Отправляем данные чека в очередь Redis
     task_data = {
@@ -83,8 +82,8 @@ async def user_selection(uuid: str,
 
 @router.post("/join")
 async def join_check(
-    uuid: str,
-    user: User = Depends(get_current_user)
+        uuid: str,
+        user: User = Depends(get_current_user)
 ):
     """Присоединяет пользователя к чеку."""
     await join_user_to_check(user.id, uuid)
@@ -92,3 +91,23 @@ async def join_check(
         "status": "success",
         "message": "User joined to the check successfully"
     }
+
+
+@router.put("/split/item")
+async def split_item(
+        data: UpdateItemQuantity,
+        user: User = Depends(get_current_user)
+):
+    """Разделяет позицию на части."""
+    # Отправляем данные чека в очередь Redis
+    task_data = {
+        "type": "split_item",
+        "user_id": user.id,
+        "check_uuid": data.check_uuid,
+        "item_id": data.item_id,
+        "quantity": data.quantity,
+    }
+    logger.info(data)
+    await queue_processor.push_task(task_data)
+
+    return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
