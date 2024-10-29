@@ -39,6 +39,8 @@ async def lifespan(app: FastAPI):
     ))
     queue_processor.register_handler("send_all_checks", lambda task_data: send_all_checks(
         task_data["user_id"],
+        task_data["page"],
+        task_data["page_size"]
     ))
     queue_processor.register_handler("send_check_data", lambda task_data: send_check_data(
         task_data["user_id"],

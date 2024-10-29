@@ -7,11 +7,19 @@ from app.routers.ws import ws_manager
 from app.utils import get_all_checks
 
 
-async def send_all_checks(user_id: int):
-    check_uuids = await get_all_checks(user_id)
+async def send_all_checks(user_id: int, page: int = 1, page_size: int = 10):
+    checks_data = await get_all_checks(user_id, page, page_size)
     msg = {
         "type": "allBillEvent",
-        "payload": check_uuids
+        "payload": {
+            "checks": checks_data["items"],
+            "pagination": {
+                "total": checks_data["total"],
+                "page": checks_data["page"],
+                "pageSize": checks_data["page_size"],
+                "totalPages": checks_data["total_pages"]
+            }
+        }
     }
     logger.info(f"Отправляем сообщение: {json.dumps(msg, ensure_ascii=False)}")
     await ws_manager.send_personal_message(

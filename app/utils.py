@@ -14,11 +14,37 @@ load_dotenv()
 upload_directory = os.getenv('UPLOAD_DIRECTORY')
 
 
-async def get_all_checks(user_id: int) -> list[str]:
+async def get_all_checks(user_id: int, page: int = 1, page_size: int = 10) -> dict:
     user = await get_user_by_id(user_id)
-    if user:
-        return [check.uuid for check in user.checks]
-    return []
+    if not user:
+        return {
+            "items": [],
+            "total": 0,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": 0
+        }
+
+    # Получаем общее количество чеков
+    total_checks = len(user.checks)
+
+    # Вычисляем общее количество страниц
+    total_pages = (total_checks + page_size - 1) // page_size
+
+    # Вычисляем индексы для среза
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+
+    # Получаем чеки для текущей страницы
+    checks_page = user.checks[start_idx:end_idx]
+
+    return {
+        "items": [check.uuid for check in checks_page],
+        "total": total_checks,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
 
 
 async def upload_image_process(user_id: int, file: UploadFile):

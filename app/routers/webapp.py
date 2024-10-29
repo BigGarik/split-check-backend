@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi import File, UploadFile, HTTPException, Depends
 from loguru import logger
 
@@ -29,12 +29,18 @@ async def upload_image(
 
 
 @router_webapp.get("/checks")
-async def get_all_check(user: User = Depends(get_current_user)):
+async def get_all_check(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    user: User = Depends(get_current_user)
+):
     task_data = {
         "type": "send_all_checks",
         "user_id": user.id,
+        "page": page,
+        "page_size": page_size
     }
-    # Отправляем check_uuids в очередь Redis
+    # Отправляем параметры пагинации в очередь Redis
     await queue_processor.push_task(task_data)
 
     return {"message": "Данные чеков отправлены в очередь для передачи через WebSocket"}
