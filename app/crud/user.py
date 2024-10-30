@@ -14,11 +14,22 @@ from app.schemas import UserCreate, UserProfileUpdate
 async def create_new_user(user: UserCreate):
     async with get_async_db() as session:
         hashed_password = bcrypt.hash(user.password)
-        db_user = User(email=user.email, hashed_password=hashed_password)
-        session.add(db_user)
+
+        # Создаем нового пользователя
+        new_user = User(email=user.email, hashed_password=hashed_password)
+        session.add(new_user)
         await session.commit()
-        await session.refresh(db_user)
-        return db_user
+        await session.refresh(new_user)
+
+        # Создаем пустой профиль для нового пользователя
+        db_user_profile = UserProfile(user_id=new_user.id)
+        session.add(db_user_profile)
+
+        # Сохраняем профиль
+        await session.commit()
+        await session.refresh(db_user_profile)
+
+        return new_user
 
 
 # Функция для получения пользователя из БД по email
@@ -38,7 +49,7 @@ async def get_user_by_id(user_id: int):
         return user
 
 
-async def get_users_by_check(check_uuid: str) -> List[User]:
+async def get_users_by_check_uuid(check_uuid: str) -> List[User]:
     async with get_async_db() as session:
         # Создаем запрос для выбора пользователей, связанных с чеком
         query = (
@@ -104,14 +115,14 @@ async def join_user_to_check(user_id: int, check_uuid: str):
 ########################## Профиль пользователя ##########################
 
 
-async def get_user_profile(user_id: int) -> Optional[UserProfile]:
+async def get_user_profile_db(user_id: int) -> Optional[UserProfile]:
     async with get_async_db() as session:
         stmt = select(UserProfile).filter_by(user_id=user_id)
         result = await session.execute(stmt)
         return result.scalars().first()
 
 
-async def create_user_profile(
+async def create_user_profile_db(
         user_id: int,
         profile_data: UserProfileUpdate
 ) -> UserProfile:
@@ -126,16 +137,29 @@ async def create_user_profile(
         return db_profile
 
 
-async def update_user_profile(
-        profile: UserProfile,
+async def update_user_profile_db(
+        user_id: int,
         profile_data: UserProfileUpdate
 ) -> UserProfile:
     async with get_async_db() as session:
+        # Получаем профиль пользователя по user_id
+        profile = await session.get(UserProfile, user_id)
+        logger.debug(f"Profile: {profile}")
+
+        # Проверка, существует ли профиль
+        if not profile:
+            raise HTTPException(status_code=404, detail="User profile not found")
+
+        # Обновление полей профиля только с данными, которые были переданы
         update_data = profile_data.model_dump(exclude_unset=True)
 
         for field, value in update_data.items():
-            setattr(profile, field, value)
+            # Изменяем только те поля, которые переданы и не None
+            if value is not None:
+                setattr(profile, field, value)
 
+        # Сохраняем изменения в базе данных
         await session.commit()
         await session.refresh(profile)
+
         return profile

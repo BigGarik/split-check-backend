@@ -2,11 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
-
+from app.redis import queue_processor
 from app import schemas
 from app.auth import get_current_user
 from app.crud import get_user_by_email, create_new_user
-from app.crud.user import get_user_profile, create_user_profile, update_user_profile
 from app.models import User
 from app.schemas.user import UserProfileUpdate, UserProfileResponse
 
@@ -22,32 +21,36 @@ async def create_user(user: schemas.UserCreate):
     return new_user
 
 
-@router.get("/profile", response_model=UserProfileResponse)
+@router.get("/profile")
 async def get_profile(
         current_user: Annotated[User, Depends(get_current_user)]
 ):
-    """Получить профиль текущего пользователя"""
-    profile = await get_user_profile(current_user.id)
-    if not profile:
-        # Если профиля нет, создаем пустой
-        profile = await create_user_profile(current_user.id, UserProfileUpdate())
-    return profile
+    task_data = {
+        "type": "get_user_profile",
+        "user_id": current_user.id
+    }
+
+    await queue_processor.push_task(task_data)
+    # return {"message": "Данные отправлены в WebSocket"}
 
 
-@router.put("/profile", response_model=UserProfileResponse)
+@router.put("/profile")
 async def update_profile(
         profile_data: UserProfileUpdate,
         current_user: Annotated[User, Depends(get_current_user)]
 ):
-    """Обновить профиль текущего пользователя"""
-    profile = await get_user_profile(current_user.id)
-    if not profile:
-        # Если профиля нет, создаем новый
-        profile = await create_user_profile(current_user.id, profile_data)
-    else:
-        # Если профиль есть, обновляем его
-        profile = await update_user_profile(profile, profile_data)
-    return profile
+    profile_data_dict = profile_data.model_dump()
+
+    task_data = {
+        "type": "update_user_profile",
+        "user_id": current_user.id,
+        "profile_data": profile_data_dict
+    }
+
+    await queue_processor.push_task(task_data)
+    # return {"message": "Данные отправлены в WebSocket"}
+
+
 
 # # Получение профиля
 # response = await client.get(

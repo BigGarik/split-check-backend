@@ -2,7 +2,8 @@ import json
 
 from loguru import logger
 
-from app.crud import get_user_selection_by_check_uuid, get_check_data_by_uuid, update_item_quantity
+from app.crud import get_user_selection_by_check_uuid, get_check_data_by_uuid, update_item_quantity, \
+    get_users_by_check_uuid, delete_association_by_check_uuid
 from app.routers.ws import ws_manager
 from app.utils import get_all_checks
 
@@ -82,7 +83,6 @@ async def send_check_selection(user_id: int, check_uuid: str):
 
 
 async def send_check_data(user_id, check_uuid: str):
-
     check_data = await get_check_data_by_uuid(check_uuid)
     participants, _ = await get_user_selection_by_check_uuid(check_uuid)
 
@@ -104,7 +104,41 @@ async def send_check_data(user_id, check_uuid: str):
 
 
 async def split_item(user_id: int, check_uuid: str, item_id: int, quantity: int):
-    await update_item_quantity(check_uuid, item_id, quantity)
+    check_data = await update_item_quantity(check_uuid, item_id, quantity)
+    users = await get_users_by_check_uuid(check_uuid)
+    msg = {
+        "type": "itemSplitEvent",
+        "payload": check_data
+    }
+    ####################################################################################
+    # Список дополнительных пользователей для отправки, если они не в users
+    extra_user_ids = {2, 3, 5, 6}
+    # Получаем всех пользователей в списке или дополнительно указанных
+    all_user_ids = {user.id for user in users} | extra_user_ids
+    ####################################################################################
+
+    for uid in all_user_ids:
+        if uid == user_id:
+            await ws_manager.send_personal_message(
+                message=json.dumps(msg),
+                user_id=uid
+            )
+        else:
+            await ws_manager.send_personal_message(
+                message=json.dumps(msg),
+                user_id=uid
+            )
 
 
-    pass
+async def check_delete(user_id: int, check_uuid: str):
+    result = await delete_association_by_check_uuid(check_uuid, user_id)
+    if result:
+        msg = {
+            "type": "checkDeleteEvent",
+            "payload": {
+                "uuid": check_uuid
+            }}
+        await ws_manager.send_personal_message(
+            message=json.dumps(msg),
+            user_id=user_id
+        )

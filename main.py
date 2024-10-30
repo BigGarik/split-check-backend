@@ -8,10 +8,13 @@ from fastapi.security import OAuth2PasswordBearer
 from app.database import sync_engine, Base
 from app.redis import redis_client, queue_processor
 from app.routers import profile, user, token, check, ws, test
+from app.schemas import UserProfileUpdate
 from app.tasks.image_recognition import recognize_image
-from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection, split_item
+from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection, split_item, \
+    check_delete
 from loguru import logger
 
+from app.tasks.user import get_user_profile, update_user_profile
 from services.classifier_instance import init_classifier
 
 Base.metadata.create_all(bind=sync_engine)
@@ -51,6 +54,17 @@ async def lifespan(app: FastAPI):
         task_data["check_uuid"],
         task_data["item_id"],
         task_data["quantity"],
+    ))
+    queue_processor.register_handler("check_delete", lambda task_data: check_delete(
+        task_data["user_id"],
+        task_data["check_uuid"],
+    ))
+    queue_processor.register_handler("get_user_profile", lambda task_data: get_user_profile(
+        task_data["user_id"],
+    ))
+    queue_processor.register_handler("update_user_profile", lambda task_data: update_user_profile(
+        task_data["user_id"],
+        UserProfileUpdate(**task_data["profile_data"]),
     ))
 
     asyncio.create_task(queue_processor.process_queue())

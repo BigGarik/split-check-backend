@@ -1,7 +1,9 @@
 import json
 
+from fastapi import HTTPException
 from loguru import logger
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, delete
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_async_db
 from app.models import Check, user_check_association
@@ -42,5 +44,60 @@ async def get_check_data_by_uuid(check_uuid: str):
 
 
 async def update_item_quantity(check_uuid: str, item_id: int, quantity: int):
+    async with get_async_db() as session:
+        # Получаем чек из базы
+        check = await session.get(Check, check_uuid)
 
-    pass
+        # Проверяем, существует ли чек в базе данных
+        if not check:
+            raise HTTPException(status_code=404, detail="Check not found")
+
+        # Проверяем, существует ли item_id в check_data
+        item_found = False
+        updated_check_data = check.check_data
+
+        for item in updated_check_data["items"]:
+            if item["id"] == item_id:
+                item["quantity"] = quantity
+                item_found = True
+                break
+
+        if not item_found:
+            raise HTTPException(status_code=404, detail="Item not found in check data")
+
+        # Явно помечаем атрибут как измененный
+        flag_modified(check, "check_data")
+        # Явно обновляем поле check_data
+        check.check_data = updated_check_data
+
+        logger.info(f"Обновленные данные check: {check.check_data}")
+        # Сохраняем изменения в базе данных
+        await session.commit()
+
+        return check.check_data
+
+
+async def delete_association_by_check_uuid(check_uuid: str, user_id: int):
+    async with get_async_db() as session:
+        try:
+            # Создаем запрос на удаление
+            stmt = delete(user_check_association).where(user_check_association.c.check_uuid == check_uuid,
+                                                        user_check_association.c.user_id == user_id)
+
+            # Выполняем запрос
+            result = await session.execute(stmt)
+
+            # Фиксируем изменения в базе данных
+            await session.commit()
+
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="No association found with the given check_uuid")
+
+            logger.info(f"Association with check_uuid={check_uuid} has been deleted successfully.")
+            # Возвращаем результат
+            return True
+
+        except Exception as e:
+            logger.error(f"Error deleting association: {e}")
+            await session.rollback()
+            raise HTTPException(status_code=500, detail="An error occurred while deleting the association")

@@ -6,7 +6,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.crud import get_users_by_check
+from app.crud import get_users_by_check_uuid
 from app.database import get_async_db
 from app.models import UserSelection
 from app.redis import redis_client
@@ -66,7 +66,7 @@ async def get_user_selection_by_user(user_id: int, check_uuid: str):
 
 
 async def get_user_selection_by_check_uuid(check_uuid: str):
-    users = await get_users_by_check(check_uuid)
+    users = await get_users_by_check_uuid(check_uuid)
     logger.info(f"Получили пользователей: {', '.join([str(user) for user in users])}")
 
     participants = []

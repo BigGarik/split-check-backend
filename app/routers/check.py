@@ -93,7 +93,7 @@ async def join_check(
     }
 
 
-@router.put("/split/item")
+@router.put("/item/split")
 async def split_item(
         data: UpdateItemQuantity,
         user: User = Depends(get_current_user)
@@ -111,3 +111,18 @@ async def split_item(
     await queue_processor.push_task(task_data)
 
     return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
+
+
+@router.delete("/delete")
+async def delete_check(
+        uuid: str,
+        user: User = Depends(get_current_user)
+):
+    """Удаляет чек."""
+    task_data = {
+        "type": "check_delete",
+        "user_id": user.id,
+        "check_uuid": uuid,
+    }
+    await queue_processor.push_task(task_data)
+    # return {"message": "Данные для удаления отправлены в очередь"}

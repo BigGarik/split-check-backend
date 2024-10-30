@@ -2,7 +2,7 @@ import logging
 import base64
 import cv2
 from io import BytesIO
-
+from sqlalchemy.ext.declarative import DeclarativeMeta
 from PIL import Image
 import os
 
@@ -91,6 +91,16 @@ def convert_image(image):
 
     # Сохранение изображения в формате Pillow
     cropped_image_pil.save("optimized_image_pillow.jpg")
+
+
+def sqlalchemy_to_dict(obj):
+    if isinstance(obj.__class__, DeclarativeMeta):
+        # Преобразование SQLAlchemy объекта в словарь
+        return {
+            column.name: getattr(obj, column.name)
+            for column in obj.__table__.columns
+        }
+    return obj
 
 
 if __name__ == '__main__':
