@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -32,12 +32,10 @@ async def authenticate_user(email: str, password: str):
 # Функция для создания токена
 async def create_token(data: dict, token_expire_minutes: int, secret_key: str):
     to_encode = data.copy()
-    expire = datetime.now() + timedelta(minutes=token_expire_minutes)
-    logger.info(f"expire: {expire}")
+    expire = datetime.now(timezone.utc) + timedelta(minutes=token_expire_minutes)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
-    logger.info(f"encoded_jwt token:{jwt.decode(encoded_jwt, secret_key, algorithms=[algorithm])}")
-    return encoded_jwt
+    token_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
+    return token_jwt
 
 
 # Проверка токена
@@ -52,7 +50,6 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
         email: str = payload.get("email")
         user_id: int = payload.get("user_id")
         expires = payload.get("exp")
-        logger.info(f"User: {email}, expires: {datetime.fromtimestamp(expires)}")
         if expires < datetime.now().timestamp():
             raise credentials_exception
         if email is None:

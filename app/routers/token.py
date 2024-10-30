@@ -59,7 +59,6 @@ async def refresh_access_token(request: RefreshTokenRequest):
     try:
         # 1. Проверка Refresh токена
         email, user_id = await verify_token(secret_key=refresh_secret_key, token=refresh_token)
-        logger.info(access_token_expire_minutes)
         # 2. Создаем новый Access токен
         new_access_token = await create_token(
             data={"email": email, "user_id": user_id},
