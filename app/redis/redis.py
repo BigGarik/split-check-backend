@@ -3,9 +3,8 @@
 import os
 
 from dotenv import load_dotenv
-from loguru import logger
-from app.queue_processor import QueueProcessor
-from app.redis_client import RedisClient
+from .queue_processor import QueueProcessor
+from .redis_client import RedisClient
 
 load_dotenv()
 

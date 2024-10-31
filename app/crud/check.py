@@ -45,36 +45,25 @@ async def get_check_data_by_uuid(check_uuid: str):
 
 async def update_item_quantity(check_uuid: str, item_id: int, quantity: int):
     async with get_async_db() as session:
-        # Получаем чек из базы
+        # Проверка существования чека
         check = await session.get(Check, check_uuid)
-
-        # Проверяем, существует ли чек в базе данных
         if not check:
             raise HTTPException(status_code=404, detail="Check not found")
 
-        # Проверяем, существует ли item_id в check_data
-        item_found = False
-        updated_check_data = check.check_data
-
-        for item in updated_check_data["items"]:
+        # Обновление количества, если элемент найден
+        updated = False
+        for item in check.check_data.get("items", []):
             if item["id"] == item_id:
                 item["quantity"] = quantity
-                item_found = True
+                updated = True
                 break
 
-        if not item_found:
+        if not updated:
             raise HTTPException(status_code=404, detail="Item not found in check data")
 
-        # Явно помечаем атрибут как измененный
+        # Явное обновление данных и сохранение
         flag_modified(check, "check_data")
-        # Явно обновляем поле check_data
-        check.check_data = updated_check_data
-
-        logger.info(f"Обновленные данные check: {check.check_data}")
-        # Сохраняем изменения в базе данных
         await session.commit()
-
-        return check.check_data
 
 
 async def delete_association_by_check_uuid(check_uuid: str, user_id: int):

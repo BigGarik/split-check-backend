@@ -1,5 +1,6 @@
 import json
 
+from fastapi import HTTPException
 from loguru import logger
 
 from app.crud import get_user_selection_by_check_uuid, get_check_data_by_uuid, update_item_quantity, \
@@ -104,30 +105,47 @@ async def send_check_data(user_id, check_uuid: str):
 
 
 async def split_item(user_id: int, check_uuid: str, item_id: int, quantity: int):
-    check_data = await update_item_quantity(check_uuid, item_id, quantity)
-    users = await get_users_by_check_uuid(check_uuid)
-    msg = {
-        "type": "itemSplitEvent",
-        "payload": check_data
-    }
-    ####################################################################################
-    # Список дополнительных пользователей для отправки, если они не в users
-    extra_user_ids = {2, 3, 5, 6}
-    # Получаем всех пользователей в списке или дополнительно указанных
-    all_user_ids = {user.id for user in users} | extra_user_ids
-    ####################################################################################
+    try:
+        # Обновляем количество в базе данных
+        await update_item_quantity(check_uuid, item_id, quantity)
+        users = await get_users_by_check_uuid(check_uuid)
 
-    for uid in all_user_ids:
-        if uid == user_id:
-            await ws_manager.send_personal_message(
-                message=json.dumps(msg),
-                user_id=uid
-            )
-        else:
-            await ws_manager.send_personal_message(
-                message=json.dumps(msg),
-                user_id=uid
-            )
+        # Подготовка данных для связанных пользователей
+        msg_for_related_users = {
+            "type": "itemSplitEvent",
+            "payload": {
+                "check_uuid": check_uuid,
+                "item_id": item_id,
+                "quantity": quantity
+            }
+        }
+        #############################################################################
+        # Список дополнительных пользователей для оповещения
+        extra_user_ids = {2, 3, 5, 6}
+        all_user_ids = {user.id for user in users} | extra_user_ids
+        #############################################################################
+
+        # Отправка подтверждения инициатору и данных связанным пользователям
+        for uid in all_user_ids:
+            if uid == user_id:
+                await ws_manager.send_personal_message(
+                    message=json.dumps({"type": "splitItemConfirmation", "status": "success"}),
+                    user_id=uid
+                )
+            else:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg_for_related_users),
+                    user_id=uid
+                )
+
+    except HTTPException as e:
+        # Обработка ошибки для инициатора
+        error_message = {"type": "splitItemError", "error": e.detail}
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=user_id
+        )
+        logger.error(f"Ошибка при разделении позиции: {e.detail}")
 
 
 async def check_delete(user_id: int, check_uuid: str):

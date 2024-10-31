@@ -4,7 +4,7 @@ from typing import Callable, Dict
 
 from loguru import logger
 
-from app.redis_client import RedisClient
+from .redis_client import RedisClient
 
 
 class QueueProcessor:

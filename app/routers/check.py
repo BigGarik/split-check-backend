@@ -95,8 +95,8 @@ async def split_item(
         data: UpdateItemQuantity,
         user: User = Depends(get_current_user)
 ):
-    """Разделяет позицию на части."""
-    # Отправляем данные чека в очередь Redis
+    """Разделяет позицию на части и отправляет задачу в очередь Redis."""
+    # Формируем данные задачи
     task_data = {
         "type": "split_item",
         "user_id": user.id,
@@ -104,10 +104,11 @@ async def split_item(
         "item_id": data.item_id,
         "quantity": data.quantity,
     }
-    logger.info(data)
-    await queue_processor.push_task(task_data)
+    logger.info(f"Позиция отправлена для разделения: {data}")
 
-    return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
+    # Добавляем задачу в очередь Redis
+    await queue_processor.push_task(task_data)
+    return {"message": "Данные отправлены в очередь для обработки"}
 
 
 @router.delete("/delete")
