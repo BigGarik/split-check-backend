@@ -85,12 +85,9 @@ async def join_check(
         uuid: str,
         user: User = Depends(get_current_user)
 ):
-    """Присоединяет пользователя к чеку."""
-    await join_user_to_check(user.id, uuid)
-    return {
-        "status": "success",
-        "message": "User joined to the check successfully"
-    }
+    """Присоединяет пользователя к чеку и возвращает статус операции."""
+    result = await join_user_to_check(user.id, uuid)
+    return result
 
 
 @router.put("/item/split")

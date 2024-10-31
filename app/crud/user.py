@@ -65,7 +65,7 @@ async def get_users_by_check_uuid(check_uuid: str) -> List[User]:
         return users
 
 
-async def join_user_to_check(user_id: int, check_uuid: str):
+async def join_user_to_check(user_id: int, check_uuid: str) -> dict:
     """
     Присоединяет пользователя к чеку, проверяя существование чека
     и отсутствие дублирующих связей.
@@ -78,18 +78,19 @@ async def join_user_to_check(user_id: int, check_uuid: str):
         HTTPException: если чек не найден или пользователь уже присоединен
     """
     async with get_async_db() as session:
-        # Проверяем существование чека
+        # Проверка на существование чека
         check_stmt = select(Check).where(Check.uuid == check_uuid)
         check_result = await session.execute(check_stmt)
         check = check_result.scalars().first()
 
         if not check:
+            logger.error(f"Чек с UUID {check_uuid} не найден.")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Check not found"
+                detail="Чек не найден"
             )
 
-        # Проверяем существующую связь
+        # Проверка на существующую связь
         assoc_stmt = (
             select(user_check_association)
             .where(user_check_association.c.user_id == user_id)
@@ -98,18 +99,32 @@ async def join_user_to_check(user_id: int, check_uuid: str):
         assoc_result = await session.execute(assoc_stmt)
 
         if assoc_result.first():
+            logger.warning(f"Пользователь {user_id} уже присоединен к чеку {check_uuid}.")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User is already joined to this check"
+                detail="Пользователь уже присоединен к этому чеку"
             )
 
-        # Создаем связь
-        join_stmt = user_check_association.insert().values(
-            user_id=user_id,
-            check_uuid=check_uuid
-        )
-        await session.execute(join_stmt)
-        await session.commit()
+        # Создание связи
+        try:
+            join_stmt = user_check_association.insert().values(
+                user_id=user_id,
+                check_uuid=check_uuid
+            )
+            await session.execute(join_stmt)
+            await session.commit()
+            logger.info(f"Пользователь {user_id} успешно присоединен к чеку {check_uuid}.")
+        except Exception as e:
+            logger.error(f"Ошибка при присоединении пользователя {user_id} к чеку {check_uuid}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Не удалось присоединить пользователя к чеку"
+            )
+
+        return {
+            "status": "success",
+            "message": "Пользователь успешно присоединен к чеку"
+        }
 
 
 ########################## Профиль пользователя ##########################
