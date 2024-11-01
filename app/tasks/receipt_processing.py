@@ -1,6 +1,5 @@
 import json
 
-from fastapi import HTTPException
 from loguru import logger
 
 from app.crud import get_user_selection_by_check_uuid, get_check_data_by_uuid, update_item_quantity, \
@@ -129,7 +128,7 @@ async def split_item(user_id: int, check_uuid: str, item_id: int, quantity: int)
         for uid in all_user_ids:
             if uid == user_id:
                 await ws_manager.send_personal_message(
-                    message=json.dumps({"type": "splitItemConfirmation", "status": "success"}),
+                    message=json.dumps({"type": "itemSplitEventStatus", "status": "success"}),
                     user_id=uid
                 )
             else:
@@ -138,25 +137,36 @@ async def split_item(user_id: int, check_uuid: str, item_id: int, quantity: int)
                     user_id=uid
                 )
 
-    except HTTPException as e:
+    except Exception as e:
+        logger.error(f"Ошибка при разделении позиции: {str(e)}")
         # Обработка ошибки для инициатора
-        error_message = {"type": "splitItemError", "error": e.detail}
+        error_message = {
+            "type": "itemSplitEventStatus",
+            "status": "error",
+            "message": str(e)
+        }
         await ws_manager.send_personal_message(
             message=json.dumps(error_message),
             user_id=user_id
         )
-        logger.error(f"Ошибка при разделении позиции: {e.detail}")
 
 
 async def check_delete(user_id: int, check_uuid: str):
-    result = await delete_association_by_check_uuid(check_uuid, user_id)
-    if result:
-        msg = {
-            "type": "checkDeleteEvent",
-            "payload": {
-                "uuid": check_uuid
-            }}
+    try:
+        await delete_association_by_check_uuid(check_uuid, user_id)
         await ws_manager.send_personal_message(
-            message=json.dumps(msg),
+            message=json.dumps({"type": "checkDeleteEventStatus", "status": "success"}),
+            user_id=user_id
+        )
+    except Exception as e:
+        logger.error(f"Ошибка при разделении позиции: {str(e)}")
+        # Обработка ошибки для инициатора
+        error_message = {
+            "type": "checkDeleteEventStatus",
+            "status": "error",
+            "message": str(e)
+        }
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
             user_id=user_id
         )

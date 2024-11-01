@@ -1,6 +1,5 @@
 import json
 
-from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select, insert, delete
 from sqlalchemy.orm.attributes import flag_modified
@@ -48,7 +47,7 @@ async def update_item_quantity(check_uuid: str, item_id: int, quantity: int):
         # Проверка существования чека
         check = await session.get(Check, check_uuid)
         if not check:
-            raise HTTPException(status_code=404, detail="Check not found")
+            raise Exception("Check not found")
 
         # Обновление количества, если элемент найден
         updated = False
@@ -59,7 +58,7 @@ async def update_item_quantity(check_uuid: str, item_id: int, quantity: int):
                 break
 
         if not updated:
-            raise HTTPException(status_code=404, detail="Item not found in check data")
+            raise Exception("Item not found in check data")
 
         # Явное обновление данных и сохранение
         flag_modified(check, "check_data")
@@ -70,8 +69,9 @@ async def delete_association_by_check_uuid(check_uuid: str, user_id: int):
     async with get_async_db() as session:
         try:
             # Создаем запрос на удаление
-            stmt = delete(user_check_association).where(user_check_association.c.check_uuid == check_uuid,
-                                                        user_check_association.c.user_id == user_id)
+            stmt = delete(user_check_association).where(
+                user_check_association.c.check_uuid == check_uuid,
+                user_check_association.c.user_id == user_id)
 
             # Выполняем запрос
             result = await session.execute(stmt)
@@ -80,13 +80,11 @@ async def delete_association_by_check_uuid(check_uuid: str, user_id: int):
             await session.commit()
 
             if result.rowcount == 0:
-                raise HTTPException(status_code=404, detail="No association found with the given check_uuid")
+                raise Exception("No association found with the given check_uuid")
 
             logger.info(f"Association with check_uuid={check_uuid} has been deleted successfully.")
-            # Возвращаем результат
-            return True
 
         except Exception as e:
             logger.error(f"Error deleting association: {e}")
             await session.rollback()
-            raise HTTPException(status_code=500, detail="An error occurred while deleting the association")
+            raise Exception("An error occurred while deleting the association")
