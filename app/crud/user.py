@@ -121,10 +121,12 @@ async def join_user_to_check(user_id: int, check_uuid: str) -> dict:
                 detail="Не удалось присоединить пользователя к чеку"
             )
 
-        return {
+        result = {
             "status": "success",
             "message": "Пользователь успешно присоединен к чеку"
         }
+
+        return result
 
 
 ########################## Профиль пользователя ##########################

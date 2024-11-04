@@ -45,11 +45,6 @@ async def get_all_check(
 
 @router.get("/{uuid}")
 async def get_check(uuid: str, user: User = Depends(get_current_user)):
-    # check_data = await get_check_data_by_uuid(uuid)
-    # participants, _ = await get_user_selection_by_check_uuid(uuid)
-    # # Если данных нет и в БД, выбрасываем исключение
-    # if not check_data:
-    #     raise HTTPException(status_code=404, detail="Check not found")
 
     task_data = {
         "type": "send_check_data",
@@ -67,12 +62,12 @@ async def get_check(uuid: str, user: User = Depends(get_current_user)):
 async def user_selection(uuid: str,
                          selection: CheckSelectionRequest,
                          user: User = Depends(get_current_user)):
-    await add_or_update_user_selection(user_id=user.id, check_uuid=uuid, selection_data=selection)
     # Отправляем данные чека в очередь Redis
     task_data = {
-        "type": "send_check_selection",
+        "type": "user_selection_task",
         "user_id": user.id,
         "check_uuid": uuid,
+        "selection_data": selection.model_dump()
     }
     logger.info(selection.dict())
     await queue_processor.push_task(task_data)
@@ -86,8 +81,13 @@ async def join_check(
         user: User = Depends(get_current_user)
 ):
     """Присоединяет пользователя к чеку и возвращает статус операции."""
-    result = await join_user_to_check(user.id, uuid)
-    return result
+    task_data = {
+        "type": "join_check_task",
+        "user_id": user.id,
+        "check_uuid": uuid,
+    }
+    await queue_processor.push_task(task_data)
+    return {"message": "Данные для присоединения отправлены в очередь"}
 
 
 @router.put("/item/split")
@@ -123,4 +123,4 @@ async def delete_check(
         "check_uuid": uuid,
     }
     await queue_processor.push_task(task_data)
-    # return {"message": "Данные для удаления отправлены в очередь"}
+    return {"message": "Данные для удаления отправлены в очередь"}

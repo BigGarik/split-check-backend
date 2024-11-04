@@ -11,7 +11,7 @@ from app.redis import queue_processor, redis_client, register_redis_handlers
 from app.routers import profile, user, token, check, ws, test
 from app.schemas import UserProfileUpdate
 from app.tasks.image_recognition import recognize_image
-from app.tasks.receipt_processing import send_all_checks, send_check_data, send_check_selection, split_item, \
+from app.tasks.receipt_processing import send_all_checks, send_check_data, user_selection_task, split_item, \
     check_delete
 from loguru import logger
 

@@ -1,11 +1,13 @@
 import json
 
 from loguru import logger
-from sqlalchemy import select, insert, delete
+from sqlalchemy import select, insert, delete, func
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_async_db
-from app.models import Check, user_check_association
+from app.models import Check, user_check_association, User
 from app.redis import redis_client
 
 
@@ -88,3 +90,77 @@ async def delete_association_by_check_uuid(check_uuid: str, user_id: int):
             logger.error(f"Error deleting association: {e}")
             await session.rollback()
             raise Exception("An error occurred while deleting the association")
+
+
+async def get_all_checks(user_id: int, page: int = 1, page_size: int = 10) -> dict:
+    async with get_async_db() as session:
+        try:
+            # Проверка, существует ли пользователь с данным user_id
+            user_exists = await session.get(User, user_id)
+            if not user_exists:
+                logger.warning(f"Пользователь с ID {user_id} не найден.")
+                return {
+                    "items": [],
+                    "total": 0,
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": 0
+                }
+
+            # Подсчет общего количества чеков пользователя
+            total_checks = await session.scalar(
+                select(func.count(Check.uuid))
+                .where(Check.users.any(User.id == user_id))  # Используем связь many-to-many
+            )
+
+            # Определяем общее количество страниц
+            total_pages = (total_checks + page_size - 1) // page_size
+
+            # Если указана страница за пределами допустимого диапазона, возвращаем пустой результат
+            if page > total_pages:
+                return {
+                    "items": [],
+                    "total": total_checks,
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": total_pages
+                }
+
+            # Получаем список чеков с пагинацией
+            checks = await session.execute(
+                select(Check)
+                .where(Check.users.any(User.id == user_id))
+                .options(selectinload(Check.users))
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+            checks_page = checks.scalars().all()
+
+            return {
+                "items": [check.uuid for check in checks_page],
+                "total": total_checks,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages
+            }
+
+        except SQLAlchemyError as e:
+            logger.error(f"Ошибка базы данных при получении чеков для пользователя {user_id}: {e}")
+            return {
+                "items": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0,
+                "error": "Ошибка базы данных при получении чеков."
+            }
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при получении чеков для пользователя {user_id}: {e}")
+            return {
+                "items": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0,
+                "error": "Произошла неожиданная ошибка."
+            }

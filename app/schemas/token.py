@@ -1,0 +1,22 @@
+from datetime import datetime
+
+from pydantic import BaseModel, EmailStr
+
+
+class Token(BaseModel):
+    """Модель токена"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class TokenPayload(BaseModel):
+    """Полезная нагрузка токена"""
+    email: EmailStr
+    user_id: int
+    exp: datetime
+
+
+class RefreshTokenRequest(BaseModel):
+    """Запрос на обновление токена"""
+    refresh_token: str

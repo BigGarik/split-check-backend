@@ -15,20 +15,6 @@ class User(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Token(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    email: str | None = None
-
-
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
-
-
 class UserProfileBase(BaseModel):
     nickname: Optional[str] = Field(None, max_length=50)
     language: Optional[str] = Field(None, max_length=10)
