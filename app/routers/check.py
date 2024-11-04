@@ -3,7 +3,6 @@ from fastapi import File, UploadFile, Depends
 from loguru import logger
 
 from app.auth import get_current_user
-from app.crud import add_or_update_user_selection, join_user_to_check, update_item_quantity
 from app.models import User
 from app.redis import queue_processor
 from app.schemas import CheckSelectionRequest, UpdateItemQuantity

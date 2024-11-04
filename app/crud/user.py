@@ -1,44 +1,94 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import HTTPException, status
 from loguru import logger
-from passlib.hash import bcrypt
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError, DatabaseError, IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.database import get_async_db
+from app.database import get_async_db, with_db_session
 from app.models import User, user_check_association, Check, UserProfile
 from app.schemas import UserCreate, UserProfileUpdate
+from app.utils import async_hash_password
 
 
-async def create_new_user(user: UserCreate):
-    async with get_async_db() as session:
-        hashed_password = bcrypt.hash(user.password)
+@with_db_session()
+async def create_new_user(
+        session: AsyncSession,
+        user_data: UserCreate
+) -> Union[User, None]:
+    """
+    Создает нового пользователя и его профиль в базе данных.
 
-        # Создаем нового пользователя
-        new_user = User(email=user.email, hashed_password=hashed_password)
+    Args:
+        session (AsyncSession): Асинхронная сессия базы данных.
+        user_data (UserCreate): Модель с данными для создания пользователя.
+
+    Returns:
+        User: Объект нового пользователя, если успешно создан, иначе None.
+
+    Raises:
+        DatabaseError: Ошибка работы с базой данных, если создание пользователя не удалось.
+        ValueError: Ошибка при невалидных входных данных, если пользователь уже существует.
+    """
+    try:
+        # Проверка, существует ли пользователь с указанным email
+        existing_user = (await session.execute(
+            select(User).where(User.email == user_data.email)
+        )).scalars().first()
+
+        if existing_user:
+            raise ValueError(f"User with email {user_data.email} already exists")
+
+        # Хешируем пароль
+        hashed_password = await async_hash_password(user_data.password)
+
+        # Создаем нового пользователя и профиль
+        new_user = User(
+            email=user_data.email,
+            hashed_password=hashed_password
+        )
         session.add(new_user)
-        await session.commit()
-        await session.refresh(new_user)
 
-        # Создаем пустой профиль для нового пользователя
-        db_user_profile = UserProfile(user_id=new_user.id)
-        session.add(db_user_profile)
+        user_profile = UserProfile(user_id=new_user.id)
+        session.add(user_profile)
 
-        # Сохраняем профиль
+        # Сохраняем транзакцию
         await session.commit()
-        await session.refresh(db_user_profile)
 
         return new_user
+
+    except IntegrityError as e:
+        # Обработка ошибок целостности
+        logger.error(f"Integrity error while creating user: {e}")
+        raise DatabaseError(
+            "Failed to create user due to integrity constraint",
+            params={"email": user_data.email},
+            orig=e
+        ) from e
+    except Exception as e:
+        # Логирование неожиданной ошибки
+        logger.error(f"Unexpected error while creating user: {e}")
+        raise DatabaseError(
+            "Failed to create user due to unexpected error",
+            params={"email": user_data.email},
+            orig=e
+        ) from e
 
 
 # Функция для получения пользователя из БД по email
 async def get_user_by_email(email: str):
+
     async with get_async_db() as session:
-        stmt = select(User).filter_by(email=email)
-        result = await session.execute(stmt)
-        user = result.scalars().first()
-        return user
+        """Получение пользователя из базы данных"""
+        try:
+            stmt = select(User).filter_by(email=email)
+            result = await session.execute(stmt)
+            return result.scalars().first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while fetching user with email {email}: {str(e)}")
+            raise DatabaseError(f"Error fetching user from database: {str(e)}")
 
 
 async def get_user_by_id(user_id: int):

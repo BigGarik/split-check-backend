@@ -7,15 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from app.database import sync_engine, Base
 from app.redis import queue_processor, redis_client, register_redis_handlers
-
-from app.routers import profile, user, token, check, ws, test
-from app.schemas import UserProfileUpdate
-from app.tasks.image_recognition import recognize_image
-from app.tasks.receipt_processing import send_all_checks, send_check_data, user_selection_task, split_item, \
-    check_delete
-from loguru import logger
-
-from app.tasks.user import get_user_profile, update_user_profile
+from app.routers import profile, user, token, check, ws, test, app_rout
 from services.classifier_instance import init_classifier
 
 Base.metadata.create_all(bind=sync_engine)
@@ -60,6 +52,7 @@ app.include_router(test.router)
 app.include_router(token.router)
 app.include_router(check.router)
 app.include_router(ws.router)
+app.include_router(app_rout.router)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

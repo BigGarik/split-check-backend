@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 
 class UserCreate(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     model_config = ConfigDict(from_attributes=True)
 

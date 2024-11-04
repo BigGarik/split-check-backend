@@ -2,10 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
+from sqlalchemy.exc import DatabaseError
+
 from app.redis import queue_processor
 from app import schemas
 from app.auth import get_current_user
-from app.crud import get_user_by_email, create_new_user
+from app.crud import create_new_user
 from app.models import User
 from app.schemas.user import UserProfileUpdate, UserProfileResponse
 
@@ -13,12 +15,14 @@ router = APIRouter(prefix="/user", tags=["user"])
 
 
 @router.post("/create", response_model=schemas.User)
-async def create_user(user: schemas.UserCreate):
-    db_user = await get_user_by_email(email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    new_user = await create_new_user(user=user)
-    return new_user
+async def create_user(user_data: schemas.UserCreate):
+    try:
+        new_user = await create_new_user(user_data=user_data)
+        return new_user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail="Database error occurred")
 
 
 @router.get("/profile")

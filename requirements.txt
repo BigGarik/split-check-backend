@@ -31,3 +31,4 @@ asyncpg
 transformers~=4.45.2
 psutil~=6.1.0
 
+pydantic-settings

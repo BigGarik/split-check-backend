@@ -1,10 +1,14 @@
 import os
 from contextlib import asynccontextmanager
+from typing import TypeVar, ParamSpec, Callable
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, MetaData
+from sqlalchemy.exc import SQLAlchemyError, DatabaseError
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from loguru import logger
+from functools import wraps
 
 load_dotenv()
 
@@ -53,3 +57,26 @@ async def get_async_db():
             yield session
         finally:
             await session.close()
+
+
+# Определяем типы для более строгой типизации декоратора
+T = TypeVar('T')  # Тип возвращаемого значения
+P = ParamSpec('P')  # Параметры функции
+
+
+def with_db_session() -> Callable[[Callable[P, T]], Callable[P, T]]:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            async with get_async_db() as session:
+                try:
+                    result = await func(session, *args, **kwargs)
+                    await session.commit()  # Коммит транзакции после выполнения функции
+                    return result
+                except SQLAlchemyError as e:
+                    await session.rollback()  # Откат транзакции при ошибке
+                    logger.error(f"Database error in {func.__name__}: {str(e)}")
+                    # Передаем пустые params и orig для исключения DatabaseError
+                    raise DatabaseError(f"Database operation failed: {str(e)}", params=None, orig=e) from e
+        return wrapper
+    return decorator

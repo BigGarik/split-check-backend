@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 
-class Token(BaseModel):
+class TokenResponse(BaseModel):
     """Модель токена"""
     access_token: str
     refresh_token: str
