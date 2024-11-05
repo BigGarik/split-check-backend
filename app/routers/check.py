@@ -5,7 +5,7 @@ from loguru import logger
 from app.auth import get_current_user
 from app.models import User
 from app.redis import queue_processor
-from app.schemas import CheckSelectionRequest, UpdateItemQuantity
+from app.schemas import CheckSelectionRequest, UpdateItemQuantity, AddItemRequest, DeliteItemRequest
 from app.utils import upload_image_process
 
 router = APIRouter(prefix="/check", tags=["check"])
@@ -22,6 +22,16 @@ async def upload_image(
     await queue_processor.push_task(task_data)
 
     return {"message": "Файл успешно загружен. Обработка..."}
+
+
+@router.post("/add")
+async def add_empty_check(user: User = Depends(get_current_user)):
+    task_data = {
+        "type": "add_empty_check_task",
+        "user_id": user.id
+    }
+    await queue_processor.push_task(task_data)
+    return {"message": "Данные чека отправлены в очередь для передачи через WebSocket"}
 
 
 @router.get("/all")
@@ -44,7 +54,6 @@ async def get_all_check(
 
 @router.get("/{uuid}")
 async def get_check(uuid: str, user: User = Depends(get_current_user)):
-
     task_data = {
         "type": "send_check_data",
         "user_id": user.id,
@@ -99,7 +108,7 @@ async def split_item(
     task_data = {
         "type": "split_item",
         "user_id": user.id,
-        "check_uuid": data.check_uuid,
+        "data": data.model_dump(),
         "item_id": data.item_id,
         "quantity": data.quantity,
     }
@@ -108,6 +117,34 @@ async def split_item(
     # Добавляем задачу в очередь Redis
     await queue_processor.push_task(task_data)
     return {"message": "Данные отправлены в очередь для обработки"}
+
+
+@router.post("/item/add")
+async def add_item(item_data: AddItemRequest,
+                   user: User = Depends(get_current_user)
+                   ):
+    """Добавляет позицию в чек."""
+    task_data = {
+        "type": "add_item_task",
+        "user_id": user.id,
+        "item_data": item_data.model_dump()
+    }
+    await queue_processor.push_task(task_data)
+    return {"message": "Данные для добавления отправлены в очередь"}
+
+
+@router.delete("/item/delete")
+async def delete_item(item_data: DeliteItemRequest,
+                      user: User = Depends(get_current_user)
+                      ):
+    """Добавляет позицию в чек."""
+    task_data = {
+        "type": "delete_item_task",
+        "user_id": user.id,
+        "item_data": item_data.model_dump()
+    }
+    await queue_processor.push_task(task_data)
+    return {"message": "Данные для добавления отправлены в очередь"}
 
 
 @router.delete("/delete")

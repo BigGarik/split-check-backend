@@ -17,7 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 @router.post(
     "",
     response_model=TokenResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     responses={
         401: {"description": "Incorrect username or password"},
         429: {"description": "Too many login attempts"},
@@ -54,6 +54,7 @@ async def login_for_access_token(
 @router.post(
     "/refresh",
     response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
     responses={
         401: {"description": "Invalid refresh token"}
     }
