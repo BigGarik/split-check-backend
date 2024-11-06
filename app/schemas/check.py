@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ItemSelection(BaseModel):
@@ -13,6 +13,14 @@ class AddItemRequest(BaseModel):
     name: str
     quantity: int
     price: float
+
+
+class EditItemRequest(BaseModel):
+    uuid: str
+    id: int
+    name: Optional[str] = Field(None, max_length=50)
+    quantity: Optional[int] = Field(None)
+    price: Optional[float] = Field(None)
 
 
 class DeliteItemRequest(BaseModel):

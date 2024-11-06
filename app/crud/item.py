@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,7 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import with_db_session
 from app.models import Check
-from app.schemas import AddItemRequest
+from app.schemas import AddItemRequest, EditItemRequest
 
 
 def recalculate_check_totals(check_data: dict) -> dict:
@@ -121,10 +122,10 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
 
 
 @with_db_session()
-async def add_item_to_check(session: AsyncSession, item: AddItemRequest) -> dict:
+async def add_item_to_check(session: AsyncSession, item_data: AddItemRequest) -> dict:
     """Добавление элемента в чек и возврат обновленного объекта Check"""
 
-    stmt = select(Check).where(Check.uuid == item.uuid)
+    stmt = select(Check).where(Check.uuid == item_data.uuid)
     result = await session.execute(stmt)
     check = result.scalars().first()
     if not check:
@@ -133,9 +134,9 @@ async def add_item_to_check(session: AsyncSession, item: AddItemRequest) -> dict
     # Создаем новый item
     new_item = {
         "id": len(check.check_data.get("items", [])) + 1,
-        "name": item.name,
-        "quantity": item.quantity,
-        "price": item.price
+        "name": item_data.name,
+        "quantity": item_data.quantity,
+        "price": item_data.price
     }
 
     # Инициализируем items если их нет
@@ -173,3 +174,58 @@ async def add_item_to_check(session: AsyncSession, item: AddItemRequest) -> dict
     await session.refresh(check)
 
     return new_item
+
+
+@with_db_session()
+async def edit_item_in_check(session: AsyncSession, item_data: EditItemRequest):
+    """Редактирование элемента в чеке
+    Args:
+        session: AsyncSession - сессия базы данных
+        item_data: EditItemRequest - данные для редактирования
+
+    Returns:
+        dict: Обновленные данные check_data чека
+
+    Raises:
+        Exception: Если чек не найден или позиция не найдена"""
+    logger.debug(f"Edit item in check: {item_data}")
+
+    # Получаем чек по UUID
+    stmt = select(Check).where(Check.uuid == item_data.uuid)
+    result = await session.execute(stmt)
+    check = result.scalars().first()
+
+    if not check:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    # Проверяем, существует ли item_id в check_data
+    item_found = False
+    for item in check.check_data.get("items", []):
+        logger.debug(f"Item in check: {item}")
+
+        if item.get("id") == item_data.id:
+            # Обновляем поля, если они были переданы
+            if item_data.name is not None:
+                item["name"] = item_data.name
+            if item_data.quantity is not None:
+                item["quantity"] = item_data.quantity
+            if item_data.price is not None:
+                item["price"] = item_data.price
+            item_found = True
+            break
+
+    if not item_found:
+        raise HTTPException(status_code=404, detail="Item not found in check data")
+
+    # Пересчитываем все поля
+    check.check_data = recalculate_check_totals(check.check_data)
+
+    # Явно помечаем атрибут как измененный
+    flag_modified(check, "check_data")
+
+    # Сохраняем изменения в базе данных
+    await session.commit()
+    await session.refresh(check)
+
+    logger.debug(f"Обновленные данные check: {check.check_data}")
+    return check.check_data

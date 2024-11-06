@@ -5,7 +5,7 @@ from loguru import logger
 from app.auth import get_current_user
 from app.models import User
 from app.redis import queue_processor
-from app.schemas import CheckSelectionRequest, UpdateItemQuantity, AddItemRequest, DeliteItemRequest
+from app.schemas import CheckSelectionRequest, UpdateItemQuantity, AddItemRequest, DeliteItemRequest, EditItemRequest
 from app.utils import upload_image_process
 
 router = APIRouter(prefix="/check", tags=["check"])
@@ -126,6 +126,20 @@ async def add_item(item_data: AddItemRequest,
     """Добавляет позицию в чек."""
     task_data = {
         "type": "add_item_task",
+        "user_id": user.id,
+        "item_data": item_data.model_dump()
+    }
+    await queue_processor.push_task(task_data)
+    return {"message": "Данные для добавления отправлены в очередь"}
+
+
+@router.post("/item/edit")
+async def add_item(item_data: EditItemRequest,
+                   user: User = Depends(get_current_user)
+                   ):
+    """Редактирование позиции в чек."""
+    task_data = {
+        "type": "edit_item_task",
         "user_id": user.id,
         "item_data": item_data.model_dump()
     }

@@ -1,5 +1,5 @@
 # redis_handlers.py
-from app.tasks import add_item_task, add_empty_check_task, delete_item_task
+from app.tasks import add_item_task, add_empty_check_task, delete_item_task, edit_item_task
 from app.tasks.image_recognition import recognize_image
 from app.tasks.receipt_processing import send_all_checks, send_check_data, user_selection_task, split_item, \
     check_delete, join_check_task
@@ -62,6 +62,10 @@ def register_redis_handlers():
         task_data["item_data"]
     ))
     queue_processor.register_handler("delete_item_task", lambda task_data: delete_item_task(
+        task_data["user_id"],
+        task_data["item_data"]
+    ))
+    queue_processor.register_handler("edit_item_task", lambda task_data: edit_item_task(
         task_data["user_id"],
         task_data["item_data"]
     ))
