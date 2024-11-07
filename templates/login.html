@@ -77,7 +77,7 @@
                 formBody.append('username', username.trim());
                 formBody.append('password', password.trim());
 
-                const response = await fetch('/split_check/token', {
+                const response = await fetch('/token', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -125,7 +125,7 @@
             }
 
             try {
-                const response = await fetch('/split_check/token/refresh', {
+                const response = await fetch('/token/refresh', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -157,7 +157,7 @@
             }
 
             // Далее можно выполнять защищенные запросы с использованием нового токена
-            const response = await fetch('/split_check/upload-image', {
+            const response = await fetch('/upload-image', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${getAccessToken()}`

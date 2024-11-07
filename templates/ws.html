@@ -108,7 +108,7 @@
             openWebSocket();
 
             // Загружаем файл на сервер
-            fetch(`/split_check/upload-image/?session_id=${websocketId}`, {
+            fetch(`/upload-image/?session_id=${websocketId}`, {
                 method: "POST",
                 body: formData,
                 headers: {

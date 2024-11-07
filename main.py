@@ -1,5 +1,7 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.database import sync_engine, Base
 from app.redis import queue_processor, redis_client, register_redis_handlers
 from app.routers import profile, user, token, check, ws, test, app_rout
+from logger_config import setup_app_logging
 from services.classifier_instance import init_classifier
 
 Base.metadata.create_all(bind=sync_engine)
@@ -30,12 +33,23 @@ async def lifespan(app: FastAPI):
     # Код, который выполняется при завершении
     if classifier:
         classifier.cleanup()
-    """Закрытие соединения с Redis при завершении работы приложения."""
+    # Закрытие соединения с Redis при завершении работы приложения
     await redis_client.disconnect()
 
 
-app = FastAPI(root_path="/split_check", lifespan=lifespan)
+# app = FastAPI(root_path="/split_check", lifespan=lifespan)
+app = FastAPI(lifespan=lifespan)
 
+# Настраиваем логирование
+logger = setup_app_logging(
+    app,
+    log_path=Path("logs"),
+    log_filename="app.log",
+    max_bytes=10 * 1024 * 1024,  # 10MB
+    backup_count=5,
+    console_level=logging.INFO,
+    file_level=logging.DEBUG
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,4 +73,4 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_level="debug")
