@@ -1,16 +1,12 @@
 import json
-import os
 from loguru import logger
-from dotenv import load_dotenv
 
 from app.crud import get_user_profile_db, update_user_profile_db
 from app.routers.ws import ws_manager
 from app.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
 
-load_dotenv()
 
-
-async def get_user_profile(user_id: int):
+async def get_user_profile_task(user_id: int):
     """Получить профиль текущего пользователя"""
     profile = await get_user_profile_db(user_id)
     if profile:
@@ -37,7 +33,7 @@ async def get_user_profile(user_id: int):
         )
 
 
-async def update_user_profile(user_id: int, profile_data: UserProfileUpdate):
+async def update_user_profile_task(user_id: int, profile_data: UserProfileUpdate):
     """Обновить профиль текущего пользователя"""
     logger.debug(f"profile_data: {profile_data}")
     profile = await update_user_profile_db(user_id, profile_data)
@@ -64,7 +60,3 @@ async def update_user_profile(user_id: int, profile_data: UserProfileUpdate):
             message=json.dumps(msg, default=str),  # Добавляем default=str для обработки дат
             user_id=user_id
         )
-
-
-if __name__ == '__main__':
-    pass

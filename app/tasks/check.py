@@ -6,10 +6,57 @@ from datetime import datetime
 from loguru import logger
 from dotenv import load_dotenv
 
-from app.crud import add_check_to_database
+from app.crud import add_check_to_database, join_user_to_check, delete_association_by_check_uuid, \
+    get_check_data_by_uuid, get_user_selection_by_check_uuid, get_all_checks
 from app.routers.ws import ws_manager
+from app.utils import create_event_status_message, create_event_message
 
 load_dotenv()
+
+
+async def send_check_data_task(user_id, check_uuid: str):
+    check_data = await get_check_data_by_uuid(check_uuid)
+    participants, _ = await get_user_selection_by_check_uuid(check_uuid)
+
+    check_data = json.loads(check_data)
+    logger.info(f"Получили данные чека: {check_data}")
+    participants = json.loads(participants)
+    logger.info(f"Получили список participants: {participants}")
+    check_data["participants"] = participants
+
+    msg_check_data = create_event_message("billDetailEvent", payload=check_data)
+
+    logger.info(f"Отправляем сообщение: {json.dumps(msg_check_data, ensure_ascii=False)}")
+
+    # Отправляем данные чека через WebSocket
+    await ws_manager.send_personal_message(
+        message=json.dumps(msg_check_data),
+        user_id=user_id
+    )
+
+
+async def send_all_checks_task(user_id: int, page: int = 1, page_size: int = 10):
+
+    checks_data = await get_all_checks(user_id, page, page_size)
+
+    msg = create_event_message(message_type="allBillEvent",
+                               payload={
+                                   "checks": checks_data["items"],
+                                   "pagination": {
+                                       "total": checks_data["total"],
+                                       "page": checks_data["page"],
+                                       "pageSize": checks_data["page_size"],
+                                       "totalPages": checks_data["total_pages"]
+                                   }
+                               }
+                               )
+
+    logger.info(f"Отправляем сообщение: {json.dumps(msg, ensure_ascii=False)}")
+
+    await ws_manager.send_personal_message(
+        message=json.dumps(msg),
+        user_id=user_id
+    )
 
 
 async def add_empty_check_task(user_id: int):
@@ -46,6 +93,44 @@ async def add_empty_check_task(user_id: int):
     msg_to_ws = json.dumps(msg)
     await ws_manager.send_personal_message(msg_to_ws, user_id)
 
+
+async def join_check_task(user_id: int, check_uuid: str):
+    try:
+        await join_user_to_check(user_id, check_uuid)
+
+        status_message = create_event_status_message("joinBillEventStatus", "success")
+
+        await ws_manager.send_personal_message(
+            message=json.dumps(status_message),
+            user_id=user_id
+        )
+    except Exception as e:
+        logger.error(f"Ошибка при присоединении к чеку: {str(e)}")
+
+        error_message = create_event_status_message("joinBillEventStatus", "error", message=str(e))
+
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=user_id
+        )
+
+
+async def delete_check_task(user_id: int, check_uuid: str):
+    try:
+        await delete_association_by_check_uuid(check_uuid, user_id)
+        status_message = create_event_status_message("checkDeleteEventStatus", "success")
+        await ws_manager.send_personal_message(
+            message=json.dumps(status_message),
+            user_id=user_id
+        )
+    except Exception as e:
+        logger.error(f"Ошибка при разделении позиции: {str(e)}")
+        # Обработка ошибки для инициатора
+        error_message = create_event_status_message("checkDeleteEventStatus", "error", message=str(e))
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=user_id
+        )
 
 if __name__ == '__main__':
     pass

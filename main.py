@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from app.database import sync_engine, Base
 from app.redis import queue_processor, redis_client, register_redis_handlers
-from app.routers import profile, user, token, check, ws, test, app_rout
+from app.routers import user, token, check, ws, test, app_rout
 from logger_config import setup_app_logging
 from services.classifier_instance import init_classifier
 
@@ -61,7 +61,6 @@ app.add_middleware(
 
 # Подключаем маршруты
 app.include_router(user.router)
-app.include_router(profile.router)
 app.include_router(test.router)
 app.include_router(token.router)
 app.include_router(check.router)

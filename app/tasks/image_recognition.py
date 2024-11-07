@@ -1,6 +1,5 @@
 import json
 import os
-import random
 
 from dotenv import load_dotenv
 from loguru import logger

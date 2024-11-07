@@ -1,17 +1,13 @@
 import json
-import os
 
-from fastapi import HTTPException
-from loguru import logger
 from dotenv import load_dotenv
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
-from app.crud import add_item_to_check, get_users_by_check_uuid, remove_item_from_check, edit_item_in_check
-from app.database import with_db_session
-from app.models import Check
+from app.crud import add_item_to_check, get_users_by_check_uuid, remove_item_from_check, edit_item_in_check, \
+    update_item_quantity
 from app.routers.ws import ws_manager
 from app.schemas import AddItemRequest, DeleteItemRequest, EditItemRequest
+from app.utils import create_event_status_message, create_event_message
 
 load_dotenv()
 
@@ -185,6 +181,49 @@ async def edit_item_task(user_id: int, item_data: dict):
             user_id=user_id
         )
         raise e
+
+
+async def split_item_task(user_id: int, check_uuid: str, item_id: int, quantity: int):
+    try:
+        # Обновляем количество в базе данных
+        await update_item_quantity(check_uuid, item_id, quantity)
+        users = await get_users_by_check_uuid(check_uuid)
+
+        # Подготовка данных для связанных пользователей
+        msg_for_related_users = create_event_message("itemSplitEvent",
+                                                     {
+                                                         "check_uuid": check_uuid,
+                                                         "item_id": item_id,
+                                                         "quantity": quantity
+                                                     })
+        #############################################################################
+        # Список дополнительных пользователей для оповещения
+        extra_user_ids = {2, 3, 5, 6}
+        all_user_ids = {user.id for user in users} | extra_user_ids
+        #############################################################################
+
+        # Отправка подтверждения инициатору и данных связанным пользователям
+        for uid in all_user_ids:
+            if uid == user_id:
+                status_message = create_event_status_message("itemSplitEventStatus", "success")
+                await ws_manager.send_personal_message(
+                    message=json.dumps(status_message),
+                    user_id=uid
+                )
+            else:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg_for_related_users),
+                    user_id=uid
+                )
+
+    except Exception as e:
+        logger.error(f"Ошибка при разделении позиции: {str(e)}")
+        # Обработка ошибки для инициатора
+        error_message = create_event_status_message("itemSplitEventStatus", "error", message=str(e))
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=user_id
+        )
 
 
 if __name__ == '__main__':

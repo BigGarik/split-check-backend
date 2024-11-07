@@ -12,9 +12,8 @@ router = APIRouter(prefix="/check", tags=["check"])
 
 
 @router.post("/upload-image")
-async def upload_image(
-                        user: User = Depends(get_current_user),
-                        file: UploadFile = File(...)):
+async def upload_image(user: User = Depends(get_current_user),
+                       file: UploadFile = File(...)):
     # Генерация данных задачи для Redis
     task_data = await prepare_image_upload(user.id, file)
 
@@ -36,13 +35,11 @@ async def add_empty_check(user: User = Depends(get_current_user)):
 
 
 @router.get("/all")
-async def get_all_check(
-        page: int = Query(default=1, ge=1),
-        page_size: int = Query(default=20, ge=1, le=100),
-        user: User = Depends(get_current_user)
-):
+async def get_all_check(page: int = Query(default=1, ge=1),
+                        page_size: int = Query(default=20, ge=1, le=100),
+                        user: User = Depends(get_current_user)):
     task_data = {
-        "type": "send_all_checks",
+        "type": "send_all_checks_task",
         "user_id": user.id,
         "page": page,
         "page_size": page_size
@@ -57,7 +54,7 @@ async def get_all_check(
 async def get_check(uuid: str,
                     user: User = Depends(get_current_user)):
     task_data = {
-        "type": "send_check_data",
+        "type": "send_check_data_task",
         "user_id": user.id,
         "check_uuid": uuid,
     }
@@ -86,9 +83,8 @@ async def user_selection(uuid: str,
 
 
 @router.post("/join")
-async def join_check(
-                    uuid: str,
-                    user: User = Depends(get_current_user)):
+async def join_check(uuid: str,
+                     user: User = Depends(get_current_user)):
     """Присоединяет пользователя к чеку и возвращает статус операции."""
     task_data = {
         "type": "join_check_task",
@@ -100,13 +96,12 @@ async def join_check(
 
 
 @router.put("/item/split")
-async def split_item(
-                    item_data: UpdateItemQuantity,
-                    user: User = Depends(get_current_user)):
+async def split_item(item_data: UpdateItemQuantity,
+                     user: User = Depends(get_current_user)):
     """Разделяет позицию на части и отправляет задачу в очередь Redis."""
     # Формируем данные задачи
     task_data = {
-        "type": "split_item",
+        "type": "split_item_task",
         "user_id": user.id,
         "data": item_data.model_dump(),
         "item_id": item_data.item_id,
@@ -159,12 +154,11 @@ async def delete_item(item_data: DeleteItemRequest,
 
 
 @router.delete("/delete")
-async def delete_check(
-                        uuid: str,
-                        user: User = Depends(get_current_user)):
+async def delete_check(uuid: str,
+                       user: User = Depends(get_current_user)):
     """Удаляет чек."""
     task_data = {
-        "type": "check_delete",
+        "type": "delete_check_task",
         "user_id": user.id,
         "check_uuid": uuid,
     }
