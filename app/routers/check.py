@@ -5,21 +5,22 @@ from loguru import logger
 from app.auth import get_current_user
 from app.models import User
 from app.redis import queue_processor
-from app.schemas import CheckSelectionRequest, UpdateItemQuantity, AddItemRequest, DeliteItemRequest, EditItemRequest
-from app.utils import upload_image_process
+from app.schemas import CheckSelectionRequest, UpdateItemQuantity, AddItemRequest, DeleteItemRequest, EditItemRequest
+from app.utils import prepare_image_upload
 
 router = APIRouter(prefix="/check", tags=["check"])
 
 
 @router.post("/upload-image")
 async def upload_image(
-        user: User = Depends(get_current_user),
-        file: UploadFile = File(...),
-):
-    # Запускаем процесс обработки изображения
-    task_data = await upload_image_process(user.id, file)
-    # Отправляем данные для обработки в очередь Redis
+                        user: User = Depends(get_current_user),
+                        file: UploadFile = File(...)):
+    # Генерация данных задачи для Redis
+    task_data = await prepare_image_upload(user.id, file)
+
+    # Отправка задачи в Redis
     await queue_processor.push_task(task_data)
+    logger.debug(f"Task {task_data['check_uuid']} sent to Redis queue for processing.")
 
     return {"message": "Файл успешно загружен. Обработка..."}
 
@@ -53,7 +54,8 @@ async def get_all_check(
 
 
 @router.get("/{uuid}")
-async def get_check(uuid: str, user: User = Depends(get_current_user)):
+async def get_check(uuid: str,
+                    user: User = Depends(get_current_user)):
     task_data = {
         "type": "send_check_data",
         "user_id": user.id,
@@ -85,9 +87,8 @@ async def user_selection(uuid: str,
 
 @router.post("/join")
 async def join_check(
-        uuid: str,
-        user: User = Depends(get_current_user)
-):
+                    uuid: str,
+                    user: User = Depends(get_current_user)):
     """Присоединяет пользователя к чеку и возвращает статус операции."""
     task_data = {
         "type": "join_check_task",
@@ -100,19 +101,18 @@ async def join_check(
 
 @router.put("/item/split")
 async def split_item(
-        data: UpdateItemQuantity,
-        user: User = Depends(get_current_user)
-):
+                    item_data: UpdateItemQuantity,
+                    user: User = Depends(get_current_user)):
     """Разделяет позицию на части и отправляет задачу в очередь Redis."""
     # Формируем данные задачи
     task_data = {
         "type": "split_item",
         "user_id": user.id,
-        "data": data.model_dump(),
-        "item_id": data.item_id,
-        "quantity": data.quantity,
+        "data": item_data.model_dump(),
+        "item_id": item_data.item_id,
+        "quantity": item_data.quantity,
     }
-    logger.info(f"Позиция отправлена для разделения: {data}")
+    logger.debug(f"Позиция отправлена для разделения: {item_data}")
 
     # Добавляем задачу в очередь Redis
     await queue_processor.push_task(task_data)
@@ -121,8 +121,7 @@ async def split_item(
 
 @router.post("/item/add")
 async def add_item(item_data: AddItemRequest,
-                   user: User = Depends(get_current_user)
-                   ):
+                   user: User = Depends(get_current_user)):
     """Добавляет позицию в чек."""
     task_data = {
         "type": "add_item_task",
@@ -135,8 +134,7 @@ async def add_item(item_data: AddItemRequest,
 
 @router.post("/item/edit")
 async def add_item(item_data: EditItemRequest,
-                   user: User = Depends(get_current_user)
-                   ):
+                   user: User = Depends(get_current_user)):
     """Редактирование позиции в чек."""
     task_data = {
         "type": "edit_item_task",
@@ -148,9 +146,8 @@ async def add_item(item_data: EditItemRequest,
 
 
 @router.delete("/item/delete")
-async def delete_item(item_data: DeliteItemRequest,
-                      user: User = Depends(get_current_user)
-                      ):
+async def delete_item(item_data: DeleteItemRequest,
+                      user: User = Depends(get_current_user)):
     """Добавляет позицию в чек."""
     task_data = {
         "type": "delete_item_task",
@@ -163,9 +160,8 @@ async def delete_item(item_data: DeliteItemRequest,
 
 @router.delete("/delete")
 async def delete_check(
-        uuid: str,
-        user: User = Depends(get_current_user)
-):
+                        uuid: str,
+                        user: User = Depends(get_current_user)):
     """Удаляет чек."""
     task_data = {
         "type": "check_delete",

@@ -8,9 +8,15 @@ from .redis_client import RedisClient
 
 load_dotenv()
 
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = int(os.getenv('REDIS_PORT'))
+REDIS_DB = int(os.getenv('REDIS_DB'))
+
 
 # Инициализация Redis клиента
-redis_client = RedisClient(host=os.getenv('REDIS_HOST'), port=6379, db=1)
+redis_client = RedisClient(host=REDIS_HOST,
+                           port=REDIS_PORT,
+                           db=REDIS_DB)
 
 # Инициализация процессора очереди
 queue_processor = QueueProcessor(redis_client, "task_queue")

@@ -11,7 +11,7 @@ from app.crud import add_item_to_check, get_users_by_check_uuid, remove_item_fro
 from app.database import with_db_session
 from app.models import Check
 from app.routers.ws import ws_manager
-from app.schemas import AddItemRequest, DeliteItemRequest, EditItemRequest
+from app.schemas import AddItemRequest, DeleteItemRequest, EditItemRequest
 
 load_dotenv()
 
@@ -82,7 +82,7 @@ async def add_item_task(user_id: int, item_data: dict):
 async def delete_item_task(user_id: int, item_data: dict):
     try:
         # Преобразуем данные запроса в объект Pydantic
-        item_request = DeliteItemRequest(**item_data)
+        item_request = DeleteItemRequest(**item_data)
         # Вызываем функцию удаления позиции из чека
         removed_item = await remove_item_from_check(item_request.uuid, item_request.id)
 

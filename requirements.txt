@@ -36,3 +36,7 @@ transformers
 psutil
 
 
+
+aiofiles
+torch
+starlette

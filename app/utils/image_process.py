@@ -1,49 +1,35 @@
 import os
 import uuid
-
+import aiofiles
 from dotenv import load_dotenv
 from fastapi import UploadFile
+from loguru import logger
 
 load_dotenv()
 
 upload_directory = os.getenv('UPLOAD_DIRECTORY')
 
 
-async def upload_image_process(user_id: int, file: UploadFile):
-    """ 1. метод загрузки фото
-            1.1 генерация uuid
-            1.2 создание папки/или имя файла с таким uuid
-            1.3 сохранить изображение в этой папке/под таким именем
-            1.4 сформировать сообщение для отправки в очередь, например можно сделать структуру
-            {
-                "type":"recognize_image",
-                "user_id":user_id,
-                "payload":{"file_name/folder":uuid}
-            }
-            и отправить в очередь пока предлагаю в общую, потом можно разнести
-    """
+async def prepare_image_upload(user_id: int, file: UploadFile) -> dict:
+    """ Подготовка данных для задачи загрузки и обработки изображения. """
     check_uuid = str(uuid.uuid4())
-
-    # Создаем директорию, если она не существует
     directory = os.path.join(upload_directory, check_uuid)
     os.makedirs(directory, exist_ok=True)
 
-    # Сохраняем файл
-
+    # Сохранение файла асинхронно
     file_name = file.filename
     file_location = os.path.join(directory, file_name)
 
-    with open(file_location, "wb+") as file_object:
-        file_object.write(file.file.read())
+    async with aiofiles.open(file_location, "wb") as out_file:
+        content = await file.read()
+        await out_file.write(content)
 
     task_data = {
-        "type": "recognize_image",
+        "type": "recognize_image_task",
         "user_id": user_id,
-        "payload": {
-            "check_uuid": check_uuid,
-            "file_location_directory": directory,
-            "file_name": file_name,
-        }
+        "check_uuid": check_uuid,
+        "file_location_directory": directory,
+        "file_name": file_name,
     }
-
+    logger.debug(f"Task data prepared for check_uuid {check_uuid}: {task_data}")
     return task_data
