@@ -1,17 +1,14 @@
 import json
-import os
 import uuid
 from datetime import datetime
 
 from loguru import logger
-from dotenv import load_dotenv
 
 from app.crud import add_check_to_database, join_user_to_check, delete_association_by_check_uuid, \
     get_check_data_by_uuid, get_user_selection_by_check_uuid, get_all_checks
 from app.routers.ws import ws_manager
 from app.utils import create_event_status_message, create_event_message
-
-load_dotenv()
+from config import settings
 
 
 async def send_check_data_task(user_id, check_uuid: str):
@@ -24,7 +21,7 @@ async def send_check_data_task(user_id, check_uuid: str):
     logger.info(f"Получили список participants: {participants}")
     check_data["participants"] = participants
 
-    msg_check_data = create_event_message("billDetailEvent", payload=check_data)
+    msg_check_data = create_event_message(message_type=settings.Events.BILL_DETAIL_EVENT, payload=check_data)
 
     logger.info(f"Отправляем сообщение: {json.dumps(msg_check_data, ensure_ascii=False)}")
 
@@ -39,7 +36,7 @@ async def send_all_checks_task(user_id: int, page: int = 1, page_size: int = 10)
 
     checks_data = await get_all_checks(user_id, page, page_size)
 
-    msg = create_event_message(message_type="allBillEvent",
+    msg = create_event_message(message_type=settings.Events.ALL_BILL_EVENT,
                                payload={
                                    "checks": checks_data["items"],
                                    "pagination": {
@@ -85,7 +82,7 @@ async def add_empty_check_task(user_id: int):
     await add_check_to_database(check_uuid, user_id, check_json)
 
     msg = {
-        "type": "checkAddEvent",
+        "type": settings.Events.CHECK_ADD_EVENT,
         "payload": {
             "uuid": check_uuid,
         },
@@ -98,7 +95,8 @@ async def join_check_task(user_id: int, check_uuid: str):
     try:
         await join_user_to_check(user_id, check_uuid)
 
-        status_message = create_event_status_message("joinBillEventStatus", "success")
+        status_message = create_event_status_message(message_type=settings.Events.JOIN_BILL_EVENT_STATUS,
+                                                     status="success")
 
         await ws_manager.send_personal_message(
             message=json.dumps(status_message),
@@ -107,7 +105,9 @@ async def join_check_task(user_id: int, check_uuid: str):
     except Exception as e:
         logger.error(f"Ошибка при присоединении к чеку: {str(e)}")
 
-        error_message = create_event_status_message("joinBillEventStatus", "error", message=str(e))
+        error_message = create_event_status_message(message_type=settings.Events.JOIN_BILL_EVENT_STATUS,
+                                                    status="error",
+                                                    message=str(e))
 
         await ws_manager.send_personal_message(
             message=json.dumps(error_message),
@@ -118,7 +118,8 @@ async def join_check_task(user_id: int, check_uuid: str):
 async def delete_check_task(user_id: int, check_uuid: str):
     try:
         await delete_association_by_check_uuid(check_uuid, user_id)
-        status_message = create_event_status_message("checkDeleteEventStatus", "success")
+        status_message = create_event_status_message(message_type=settings.Events.CHECK_DELETE_EVENT_STATUS,
+                                                     status="success")
         await ws_manager.send_personal_message(
             message=json.dumps(status_message),
             user_id=user_id
@@ -126,11 +127,10 @@ async def delete_check_task(user_id: int, check_uuid: str):
     except Exception as e:
         logger.error(f"Ошибка при разделении позиции: {str(e)}")
         # Обработка ошибки для инициатора
-        error_message = create_event_status_message("checkDeleteEventStatus", "error", message=str(e))
+        error_message = create_event_status_message(message_type=settings.Events.CHECK_DELETE_EVENT_STATUS,
+                                                    status="error",
+                                                    message=str(e))
         await ws_manager.send_personal_message(
             message=json.dumps(error_message),
             user_id=user_id
         )
-
-if __name__ == '__main__':
-    pass

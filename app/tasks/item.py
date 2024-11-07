@@ -8,6 +8,7 @@ from app.crud import add_item_to_check, get_users_by_check_uuid, remove_item_fro
 from app.routers.ws import ws_manager
 from app.schemas import AddItemRequest, DeleteItemRequest, EditItemRequest
 from app.utils import create_event_status_message, create_event_message
+from config import settings
 
 load_dotenv()
 
@@ -24,7 +25,7 @@ async def add_item_task(user_id: int, item_data: dict):
 
         # Формируем сообщение для отправки всем пользователям, связанным с чеком
         msg_for_all = {
-            "type": "itemAddEvent",
+            "type": settings.Events.ITEM_ADD_EVENT,
             "payload": {
                 "uuid": item_request.uuid,
                 "item": {
@@ -41,7 +42,7 @@ async def add_item_task(user_id: int, item_data: dict):
 
         # Отправляем сообщение инициатору об успешном добавлении
         msg_for_author = {
-            "type": "itemAddEventStatus",
+            "type": settings.Events.ITEM_ADD_EVENT_STATUS,
             "status": "success",
             "message": "Item successfully added to check"
         }
@@ -64,7 +65,7 @@ async def add_item_task(user_id: int, item_data: dict):
 
         # Отправляем сообщение инициатору об ошибке
         error_message = {
-            "type": "itemAddEventStatus",
+            "type": settings.Events.ITEM_ADD_EVENT_STATUS,
             "status": "error",
             "message": str(e)
         }
@@ -84,7 +85,7 @@ async def delete_item_task(user_id: int, item_data: dict):
 
         # Формируем сообщение для отправки всем пользователям, связанным с чеком
         msg_for_all = {
-            "type": "itemRemoveEvent",
+            "type": settings.Events.ITEM_REMOVE_EVENT,
             "payload": {
                 "uuid": item_request.uuid,
                 "itemId": item_request.id
@@ -96,7 +97,7 @@ async def delete_item_task(user_id: int, item_data: dict):
 
         # Отправляем сообщение инициатору об успешном удалении
         msg_for_author = {
-            "type": "itemRemoveEventStatus",
+            "type": settings.Events.ITEM_REMOVE_EVENT_STATUS,
             "status": "success",
             "message": "Item successfully removed from check"
         }
@@ -118,7 +119,7 @@ async def delete_item_task(user_id: int, item_data: dict):
         logger.error(f"Error removing item from check: {str(e)}")
         # Отправляем сообщение инициатору об ошибке
         error_message = {
-            "type": "itemRemoveEventStatus",
+            "type": settings.Events.ITEM_REMOVE_EVENT_STATUS,
             "status": "error",
             "message": str(e)
         }
@@ -139,7 +140,7 @@ async def edit_item_task(user_id: int, item_data: dict):
 
         # Формируем сообщение для отправки всем пользователям, связанным с чеком
         msg_for_all = {
-            "type": "itemEditEvent",
+            "type": settings.Events.ITEM_EDIT_EVENT,
             "payload": {
                 "uuid": item_request.uuid,
                 "new_check_data": new_check_data
@@ -151,7 +152,7 @@ async def edit_item_task(user_id: int, item_data: dict):
 
         # Отправляем сообщение инициатору об успешном удалении
         msg_for_author = {
-            "type": "itemEditEventStatus",
+            "type": settings.Events.ITEM_EDIT_EVENT_STATUS,
             "status": "success",
             "message": "Item successfully edited in check"
         }
@@ -172,7 +173,7 @@ async def edit_item_task(user_id: int, item_data: dict):
     except Exception as e:
         logger.error(f"Error editing item: {str(e)}")
         error_message = {
-            "type": "itemEditEventStatus",
+            "type": settings.Events.ITEM_EDIT_EVENT_STATUS,
             "status": "error",
             "message": str(e)
         }
@@ -190,8 +191,8 @@ async def split_item_task(user_id: int, check_uuid: str, item_id: int, quantity:
         users = await get_users_by_check_uuid(check_uuid)
 
         # Подготовка данных для связанных пользователей
-        msg_for_related_users = create_event_message("itemSplitEvent",
-                                                     {
+        msg_for_related_users = create_event_message(message_type=settings.Events.ITEM_SPLIT_EVENT,
+                                                     payload={
                                                          "check_uuid": check_uuid,
                                                          "item_id": item_id,
                                                          "quantity": quantity
@@ -205,7 +206,8 @@ async def split_item_task(user_id: int, check_uuid: str, item_id: int, quantity:
         # Отправка подтверждения инициатору и данных связанным пользователям
         for uid in all_user_ids:
             if uid == user_id:
-                status_message = create_event_status_message("itemSplitEventStatus", "success")
+                status_message = create_event_status_message(message_type=settings.Events.ITEM_SPLIT_EVENT_STATUS,
+                                                             status="success")
                 await ws_manager.send_personal_message(
                     message=json.dumps(status_message),
                     user_id=uid
@@ -219,7 +221,9 @@ async def split_item_task(user_id: int, check_uuid: str, item_id: int, quantity:
     except Exception as e:
         logger.error(f"Ошибка при разделении позиции: {str(e)}")
         # Обработка ошибки для инициатора
-        error_message = create_event_status_message("itemSplitEventStatus", "error", message=str(e))
+        error_message = create_event_status_message(message_type=settings.Events.ITEM_SPLIT_EVENT_STATUS,
+                                                    status="error",
+                                                    message=str(e))
         await ws_manager.send_personal_message(
             message=json.dumps(error_message),
             user_id=user_id

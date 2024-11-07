@@ -1,6 +1,8 @@
+from typing import ClassVar
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, RedisDsn
-from typing import Optional
+from .type_events import Events
 
 
 class Settings(BaseSettings):
@@ -45,6 +47,9 @@ class Settings(BaseSettings):
     # google
     client_id: str
     client_secret: str
+
+    # События
+    Events: ClassVar[type] = Events
 
     model_config = SettingsConfigDict(
         env_file=".env",

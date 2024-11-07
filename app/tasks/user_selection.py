@@ -5,6 +5,7 @@ from loguru import logger
 from app.crud import get_user_selection_by_check_uuid, add_or_update_user_selection
 from app.routers.ws import ws_manager
 from app.utils import create_event_message, create_event_status_message
+from config import settings
 
 
 async def user_selection_task(user_id: int, check_uuid: str, selection_data: dict):
@@ -25,10 +26,11 @@ async def user_selection_task(user_id: int, check_uuid: str, selection_data: dic
         logger.info(f"Пользователи: {', '.join([str(user) for user in users])}")
 
         # Формируем сообщения
-        msg_for_all = create_event_message(message_type="checkSelectionEvent",
+        msg_for_all = create_event_message(message_type=settings.Events.CHECK_SELECTION_EVENT,
                                            payload={"uuid": check_uuid, "participants": participants},
                                            )
-        msg_for_author = create_event_status_message("checkSelectionEventStatus", "success")
+        msg_for_author = create_event_status_message(message_type=settings.Events.CHECK_SELECTION_EVENT_STATUS,
+                                                     status="success")
 
         # Получаем все user_id для рассылки сообщений
         extra_user_ids = {2, 3, 5, 6}
@@ -49,7 +51,8 @@ async def user_selection_task(user_id: int, check_uuid: str, selection_data: dic
         # Логируем ошибку и отправляем инициатору сообщение об ошибке
         logger.error(f"Ошибка при выполнении задачи выбора пользователя: {str(e)}")
 
-        error_message = create_event_status_message("checkSelectionEventStatus", "error",
+        error_message = create_event_status_message(message_type=settings.Events.CHECK_SELECTION_EVENT_STATUS,
+                                                    status="error",
                                                     message="Ошибка при обработке")
         await ws_manager.send_personal_message(
             message=json.dumps(error_message),

@@ -4,6 +4,7 @@ from loguru import logger
 from app.crud import get_user_profile_db, update_user_profile_db
 from app.routers.ws import ws_manager
 from app.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
+from config import settings
 
 
 async def get_user_profile_task(user_id: int):
@@ -21,7 +22,7 @@ async def get_user_profile_task(user_id: int):
 
         # Создаем структуру сообщения
         msg = {
-            "type": "userProfileDataReceivedEvent",
+            "type": settings.Events.USER_PROFILE_DATA_RECEIVED_EVENT,
             "payload": profile_payload
         }
 
@@ -50,7 +51,7 @@ async def update_user_profile_task(user_id: int, profile_data: UserProfileUpdate
 
         # Создаем структуру сообщения
         msg = {
-            "type": "userProfileDataUpdateEvent",
+            "type": settings.Events.USER_PROFILE_DATA_UPDATE_EVENT,
             "payload": profile_payload
             }
 

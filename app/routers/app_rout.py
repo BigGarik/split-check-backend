@@ -2,6 +2,7 @@ from fastapi import Request, APIRouter
 from fastapi.responses import RedirectResponse
 from loguru import logger
 
+from config.type_events import EVENT_DESCRIPTIONS
 
 router = APIRouter(prefix="/app", tags=["app"])
 
@@ -22,3 +23,11 @@ async def download_app(request: Request):
         return RedirectResponse(android_app_url)
     else:
         return {"error": "Неподдерживаемое устройство"}
+
+
+@router.get("/events", summary="Получить типы событий", response_description="Список типов событий с описанием")
+async def get_events():
+    return [
+        {"event_type": event, "description": description}
+        for event, description in EVENT_DESCRIPTIONS.items()
+    ]

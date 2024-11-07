@@ -1,17 +1,13 @@
 import json
 import os
 
-from dotenv import load_dotenv
 from loguru import logger
 
 from app.crud import add_check_to_database
 from app.routers.ws import ws_manager
+from config import settings
 from external_services import recognize_check_by_anthropic
 from services.classifier_image import classifier_image
-
-load_dotenv()
-
-redis_expiration = os.getenv("REDIS_EXPIRATION")
 
 
 async def recognize_image_task(
@@ -163,10 +159,10 @@ async def recognize_image_task(
 
             # Сохранение результатов в Redis
             redis_key = f"check_uuid:{check_uuid}"
-            await redis_client.set(redis_key, json.dumps(recognized_json), expire=redis_expiration)
+            await redis_client.set(redis_key, json.dumps(recognized_json), expire=settings.redis_expiration)
 
             msg = {
-                "type": "imageRecognitionEvent",
+                "type": settings.Events.IMAGE_RECOGNITION_EVENT,
                 "payload": {
                     "uuid": check_uuid,
                 },
@@ -176,7 +172,7 @@ async def recognize_image_task(
 
         else:
             error_msg = {
-                    "type": "imageRecognitionEventStatus",
+                    "type": settings.Events.IMAGE_RECOGNITION_EVENT_STATUS,
                     "status": "error",
                     "message": f"Image classification failed with result: {classification_result}"
                 }
@@ -187,7 +183,7 @@ async def recognize_image_task(
     except Exception as e:
 
         error_msg = {
-            "type": "imageRecognitionEventStatus",
+            "type": settings.Events.IMAGE_RECOGNITION_EVENT_STATUS,
             "status": "error",
             "message": f"Error processing image {check_uuid}: {e}"
         }
