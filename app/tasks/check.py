@@ -13,12 +13,14 @@ from config import settings
 
 async def send_check_data_task(user_id, check_uuid: str):
     check_data = await get_check_data_by_uuid(check_uuid)
-    participants, _ = await get_user_selection_by_check_uuid(check_uuid)
-
     check_data = json.loads(check_data)
     logger.info(f"Получили данные чека: {check_data}")
+
+    participants, _ = await get_user_selection_by_check_uuid(check_uuid)
+
     participants = json.loads(participants)
     logger.info(f"Получили список participants: {participants}")
+
     check_data["participants"] = participants
 
     msg_check_data = create_event_message(message_type=settings.Events.BILL_DETAIL_EVENT, payload=check_data)

@@ -19,29 +19,21 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
         # Создаем новый чек
         new_check = Check(uuid=check_uuid, check_data=recognized_json)
         session.add(new_check)
-
+        await session.flush()
         # Создаем связь между пользователем и чеком
-        stmt = insert(user_check_association).values(user_id=user_id, check_uuid=check_uuid)
+        stmt = insert(user_check_association).values(
+            user_id=user_id,
+            check_uuid=check_uuid
+        )
         await session.execute(stmt)
 
         # Сохраняем изменения в базе данных
         await session.commit()
         logger.debug(f"Check {check_uuid} added to database for user {user_id}.")
-
-    except IntegrityError as e:
-        # Проверяем, вызвано ли исключение нарушением уникальности
-        await session.rollback()
-        logger.warning(f"Duplicate entry for check UUID {check_uuid} or user-check association; skipping insert.")
-
-    except SQLAlchemyError as e:
-        # Откатываем транзакцию в случае других ошибок базы данных
-        await session.rollback()
-        logger.error(f"Error adding check {check_uuid} to database for user {user_id}: {e}")
-
     except Exception as e:
-        # Откатываем транзакцию и логируем любые другие ошибки
         await session.rollback()
         logger.error(f"Unexpected error in add_check_to_database: {e}")
+        raise e
 
 
 @with_db_session()
@@ -52,8 +44,8 @@ async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str):
         # Пытаемся получить данные чека из Redis
         check_data = await redis_client.get(redis_key)
         if check_data:
-            logger.debug(f"Данные чека найдены в Redis для UUID: {check_uuid}")
-            return json.loads(check_data)
+            logger.debug(f"Данные чека найдены в Redis : {check_data}")
+            return check_data
 
         # Если данных нет в Redis, ищем в базе данных
         stmt = select(Check).filter_by(uuid=check_uuid)

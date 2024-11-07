@@ -159,7 +159,8 @@ async def recognize_image_task(
 
             # Сохранение результатов в Redis
             redis_key = f"check_uuid:{check_uuid}"
-            await redis_client.set(redis_key, json.dumps(recognized_json), expire=settings.redis_expiration)
+            task_data = json.dumps(recognized_json)
+            await redis_client.set(redis_key, task_data, expire=settings.redis_expiration)
 
             msg = {
                 "type": settings.Events.IMAGE_RECOGNITION_EVENT,
