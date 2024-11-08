@@ -168,7 +168,7 @@
             formData.append("file", file);
 
             try {
-                const response = await fetch('/check/upload-image', {
+                const response = await fetch('/image/upload-image', {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${token}`
