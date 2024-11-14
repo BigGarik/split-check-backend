@@ -21,6 +21,7 @@ async def add_or_update_user_selection(session: AsyncSession, user_id: int, chec
     :param check_uuid: UUID чека
     :param selection_data: Данные, которые нужно сохранить в формате JSON
     """
+    logger.debug(f"Обновление записи selection_data={selection_data}")
     try:
         # Проверяем, существует ли запись с таким user_id и check_uuid
         stmt = select(UserSelection).filter_by(user_id=user_id, check_uuid=check_uuid)
@@ -30,7 +31,7 @@ async def add_or_update_user_selection(session: AsyncSession, user_id: int, chec
         # Обновляем или создаем новую запись
         if user_selection:
             user_selection.selection = selection_data
-            logger.info(f"Запись для user_id={user_id}, check_uuid={check_uuid} обновлена.")
+            logger.debug(f"Запись для user_id={user_id}, check_uuid={check_uuid} обновлена.")
         else:
             new_selection = UserSelection(
                 user_id=user_id,
@@ -38,7 +39,7 @@ async def add_or_update_user_selection(session: AsyncSession, user_id: int, chec
                 selection=selection_data
             )
             session.add(new_selection)
-            logger.info(f"Создана новая запись для user_id={user_id}, check_uuid={check_uuid}.")
+            logger.debug(f"Создана новая запись для user_id={user_id}, check_uuid={check_uuid}.")
 
         # Сохраняем изменения в базе данных
         await session.commit()
@@ -46,7 +47,7 @@ async def add_or_update_user_selection(session: AsyncSession, user_id: int, chec
         # После успешного сохранения в БД — добавляем данные в Redis
         redis_key = f"user_selection:{user_id}:{check_uuid}"
         await redis_client.set(redis_key, json.dumps(selection_data), expire=settings.redis_expiration)
-        logger.info(f"Данные сохранены в Redis для ключа {redis_key}")
+        logger.debug(f"Данные сохранены в Redis для ключа {redis_key}")
 
     except Exception as e:
         logger.error(f"Ошибка добавления или обновления записи: {e}")
@@ -65,17 +66,17 @@ async def get_user_selection_by_user(session: AsyncSession, user_id: int, check_
 
 async def get_user_selection_by_check_uuid(check_uuid: str):
     users = await get_users_by_check_uuid(check_uuid)
-    logger.info(f"Получили пользователей: {', '.join([str(user) for user in users])}")
+    logger.debug(f"Получили пользователей: {', '.join([str(user) for user in users])}")
 
     participants = []
 
     for user in users:
         redis_key = f"user_selection:{user.id}:{check_uuid}"
-        logger.info(f"Получили redis_key: {redis_key}")
+        logger.debug(f"Получили redis_key: {redis_key}")
 
         # Пытаемся получить данные из Redis
         user_selection = await redis_client.get(redis_key)
-        logger.info(f"Получили user_selection из redis: {user_selection}")
+        logger.debug(f"Получили user_selection из redis: {user_selection}")
 
         # Если данных нет в Redis, берем из базы данных
         if not user_selection:
@@ -89,9 +90,9 @@ async def get_user_selection_by_check_uuid(check_uuid: str):
             else:
                 # Если данные пришли из базы, то это объект SQLAlchemy
                 selection_data = user_selection.selection  # Это поле должно быть JSON (dict)
-                logger.info(f"Получили user_selection из базы: {user_selection}")
+                logger.debug(f"Получили user_selection из базы: {user_selection}")
 
-            logger.info(f"Получили selection_data: {selection_data}")
+            logger.debug(f"Получили selection_data: {selection_data}")
 
             # Создаем структуру для каждого участника
             participant = {
@@ -109,7 +110,7 @@ async def get_user_selection_by_check_uuid(check_uuid: str):
 
             participants.append(participant)
 
-    logger.info(f"Получили participants: {participants}")
+    logger.debug(f"Получили participants: {participants}")
 
     return json.dumps(participants), users
 

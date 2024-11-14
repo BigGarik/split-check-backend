@@ -5,10 +5,9 @@ from starlette import status
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
+from src.config.settings import settings
 from src.core.security import verify_token
 from src.repositories.user import get_user_by_email
-from src.config.settings import settings
-
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

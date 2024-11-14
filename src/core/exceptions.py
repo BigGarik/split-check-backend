@@ -18,3 +18,28 @@ class UserAlreadyExistsError(UserCreationError):
 class DatabaseOperationError(UserCreationError):
     """Raised when database operation fails."""
     pass
+
+
+class BaseApplicationError(Exception):
+    """Базовый класс для ошибок приложения"""
+    pass
+
+
+class CacheError(BaseApplicationError):
+    """Ошибка при работе с кешем"""
+    pass
+
+
+class CheckOperationError(BaseApplicationError):
+    """Базовый класс для ошибок операций с чеками"""
+    pass
+
+
+class CheckNotFoundError(CheckOperationError):
+    """Ошибка: чек не найден"""
+    pass
+
+
+class ItemNotFoundError(CheckOperationError):
+    """Ошибка: элемент не найден в чеке"""
+    pass

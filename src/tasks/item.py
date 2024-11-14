@@ -1,31 +1,36 @@
 import json
 
+from fastapi import Depends
 from loguru import logger
 
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
+from src.managers.check_manager import CheckManager, get_check_manager
 from src.repositories.check import update_item_quantity
-from src.repositories.item import add_item_to_check, remove_item_from_check, edit_item_in_check
+from src.repositories.item import remove_item_from_check, edit_item_in_check, add_item_to_check
 from src.repositories.user import get_users_by_check_uuid
 from src.schemas import AddItemRequest, DeleteItemRequest, EditItemRequest
 from src.utils.notifications import create_event_message, create_event_status_message
 
 
-async def add_item_task(user_id: int, item_data: dict):
+async def add_item_task(user_id: int,
+                        check_uuid: str,
+                        item_data: dict,
+                        check_manager: CheckManager = Depends(get_check_manager)):
     try:
         # Преобразуем данные запроса в объект Pydantic
         item_request = AddItemRequest(**item_data)
-        logger.debug(item_request)
+        logger.debug(f"данные запроса: {item_request}")
 
-        # Вызываем функцию добавления позиции в чек
-        new_item = await add_item_to_check(item_request)
+        # # Вызываем функцию добавления позиции в чек
+        new_item = await add_item_to_check(check_uuid, item_request)
         logger.debug(new_item)
 
         # Формируем сообщение для отправки всем пользователям, связанным с чеком
         msg_for_all = {
             "type": settings.Events.ITEM_ADD_EVENT,
             "payload": {
-                "uuid": item_request.uuid,
+                "uuid": check_uuid,
                 "item": {
                     "id": new_item["id"],
                     "name": new_item["name"],
@@ -36,13 +41,13 @@ async def add_item_task(user_id: int, item_data: dict):
         }
 
         # Получаем всех пользователей, связанных с чеком
-        users = await get_users_by_check_uuid(item_request.uuid)
+        users = await get_users_by_check_uuid(check_uuid)
 
         # Отправляем сообщение инициатору об успешном добавлении
         msg_for_author = {
             "type": settings.Events.ITEM_ADD_EVENT_STATUS,
             "status": "success",
-            "message": "Item successfully added to check"
+            "message": "ItemRequest successfully added to check"
         }
 
         for user in users:
@@ -74,7 +79,9 @@ async def add_item_task(user_id: int, item_data: dict):
         raise e
 
 
-async def delete_item_task(user_id: int, item_data: dict):
+async def delete_item_task(user_id: int,
+                           item_data: dict,
+                           check_manager: CheckManager = Depends(get_check_manager)):
     try:
         # Преобразуем данные запроса в объект Pydantic
         item_request = DeleteItemRequest(**item_data)
@@ -97,7 +104,7 @@ async def delete_item_task(user_id: int, item_data: dict):
         msg_for_author = {
             "type": settings.Events.ITEM_REMOVE_EVENT_STATUS,
             "status": "success",
-            "message": "Item successfully removed from check"
+            "message": "ItemRequest successfully removed from check"
         }
 
         for user in users:
@@ -128,31 +135,34 @@ async def delete_item_task(user_id: int, item_data: dict):
         raise e
 
 
-async def edit_item_task(user_id: int, item_data: dict):
+async def edit_item_task(user_id: int,
+                         check_uuid: str,
+                         item_data: dict,
+                         check_manager: CheckManager = Depends(get_check_manager)):
     try:
         # Преобразуем данные запроса в объект Pydantic
         item_request = EditItemRequest(**item_data)
         logger.debug(item_request)
         # Вызываем функцию редактирования позиции из чека
-        new_check_data = await edit_item_in_check(item_request)
+        new_check_data = await edit_item_in_check(check_uuid, item_request)
 
         # Формируем сообщение для отправки всем пользователям, связанным с чеком
         msg_for_all = {
             "type": settings.Events.ITEM_EDIT_EVENT,
             "payload": {
-                "uuid": item_request.uuid,
+                "uuid": check_uuid,
                 "new_check_data": new_check_data
             }
         }
 
         # Получаем всех пользователей, связанных с чеком
-        users = await get_users_by_check_uuid(item_request.uuid)
+        users = await get_users_by_check_uuid(check_uuid)
 
         # Отправляем сообщение инициатору об успешном удалении
         msg_for_author = {
             "type": settings.Events.ITEM_EDIT_EVENT_STATUS,
             "status": "success",
-            "message": "Item successfully edited in check"
+            "message": "ItemRequest successfully edited in check"
         }
 
         for user in users:
@@ -182,8 +192,15 @@ async def edit_item_task(user_id: int, item_data: dict):
         raise e
 
 
-async def split_item_task(user_id: int, check_uuid: str, item_id: int, quantity: int):
+async def split_item_task(user_id: int,
+                          check_uuid: str,
+                          item_data: dict,
+                          check_manager: CheckManager = Depends(get_check_manager)):
     try:
+
+        item_id = item_data["item_id"]
+        quantity = item_data["quantity"]
+
         # Обновляем количество в базе данных
         await update_item_quantity(check_uuid, item_id, quantity)
         users = await get_users_by_check_uuid(check_uuid)

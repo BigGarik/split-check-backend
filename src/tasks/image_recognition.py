@@ -1,10 +1,12 @@
 import json
 import os
 
+from fastapi import Depends
 from loguru import logger
 
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
+from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
 from src.repositories.check import add_check_to_database
 from src.services.classifier.classifier_image import classifier_image
@@ -14,7 +16,8 @@ async def recognize_image_task(
         check_uuid: str,
         user_id: int,
         file_location_directory: str,
-        file_name: str
+        file_name: str,
+        check_manager: CheckManager = Depends(get_check_manager)
 ):
     """ Обработка изображения: классификация и распознавание. """
 

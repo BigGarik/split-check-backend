@@ -1,10 +1,15 @@
-from fastapi import HTTPException
+import json
+from typing import Dict, Any
+
+from fastapi import HTTPException, Depends
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
+from src.config.settings import settings
 from src.models import Check
+from src.redis import redis_client
 from src.schemas import AddItemRequest, EditItemRequest
 from src.utils.check import recalculate_check_totals
 from src.utils.db import with_db_session
@@ -47,7 +52,7 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
             break
 
     if item_index is None:
-        raise Exception(f"Item with id {item_id} not found in check")
+        raise Exception(f"ItemRequest with id {item_id} not found in check")
 
     # Удаляем позицию
     items.pop(item_index)
@@ -66,14 +71,22 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
     await session.commit()
     await session.refresh(check)
 
+    # Кладем новые данные чека в Redis
+    redis_key = f"check_uuid:{check_uuid}"
+    check_data = check.check_data
+    logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
+
+    # Кэшируем данные чека в Redis для будущих обращений
+    await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+
     return removed_item
 
 
 @with_db_session()
-async def add_item_to_check(session: AsyncSession, item_data: AddItemRequest) -> dict:
+async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: AddItemRequest) -> dict:
     """Добавление элемента в чек и возврат обновленного объекта Check"""
 
-    stmt = select(Check).where(Check.uuid == item_data.uuid)
+    stmt = select(Check).where(Check.uuid == check_uuid)
     result = await session.execute(stmt)
     check = result.scalars().first()
     if not check:
@@ -121,30 +134,41 @@ async def add_item_to_check(session: AsyncSession, item_data: AddItemRequest) ->
     await session.commit()
     await session.refresh(check)
 
+    # Кладем новые данные чека в Redis
+    redis_key = f"check_uuid:{check_uuid}"
+    check_data = check.check_data
+    logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
+
+    # Кэшируем данные чека в Redis для будущих обращений
+    await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+
     return new_item
 
 
 @with_db_session()
-async def edit_item_in_check(session: AsyncSession, item_data: EditItemRequest):
+async def edit_item_in_check(
+    session: AsyncSession,
+    check_uuid: str,
+    item_data: EditItemRequest
+) -> Dict[str, Any]:
     """Редактирование элемента в чеке
     Args:
         session: AsyncSession - сессия базы данных
+        check_uuid: str - UUID чека
         item_data: EditItemRequest - данные для редактирования
 
     Returns:
         dict: Обновленные данные check_data чека
 
     Raises:
-        Exception: Если чек не найден или позиция не найдена"""
+        Exception: Если чек не найден или позиция не найдена
+    """
     logger.debug(f"Edit item in check: {item_data}")
 
-    # Получаем чек по UUID
-    stmt = select(Check).where(Check.uuid == item_data.uuid)
+    # Поиск в базе данных, если нет в Redis
+    stmt = select(Check).filter_by(uuid=check_uuid)
     result = await session.execute(stmt)
-    check = result.scalars().first()
-
-    if not check:
-        raise HTTPException(status_code=404, detail="Check not found")
+    check = result.scalar_one_or_none()
 
     # Проверяем, существует ли item_id в check_data
     item_found = False
@@ -163,10 +187,10 @@ async def edit_item_in_check(session: AsyncSession, item_data: EditItemRequest):
             break
 
     if not item_found:
-        raise HTTPException(status_code=404, detail="Item not found in check data")
+        raise HTTPException(status_code=404, detail="Item not found in check")
 
     # Пересчитываем все поля
-    check.check_data = recalculate_check_totals(check.check_data)
+    check_data = recalculate_check_totals(check.check_data)
 
     # Явно помечаем атрибут как измененный
     flag_modified(check, "check_data")
@@ -175,5 +199,13 @@ async def edit_item_in_check(session: AsyncSession, item_data: EditItemRequest):
     await session.commit()
     await session.refresh(check)
 
-    logger.debug(f"Обновленные данные check: {check.check_data}")
-    return check.check_data
+    # Кладем новые данные чека в Redis
+    redis_key = f"check_uuid:{check_uuid}"
+    check_data = check_data
+    logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
+
+    # Кэшируем данные чека в Redis для будущих обращений
+    await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+
+    logger.debug(f"Обновленные данные check: {check_data}")
+    return check_data

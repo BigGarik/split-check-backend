@@ -1,14 +1,16 @@
 import json
 
+from fastapi import Depends
 from loguru import logger
 
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
+from src.managers.check_manager import CheckManager, get_check_manager
 from src.repositories.profile import get_user_profile_db, update_user_profile_db
 from src.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
 
 
-async def get_user_profile_task(user_id: int):
+async def get_user_profile_task(user_id: int, check_manager: CheckManager = Depends(get_check_manager)):
     """Получить профиль текущего пользователя"""
     profile = await get_user_profile_db(user_id)
     if profile:
@@ -35,7 +37,9 @@ async def get_user_profile_task(user_id: int):
         )
 
 
-async def update_user_profile_task(user_id: int, profile_data: UserProfileUpdate):
+async def update_user_profile_task(user_id: int,
+                                   profile_data: UserProfileUpdate,
+                                   check_manager: CheckManager = Depends(get_check_manager)):
     """Обновить профиль текущего пользователя"""
     logger.debug(f"profile_data: {profile_data}")
     profile = await update_user_profile_db(user_id, profile_data)

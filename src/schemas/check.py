@@ -1,111 +1,49 @@
-from typing import List, Optional, Annotated
-from uuid import UUID
-
-from pydantic import BaseModel, Field, ValidationError
+from typing import List, Optional
+from pydantic import BaseModel, Field, model_validator, conint, confloat, constr, field_validator
 
 # Кастомные типы с валидацией
-PositiveInt = Annotated[int, Field(gt=0)]
-NonNegativeInt = Annotated[int, Field(ge=0)]
-PositiveFloat = Annotated[float, Field(gt=0)]
-ItemName = Annotated[
-    str,
-    Field(min_length=1,
-          max_length=50,
-          description="Название товара не должно быть пустым и должно быть длиной до 50 символов")
-]
-
+PositiveInt = conint(gt=0)
+ItemName = constr(min_length=1, max_length=50, strip_whitespace=True)
 # Валидация цены до 2 знаков после запятой и диапазона
-Price = Annotated[float, Field(gt=0, le=1_000_000_000)]
+Price = confloat(gt=0, le=1_000_000_000)
 
 
-class ItemSelection(BaseModel):
+class ItemRequest(BaseModel):
     item_id: PositiveInt = Field(description="ID товара")
-    quantity: PositiveInt = Field(gt=0, le=1000, description="Количество товара (от 1 до 1000)")
-
-    @classmethod
-    def model_post_init(cls, values):
-        if not isinstance(values['quantity'], int):
-            raise ValueError("Количество должно быть целым числом")
-        return values
+    quantity: conint(gt=0, le=1000) = Field(description="Новое количество товара (от 1 до 1000)")
 
 
 class AddItemRequest(BaseModel):
-    uuid: UUID = Field(description="UUID запроса")
     name: ItemName = Field(description="Название товара")
     quantity: PositiveInt = Field(gt=0, le=1000, description="Количество товара (от 1 до 1000)")
     price: Price = Field(description="Цена товара")
 
-    @classmethod
-    def validate_price(cls, price):
-        """Проверка цены на точность до 2 знаков после запятой"""
-        if round(price, 2) != price:
+    # Валидация цены до 2 знаков после запятой
+    @field_validator('price')
+    def validate_price(cls, value: float) -> float:
+        if round(value, 2) != value:
             raise ValueError("Цена должна иметь не более 2 знаков после запятой")
-        return price
+        return value
 
 
 class EditItemRequest(BaseModel):
-    uuid: UUID = Field(description="UUID запроса")
     id: PositiveInt = Field(description="ID товара")
     name: Optional[ItemName] = Field(None, description="Новое название товара")
-    quantity: Optional[PositiveInt] = Field(None, description="Новое количество товара (от 1 до 1000)")
+    quantity: Optional[PositiveInt] = Field(None, gt=0, le=1000, description="Новое количество товара (от 1 до 1000)")
     price: Optional[Price] = Field(None, description="Новая цена товара")
 
-    @classmethod
-    def model_post_init(cls, values):
-        """Проверка, что хотя бы одно поле заполнено"""
-        if not any(values.get(field) is not None for field in ['name', 'quantity', 'price']):
+    # Проверка, что хотя бы одно поле заполнено
+    @model_validator(mode='after')
+    def check_at_least_one_field(cls, model):
+        # Проверяем, что хотя бы одно из полей (кроме id) заполнено
+        if not any(getattr(model, field) is not None for field in ['name', 'quantity', 'price']):
             raise ValueError("Необходимо указать хотя бы одно поле для обновления")
-        return values
+        return model
 
 
 class DeleteItemRequest(BaseModel):
-    uuid: UUID = Field(description="UUID запроса")
     id: PositiveInt = Field(description="ID товара")
 
 
 class CheckSelectionRequest(BaseModel):
-    selected_items: Annotated[List[ItemSelection], Field(min_length=1, max_length=100)] = Field(
-        description="Список выбранных товаров (от 1 до 100 позиций)"
-    )
-
-    @classmethod
-    def model_post_init(cls, values):
-        """Валидация уникальности товаров и общего количества"""
-        item_ids = [item.item_id for item in values['selected_items']]
-        if len(item_ids) != len(set(item_ids)):
-            raise ValueError("Найдены дубликаты товаров в списке")
-
-        total_quantity = sum(item.quantity for item in values['selected_items'])
-        if total_quantity > 1000:
-            raise ValueError("Общее количество товаров не может превышать 1000")
-        return values
-
-
-class UpdateItemQuantity(BaseModel):
-    check_uuid: UUID = Field(description="UUID чека")
-    item_id: PositiveInt = Field(description="ID товара")
-    quantity: PositiveInt = Field(gt=0, le=1000, description="Новое количество товара (от 1 до 1000)")
-
-
-# Пример использования:
-if __name__ == "__main__":
-    try:
-        item = AddItemRequest(
-            uuid="123e4567-e89b-12d3-a456-426614174000",
-            name="Товар 1",
-            quantity=5,
-            price=99.99
-        )
-        print("Валидация успешна:", item.dict())
-    except ValidationError as e:
-        print("Ошибка валидации:", e)
-
-    try:
-        item = AddItemRequest(
-            uuid="invalid-uuid",
-            name="",
-            quantity=-1,
-            price=99.999
-        )
-    except ValidationError as e:
-        print("Ожидаемая ошибка валидации:", e)
+    selected_items: List[ItemRequest] = Field(default_factory=list, description="Список выбранных товаров")

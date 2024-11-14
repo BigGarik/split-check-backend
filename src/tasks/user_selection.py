@@ -1,33 +1,45 @@
 import json
 
+from fastapi import Depends
 from loguru import logger
 
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
+from src.managers.check_manager import CheckManager, get_check_manager
 from src.repositories.user_selection import add_or_update_user_selection, get_user_selection_by_check_uuid
 from src.utils.notifications import create_event_message, create_event_status_message
 
 
-async def user_selection_task(user_id: int, check_uuid: str, selection_data: dict):
+async def user_selection_task(user_id: int,
+                              check_uuid: str,
+                              selection_data: dict,
+                              check_manager: CheckManager = Depends(get_check_manager)):
     """
     Обновляет выбор пользователя и отправляет обновленную информацию всем связанным пользователям.
 
+    :param check_manager:
     :param user_id: Идентификатор пользователя
     :param check_uuid: UUID чека
     :param selection_data: Данные выбора для сохранения
     """
+    logger.debug(f"user_selection_task: {user_id}, {check_uuid}, {selection_data}")
     try:
         # Обновляем или добавляем выбор пользователя
         await add_or_update_user_selection(user_id=user_id, check_uuid=check_uuid, selection_data=selection_data)
 
         # Получаем участников и пользователей, связанных с чеком
         participants, users = await get_user_selection_by_check_uuid(check_uuid)
-        logger.info(f"Участники: {participants}")
-        logger.info(f"Пользователи: {', '.join([str(user) for user in users])}")
+        selections = {
+            "user_id": user_id,
+            "selected_items": selection_data['selected_items']
+        }
+        logger.info(f"selection_data: {selections}")
+
+        logger.debug(f"Участники: {participants}")
 
         # Формируем сообщения
         msg_for_all = create_event_message(message_type=settings.Events.CHECK_SELECTION_EVENT,
-                                           payload={"uuid": check_uuid, "participants": participants},
+                                           payload={"uuid": check_uuid, "participants": [selections]},
                                            )
         msg_for_author = create_event_status_message(message_type=settings.Events.CHECK_SELECTION_EVENT_STATUS,
                                                      status="success")
@@ -35,7 +47,7 @@ async def user_selection_task(user_id: int, check_uuid: str, selection_data: dic
         # Получаем все user_id для рассылки сообщений
         extra_user_ids = {2, 3, 5, 6}
         all_user_ids = {user.id for user in users} | extra_user_ids
-        logger.info(f"Все пользователи для отправки: {all_user_ids}")
+        logger.debug(f"Все пользователи для отправки: {all_user_ids}")
 
         # Отправка сообщений всем пользователям
         for uid in all_user_ids:

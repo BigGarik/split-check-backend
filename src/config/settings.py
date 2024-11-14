@@ -1,7 +1,8 @@
-from typing import ClassVar
+import os
+from typing import ClassVar, List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn, RedisDsn
+from pydantic import PostgresDsn, RedisDsn, validator, field_validator, Field
 from .type_events import Events
 
 
@@ -54,6 +55,10 @@ class Settings(BaseSettings):
 
     deep_link_url: str
 
+    enable_docs: bool
+
+    allowed_ips: List[str]
+
     # События
     Events: ClassVar[type] = Events
 
@@ -62,6 +67,13 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False
     )
+
+    # Валидатор для преобразования строки в список
+    @field_validator("allowed_ips", mode="before")
+    def parse_allowed_ips(cls, value):
+        if isinstance(value, str):
+            return [ip.strip() for ip in value.split(",")]
+        return value
 
 
 # Создаем глобальный экземпляр настроек

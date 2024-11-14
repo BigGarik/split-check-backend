@@ -1,3 +1,4 @@
+
 def recalculate_check_totals(check_data: dict) -> dict:
     """Пересчет всех полей чека"""
 
