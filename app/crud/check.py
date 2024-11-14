@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from loguru import logger
 from sqlalchemy import select, insert, delete, func
@@ -44,7 +45,9 @@ async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str):
         # Пытаемся получить данные чека из Redis
         check_data = await redis_client.get(redis_key)
         if check_data:
-            logger.debug(f"Данные чека найдены в Redis : {check_data}")
+            # Преобразуем данные из строки (JSON) в словарь (dict)
+            check_data = json.loads(check_data)
+            logger.debug(f"Данные чека найдены в Redis: {check_data}")
             return check_data
 
         # Если данных нет в Redis, ищем в базе данных
@@ -53,7 +56,7 @@ async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str):
         check = result.scalars().first()
 
         if check:
-            # Конвертируем данные чека в JSON
+            # Конвертируем данные чека из базы данных в JSON
             check_data = check.check_data
             logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
 
@@ -74,6 +77,7 @@ async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str):
         # Обработка других возможных ошибок
         logger.error(f"Неожиданная ошибка при получении данных чека: {e}")
         return None
+
 
 
 @with_db_session()
@@ -151,6 +155,9 @@ async def delete_association_by_check_uuid(session: AsyncSession, check_uuid: st
 
 @with_db_session()
 async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, page_size: int = 10) -> dict:
+    def format_datetime(dt: datetime) -> str:
+        """Преобразует datetime в строку ISO формата."""
+        return dt.isoformat() if dt else None
     try:
         # Проверка существования пользователя
         user = await session.get(User, user_id)
@@ -196,7 +203,10 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
         checks_page = checks.scalars().all()
 
         return {
-            "items": [{"uuid": check.uuid, "created_at": check.created_at, "updated_at": check.updated_at} for check in checks_page],
+            "items": [{
+                "uuid": check.uuid,
+                "created_at": format_datetime(check.created_at)
+            } for check in checks_page],
             "total": total_checks,
             "page": page,
             "page_size": page_size,

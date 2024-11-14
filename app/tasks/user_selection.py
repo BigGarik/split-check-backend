@@ -22,13 +22,20 @@ async def user_selection_task(user_id: int, check_uuid: str, selection_data: dic
 
         # Получаем участников и пользователей, связанных с чеком
         participants, users = await get_user_selection_by_check_uuid(check_uuid)
+        selections = {
+            "user_id": user_id,
+            "selected_items": selection_data['selected_items']
+        }
+        logger.info(f"selection_data: {selections}")
         logger.info(f"Участники: {participants}")
         logger.info(f"Пользователи: {', '.join([str(user) for user in users])}")
 
         # Формируем сообщения
         msg_for_all = create_event_message(message_type=settings.Events.CHECK_SELECTION_EVENT,
-                                           payload={"uuid": check_uuid, "participants": participants},
+                                           payload={"uuid": check_uuid, "participants": [selections]},
                                            )
+        logger.info(f"msg_for_all: {msg_for_all}")
+
         msg_for_author = create_event_status_message(message_type=settings.Events.CHECK_SELECTION_EVENT_STATUS,
                                                      status="success")
 

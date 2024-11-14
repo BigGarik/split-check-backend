@@ -13,8 +13,9 @@ from config import settings
 
 async def send_check_data_task(user_id, check_uuid: str):
     check_data = await get_check_data_by_uuid(check_uuid)
-    check_data = json.loads(check_data)
-    logger.info(f"Получили данные чека: {check_data}")
+    logger.debug(f"Получили данные чека: {check_data}")
+    # check_data = json.loads(check_data)
+    # logger.info(f"Получили данные чека: {check_data}")
 
     participants, _ = await get_user_selection_by_check_uuid(check_uuid)
 

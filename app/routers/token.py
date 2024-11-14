@@ -59,13 +59,9 @@ async def login_for_access_token(
         401: {"description": "Invalid refresh token"}
     }
 )
-async def refresh_access_token(
-        response: Response,
-        request: RefreshTokenRequest = None,
-        refresh_token: str = Depends(lambda r: r.cookies.get("refresh_token"))
-) -> Dict[str, str]:
+async def refresh_access_token(request: RefreshTokenRequest) -> Dict[str, str]:
     """Refresh access token using either cookie or request body."""
-    token = refresh_token or (request and request.refresh_token)
+    token = request.refresh_token
 
     if not token:
         raise HTTPException(
@@ -79,16 +75,6 @@ async def refresh_access_token(
             token=token
         )
         tokens = await generate_tokens(email, user_id)
-
-        # обновить refresh token cookie
-        response.set_cookie(
-            key="refresh_token",
-            value=tokens["refresh_token"],
-            httponly=True,
-            secure=True,
-            samesite="strict",
-            max_age=settings.refresh_token_expire_days * 24 * 60 * 60
-        )
 
         return tokens
     except JWTError:

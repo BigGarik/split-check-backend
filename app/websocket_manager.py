@@ -10,8 +10,10 @@ class WSConnectionManager:
     async def connect(self, user_id: str, websocket: WebSocket):
         # Принимаем соединение
         await websocket.accept()
+        logger.debug(f"Пользователь {user_id} подключился к серверу websocket")
         # Сохраняем WebSocket соединение в локальном словаре по user_id
         self.active_connections[user_id] = websocket
+        logger.debug(f"active_connections: {self.active_connections}")
 
     async def disconnect(self, user_id: str):
         if user_id in self.active_connections:

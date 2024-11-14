@@ -8,8 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 
 from app.database import sync_engine, Base
+from app.middlewares.restrict_docs import RestrictDocsAccessMiddleware
 from app.redis import queue_processor, redis_client, register_redis_handlers
 from app.routers import user, token, check, ws, test, app_rout
+from config import settings
 from logger_config import setup_app_logging
 from services.classifier_instance import init_classifier
 
@@ -38,7 +40,12 @@ async def lifespan(app: FastAPI):
 
 
 # app = FastAPI(root_path="/split_check", lifespan=lifespan)
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan,
+              title="Split Check API",
+              docs_url="/docs" if settings.enable_docs else None,
+              redoc_url="/redoc" if settings.enable_docs else None,
+              openapi_url="/openapi.json" if settings.enable_docs else None,
+              )
 
 # Настраиваем логирование
 logger = setup_app_logging(
@@ -50,6 +57,8 @@ logger = setup_app_logging(
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
+
+app.add_middleware(RestrictDocsAccessMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,13 +1,16 @@
 from fastapi import Request, APIRouter
 from fastapi.responses import RedirectResponse
 from loguru import logger
+from starlette.responses import HTMLResponse
 
+from config import settings
 from config.type_events import EVENT_DESCRIPTIONS
 
-router = APIRouter(prefix="/app", tags=["app"])
+router = APIRouter()
+# router = APIRouter(prefix="/mobapp", tags=["mobapp"])
 
 
-@router.get("")
+@router.get("/download")
 async def download_app(request: Request):
     user_agent = request.headers.get("user-agent", "").lower()
 
@@ -31,3 +34,28 @@ async def get_events():
         {"event_type": event, "description": description}
         for event, description in EVENT_DESCRIPTIONS.items()
     ]
+
+
+# @router.get("/share/{uuid}")
+# async def redirect_to_app(uuid: str):
+    # # Генерируем deep link, который будет открыт в приложении
+    # deep_link_url = settings.deep_link_url
+    # deep_link = f"{deep_link_url}{uuid}"
+    #
+    # # Редиректим пользователя на deep link
+    # return RedirectResponse(url=deep_link)
+
+
+@router.get("/share/{uuid}", response_class=HTMLResponse)
+async def redirect_to_app(uuid: str):
+    html_content = f"""
+    <html>
+        <head>
+            <title>Check Sharing</title>
+        </head>
+        <body>
+            <h1>Check Shared Successfully!</h1>
+        </body>
+    </html>
+    """
+    return html_content
