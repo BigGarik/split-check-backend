@@ -1,13 +1,6 @@
-import json
-
 from fastapi import Depends
-from loguru import logger
 
-from src.api.v1.endpoints.websockets import ws_manager
-from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
-from src.repositories.user_selection import add_or_update_user_selection, get_user_selection_by_check_uuid
-from src.utils.notifications import create_event_message, create_event_status_message
 
 
 async def user_selection_task(user_id: int,

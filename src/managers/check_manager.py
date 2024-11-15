@@ -17,6 +17,7 @@ from src.repositories.check import (
     get_check_by_uuid,
     update_check_data_to_database
 )
+from src.repositories.user import get_users_by_check_uuid
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
 from src.services.user import join_user_to_check
 from src.utils.notifications import create_event_message, create_event_status_message
@@ -200,14 +201,14 @@ class CheckManager:
                                                selection_data=selection_data)
 
             # Получаем участников и пользователей, связанных с чеком
-            participants, users = await get_user_selection_by_check_uuid(self.session, check_uuid)
+            users = await get_users_by_check_uuid(self.session, check_uuid)
+            # participants, users = await get_user_selection_by_check_uuid(self.session, check_uuid)
 
             selections = {
                 "user_id": user_id,
                 "selected_items": selection_data['selected_items']
             }
             logger.info(f"selection_data: {selections}")
-            logger.debug(f"Участники: {participants}")
 
             # Формируем сообщения
             msg_for_all = create_event_message(
