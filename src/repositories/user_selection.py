@@ -8,10 +8,8 @@ from src.config.settings import settings
 from src.models import UserSelection
 from src.redis import redis_client
 from src.repositories.user import get_users_by_check_uuid
-from src.utils.db import with_db_session
 
 
-@with_db_session()
 async def add_or_update_user_selection(session: AsyncSession, user_id: int, check_uuid: str, selection_data: dict):
     """
     Добавить или обновить запись в таблице user_selections.
@@ -56,7 +54,6 @@ async def add_or_update_user_selection(session: AsyncSession, user_id: int, chec
         raise Exception(f"Ошибка при обновлении данных пользователя: {str(e)}")
 
 
-@with_db_session()
 async def get_user_selection_by_user(session: AsyncSession, user_id: int, check_uuid: str):
     stmt = select(UserSelection).filter_by(user_id=user_id, check_uuid=check_uuid)
     result = await session.execute(stmt)
@@ -64,51 +61,49 @@ async def get_user_selection_by_user(session: AsyncSession, user_id: int, check_
     return user_selections
 
 
-async def get_user_selection_by_check_uuid(check_uuid: str):
-    users = await get_users_by_check_uuid(check_uuid)
+async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: str):
+    users = await get_users_by_check_uuid(session, check_uuid)
     logger.debug(f"Получили пользователей: {', '.join([str(user) for user in users])}")
 
     participants = []
 
     for user in users:
         redis_key = f"user_selection:{user.id}:{check_uuid}"
-        logger.debug(f"Получили redis_key: {redis_key}")
 
-        # Пытаемся получить данные из Redis
-        user_selection = await redis_client.get(redis_key)
-        logger.debug(f"Получили user_selection из redis: {user_selection}")
+        # Пытаемся получить данные из Redis или БД
+        selection_data = {}
+        redis_data = await redis_client.get(redis_key)
 
-        # Если данных нет в Redis, берем из базы данных
-        if not user_selection:
-            user_selection = await get_user_selection_by_user(user_id=user.id, check_uuid=check_uuid)
+        if redis_data:
+            selection_data = json.loads(redis_data)
+        else:
+            user_selection = await get_user_selection_by_user(session=session,
+                                                              user_id=user.id,
+                                                              check_uuid=check_uuid)
+            if user_selection:
+                selection_data = user_selection.selection
 
-        # Если user_selection — это объект, нам нужно извлечь поле selection
-        if user_selection:
-            if isinstance(user_selection, str):
-                # Если данные пришли из Redis в виде строки, преобразуем их
-                selection_data = json.loads(user_selection)
-            else:
-                # Если данные пришли из базы, то это объект SQLAlchemy
-                selection_data = user_selection.selection  # Это поле должно быть JSON (dict)
-                logger.debug(f"Получили user_selection из базы: {user_selection}")
+        # Создаем структуру для каждого участника
+        participant = {
+            "user_id": user.id,
+            "selected_items": []
+        }
 
-            logger.debug(f"Получили selection_data: {selection_data}")
+        logger.debug(f"Получили selection_data: {selection_data}")
 
-            # Создаем структуру для каждого участника
-            participant = {
-                "user_id": user.id,
-                "selected_items": []
-            }
-
-            # Добавляем выбранные позиции пользователя
-            for item in selection_data.get('selected_items', []):
-                selected_item = {
-                    "item_id": item['item_id'],
-                    "quantity": item['quantity']
+        # Формируем структуру участника
+        participant = {
+            "user_id": user.id,
+            "selected_items": [
+                {
+                    "item_id": item["item_id"],
+                    "quantity": item["quantity"]
                 }
-                participant["selected_items"].append(selected_item)
+                for item in selection_data.get("selected_items", [])
+            ]
+        }
 
-            participants.append(participant)
+        participants.append(participant)
 
     logger.debug(f"Получили participants: {participants}")
 

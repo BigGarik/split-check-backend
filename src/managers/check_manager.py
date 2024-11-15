@@ -17,7 +17,7 @@ from src.repositories.check import (
     get_check_by_uuid,
     update_check_data_to_database
 )
-from src.repositories.user_selection import get_user_selection_by_check_uuid
+from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
 from src.services.user import join_user_to_check
 from src.utils.notifications import create_event_message, create_event_status_message
 
@@ -108,7 +108,7 @@ class CheckManager:
 
     async def send_check_data(self, user_id: int, check_uuid: str) -> None:
         check_data = await self.get_check_data_by_uuid(check_uuid)
-        participants, _ = await get_user_selection_by_check_uuid(check_uuid)
+        participants, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
 
         check_data["participants"] = json.loads(participants)
         msg = create_event_message(settings.Events.BILL_DETAIL_EVENT, check_data)
@@ -181,6 +181,63 @@ class CheckManager:
             await self._send_ws_message(user_id, status_message)
         except Exception as e:
             await self._handle_error(user_id, settings.Events.CHECK_DELETE_EVENT_STATUS, e)
+
+    async def handle_user_selection(self, user_id: int, check_uuid: str, selection_data: dict) -> None:
+        """
+        Обновляет выбор пользователя и отправляет обновленную информацию всем связанным пользователям.
+
+        Args:
+            user_id: Идентификатор пользователя
+            check_uuid: UUID чека
+            selection_data: Данные выбора для сохранения
+        """
+        logger.debug(f"handle_user_selection: {user_id}, {check_uuid}, {selection_data}")
+        try:
+            # Обновляем или добавляем выбор пользователя
+            await add_or_update_user_selection(self.session,
+                                               user_id=user_id,
+                                               check_uuid=check_uuid,
+                                               selection_data=selection_data)
+
+            # Получаем участников и пользователей, связанных с чеком
+            participants, users = await get_user_selection_by_check_uuid(self.session, check_uuid)
+
+            selections = {
+                "user_id": user_id,
+                "selected_items": selection_data['selected_items']
+            }
+            logger.info(f"selection_data: {selections}")
+            logger.debug(f"Участники: {participants}")
+
+            # Формируем сообщения
+            msg_for_all = create_event_message(
+                message_type=settings.Events.CHECK_SELECTION_EVENT,
+                payload={"uuid": check_uuid, "participants": [selections]},
+            )
+            msg_for_author = create_event_status_message(
+                message_type=settings.Events.CHECK_SELECTION_EVENT_STATUS,
+                status="success"
+            )
+
+            # Получаем все user_id для рассылки сообщений
+            extra_user_ids = {2, 3, 5, 6}
+            all_user_ids = {user.id for user in users} | extra_user_ids
+            logger.debug(f"Все пользователи для отправки: {all_user_ids}")
+
+            # Отправка сообщений всем пользователям
+            for uid in all_user_ids:
+                msg = msg_for_author if uid == user_id else msg_for_all
+                try:
+                    await self._send_ws_message(uid, msg)
+                except Exception as e:
+                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+
+        except Exception as e:
+            await self._handle_error(
+                user_id,
+                settings.Events.CHECK_SELECTION_EVENT_STATUS,
+                e
+            )
 
 
 async def get_check_manager(session: AsyncSession) -> CheckManager:

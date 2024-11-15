@@ -42,7 +42,7 @@ class ItemService:
                 message="Item successfully added to check"
             )
 
-            users = await get_users_by_check_uuid(check_uuid)
+            users = await get_users_by_check_uuid(self.session, check_uuid)
             for user in users:
                 if user.id == user_id:
                     await self._send_ws_message(user_id, msg_for_author)
@@ -73,7 +73,7 @@ class ItemService:
                 message="Item successfully removed from check"
             )
 
-            users = await get_users_by_check_uuid(check_uuid)
+            users = await get_users_by_check_uuid(self.session, check_uuid)
             for user in users:
                 if user.id == user_id:
                     await self._send_ws_message(user_id, msg_for_author)
@@ -105,7 +105,7 @@ class ItemService:
                 message="Item successfully edited in check"
             )
 
-            users = await get_users_by_check_uuid(check_uuid)
+            users = await get_users_by_check_uuid(self.session, check_uuid)
             for user in users:
                 if user.id == user_id:
                     await self._send_ws_message(user_id, msg_for_author)
@@ -128,7 +128,7 @@ class ItemService:
             quantity = item_data["quantity"]
 
             await update_item_quantity(self.session, check_uuid, item_id, quantity)
-            users = await get_users_by_check_uuid(check_uuid)
+            users = await get_users_by_check_uuid(self.session, check_uuid)
 
             msg_for_all = create_event_message(
                 message_type=settings.Events.ITEM_SPLIT_EVENT,

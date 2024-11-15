@@ -96,7 +96,6 @@ async def get_user_by_id(session, user_id: int) -> Optional[User]:
     return result.scalars().first()
 
 
-@with_db_session()
 async def get_users_by_check_uuid(session, check_uuid: str) -> List[User]:
     """Получение списка пользователей по UUID чека."""
     query = (
