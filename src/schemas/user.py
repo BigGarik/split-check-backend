@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, constr, HttpUrl, AnyUrl, AnyHttpUrl
 
 
 class UserCreate(BaseModel):
@@ -16,13 +16,32 @@ class User(BaseModel):
 
 
 class UserProfileBase(BaseModel):
-    nickname: Optional[str] = Field(None, max_length=50)
-    language: Optional[str] = Field(None, max_length=10)
-    avatar_url: Optional[str] = Field(None, max_length=255)
+    nickname: Optional[constr(strip_whitespace=True, min_length=1, max_length=50)] = Field(
+        None, description="Никнейм пользователя"
+    )
+    language: Optional[constr(strip_whitespace=True, pattern=r"^[a-z]{2}$")] = Field(
+        None, description="Код языка в формате ISO 639-1 (например, 'en' или 'ru')"
+    )
+    avatar_url: Optional[AnyHttpUrl] = Field(
+        None, description="URL аватара пользователя"
+    )
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "nickname": "JohnDoe",
+                    "language": "en",
+                    "avatar_url": "https://example.com/avatar.jpg"
+                }
+            ]
+        }
+    )
 
 
 class UserProfileUpdate(UserProfileBase):
-    pass
+    """Схема для обновления профиля пользователя."""
 
 
 class UserProfileResponse(UserProfileBase):
@@ -31,5 +50,4 @@ class UserProfileResponse(UserProfileBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

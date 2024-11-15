@@ -79,7 +79,7 @@ async def handle_get_user_profile_task(task_data: dict):
 async def handle_update_user_profile_task(task_data: dict):
     await update_user_profile_task(
         user_id=task_data["user_id"],
-        profile_data=UserProfileUpdate(**task_data["profile_data"])
+        profile_data=task_data["profile_data"]
     )
 
 

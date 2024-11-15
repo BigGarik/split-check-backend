@@ -38,8 +38,9 @@ async def get_user_profile_task(user_id: int):
 
 
 async def update_user_profile_task(user_id: int,
-                                   profile_data: UserProfileUpdate):
+                                   profile_data: str):
     """Обновить профиль текущего пользователя"""
+    profile_data = json.loads(profile_data)
     profile = await update_user_profile_db(user_id, profile_data)
     if profile:
         # Преобразуем SQLAlchemy модель в Pydantic модель

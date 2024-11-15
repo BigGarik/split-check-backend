@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from loguru import logger
+
 from src.api.deps import get_current_user
 from src.models.user import User
 from src.redis import queue_processor
@@ -24,12 +24,13 @@ async def get_profile(user: Annotated[User, Depends(get_current_user)]):
 @router.put("/profile")
 async def update_profile(profile_data: UserProfileUpdate,
                          user: Annotated[User, Depends(get_current_user)]):
+    profile_dict = profile_data.model_dump(exclude_unset=True)
+    serialized_profile_dict = UserProfileUpdate.model_validate(profile_dict).model_dump_json()
 
-    profile_data_dict = profile_data.model_dump()
     task_data = {
         "type": "update_user_profile_task",
         "user_id": user.id,
-        "profile_data": profile_data_dict
+        "profile_data": serialized_profile_dict
     }
 
     await queue_processor.push_task(task_data)
