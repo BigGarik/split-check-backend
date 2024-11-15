@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-
+from loguru import logger
 from src.api.deps import get_current_user
 from src.models.user import User
 from src.redis import queue_processor
@@ -17,7 +17,7 @@ async def get_profile(user: Annotated[User, Depends(get_current_user)]):
         "type": "get_user_profile_task",
         "user_id": user.id
     }
-
+    logger.debug(user.id)
     await queue_processor.push_task(task_data)
     return {"message": "Данные отправлены в WebSocket"}
 

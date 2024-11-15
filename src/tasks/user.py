@@ -10,8 +10,9 @@ from src.repositories.profile import get_user_profile_db, update_user_profile_db
 from src.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
 
 
-async def get_user_profile_task(user_id: int, check_manager: CheckManager = Depends(get_check_manager)):
+async def get_user_profile_task(user_id: int):
     """Получить профиль текущего пользователя"""
+    logger.debug(f"user_id: {user_id}")
     profile = await get_user_profile_db(user_id)
     if profile:
         # Преобразуем SQLAlchemy модель в Pydantic модель
