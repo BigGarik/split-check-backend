@@ -70,11 +70,9 @@ async def handle_delete_check_task(session: AsyncSession, task_data: dict):
     )
 
 
-@with_db_session()
-async def handle_get_user_profile_task(session: AsyncSession, task_data: dict):
+async def handle_get_user_profile_task(task_data: dict):
     await get_user_profile_task(
-        user_id=task_data["user_id"],
-        check_manager=CheckManager(session)
+        user_id=task_data["user_id"]
     )
 
 
