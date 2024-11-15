@@ -12,14 +12,10 @@ from src.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
 
 async def get_user_profile_task(user_id: int):
     """Получить профиль текущего пользователя"""
-    logger.debug(f"user_id: {user_id}")
     profile = await get_user_profile_db(user_id)
-    logger.debug(f"profile: {profile}")
     if profile:
         # Преобразуем SQLAlchemy модель в Pydantic модель
         profile_response = UserProfileResponse.model_validate(profile)
-
-        logger.debug(f"profile_response: {profile_response}")
 
         profile_payload = UserProfileBase(
             nickname=profile_response.nickname,
@@ -42,10 +38,8 @@ async def get_user_profile_task(user_id: int):
 
 
 async def update_user_profile_task(user_id: int,
-                                   profile_data: UserProfileUpdate,
-                                   check_manager: CheckManager = Depends(get_check_manager)):
+                                   profile_data: UserProfileUpdate):
     """Обновить профиль текущего пользователя"""
-    logger.debug(f"profile_data: {profile_data}")
     profile = await update_user_profile_db(user_id, profile_data)
     if profile:
         # Преобразуем SQLAlchemy модель в Pydantic модель

@@ -17,7 +17,6 @@ async def get_profile(user: Annotated[User, Depends(get_current_user)]):
         "type": "get_user_profile_task",
         "user_id": user.id
     }
-    logger.debug(f"user_id: {user.id}")
     await queue_processor.push_task(task_data)
     return {"message": "Данные отправлены в WebSocket"}
 
@@ -27,7 +26,6 @@ async def update_profile(profile_data: UserProfileUpdate,
                          user: Annotated[User, Depends(get_current_user)]):
 
     profile_data_dict = profile_data.model_dump()
-    logger.debug(f"user_id: {user.id}")
     task_data = {
         "type": "update_user_profile_task",
         "user_id": user.id,

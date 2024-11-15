@@ -11,7 +11,6 @@ from src.utils.db import with_db_session
 @with_db_session()
 async def get_user_profile_db(session, user_id: int) -> Optional[UserProfile]:
     """Получение профиля пользователя по user_id."""
-    logger.debug(f'Получение профиля пользователя по user_id: {user_id}')
     stmt = select(UserProfile).filter_by(user_id=user_id)
     result = await session.execute(stmt)
     return result.scalars().first()
@@ -33,7 +32,11 @@ async def create_user_profile_db(session, user_id: int, profile_data: UserProfil
 @with_db_session()
 async def update_user_profile_db(session, user_id: int, profile_data: UserProfileUpdate) -> UserProfile:
     """Обновление профиля пользователя."""
-    profile = await session.get(UserProfile, user_id)
+
+    stmt = select(UserProfile).filter_by(user_id=user_id)
+    result = await session.execute(stmt)
+    profile = result.scalars().first()
+
     if not profile:
         raise HTTPException(status_code=404, detail="User profile not found")
 
