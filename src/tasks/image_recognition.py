@@ -3,6 +3,7 @@ import os
 
 from fastapi import Depends
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
@@ -157,21 +158,7 @@ async def recognize_image_task(
 
             logger.debug(f"Recognition completed for check_uuid {check_uuid}")
 
-            await add_check_to_database(check_uuid, user_id, recognized_json)
-
-            # Сохранение результатов в Redis
-            redis_key = f"check_uuid:{check_uuid}"
-            task_data = json.dumps(recognized_json)
-            await redis_client.set(redis_key, task_data, expire=settings.redis_expiration)
-
-            msg = {
-                "type": settings.Events.IMAGE_RECOGNITION_EVENT,
-                "payload": {
-                    "uuid": check_uuid,
-                },
-            }
-            msg_to_ws = json.dumps(msg)
-            await ws_manager.send_personal_message(msg_to_ws, user_id)
+            await check_manager.add_check(user_id, check_uuid, recognized_json)
 
         else:
             error_msg = {

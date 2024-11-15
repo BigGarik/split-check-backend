@@ -118,7 +118,8 @@ async def handle_add_item_task(session: AsyncSession, task_data: dict):
 async def handle_delete_item_task(session: AsyncSession, task_data: dict):
     await delete_item_task(
         user_id=task_data["user_id"],
-        item_data=task_data["item_data"],
+        check_uuid=task_data["check_uuid"],
+        item_id=task_data["item_id"],
         check_manager=CheckManager(session)
     )
 

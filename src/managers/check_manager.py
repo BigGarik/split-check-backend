@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException
 
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
+from src.managers.item_manager import ItemService
 from src.redis import redis_client
 from src.repositories.check import (
     get_all_checks,
@@ -24,6 +25,20 @@ from src.utils.notifications import create_event_message, create_event_status_me
 class CheckManager:
     def __init__(self, session: AsyncSession):
         self.session = session
+        self.item_service = ItemService(session)
+
+    # Используем метод из ItemService
+    async def add_item(self, user_id: int, check_uuid: str, item_data: dict):
+        await self.item_service.add_item(user_id, check_uuid, item_data)
+
+    async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
+        await self.item_service.delete_item(user_id, check_uuid, item_id)
+
+    async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
+        await self.item_service.edit_item(user_id, check_uuid, item_data)
+
+    async def split_item(self, user_id: int, check_uuid: str, item_data: dict):
+        await self.item_service.split_item(user_id, check_uuid, item_data)
 
     @staticmethod
     async def _send_ws_message(user_id: int, message: Dict[str, Any]) -> None:
@@ -41,8 +56,23 @@ class CheckManager:
         )
         await self._send_ws_message(user_id, error_message)
 
-    @staticmethod
-    async def get_check_data_by_uuid(check_uuid: str) -> Dict[str, Any]:
+    async def add_check(self, user_id: int, check_uuid: str, check_data: dict) -> None:
+
+        await add_check_to_database(self.session, check_uuid, user_id, check_data)
+
+        # Сохранение результатов в Redis
+        redis_key = f"check_uuid:{check_uuid}"
+        await redis_client.set(redis_key,
+                               json.dumps(check_data),
+                               expire=settings.redis_expiration)
+
+        msg = create_event_message(
+            message_type=settings.Events.IMAGE_RECOGNITION_EVENT,
+            payload={"uuid": check_uuid}
+        )
+        await self._send_ws_message(user_id, msg)
+
+    async def get_check_data_by_uuid(self, check_uuid: str) -> Dict[str, Any]:
         redis_key = f"check_uuid:{check_uuid}"
 
         # Попытка получить данные из Redis
@@ -52,7 +82,7 @@ class CheckManager:
             return json.loads(cached_data)
 
         # Если нет в Redis, ищем в базе данных
-        check = await get_check_by_uuid(check_uuid)
+        check = await get_check_by_uuid(self.session, check_uuid)
         if not check:
             logger.warning(f"Чек не найден: {check_uuid}")
             raise HTTPException(status_code=404, detail="Check not found")
@@ -67,10 +97,9 @@ class CheckManager:
         logger.debug(f"Данные чека получены из БД: {check_uuid}")
         return check.check_data
 
-    @staticmethod
-    async def update_check_data(check_uuid: str, check_data: dict) -> dict:
+    async def update_check_data(self, check_uuid: str, check_data: dict) -> dict:
 
-        await update_check_data_to_database(check_data)
+        await update_check_data_to_database(self.session, check_uuid, check_data)
 
         # Обновляем кэш Redis
         redis_key = f"check_uuid:{check_uuid}"
@@ -116,7 +145,7 @@ class CheckManager:
             "vat": {"rate": 0, "amount": 0},
             "total": 0
         }
-        await add_check_to_database(check_uuid, user_id, check_data)
+        await add_check_to_database(self.session, check_uuid, user_id, check_data)
 
         # Кэширование в Redis
         await redis_client.set(
@@ -144,7 +173,7 @@ class CheckManager:
 
     async def delete_check(self, user_id: int, check_uuid: str) -> None:
         try:
-            await delete_association_by_check_uuid(check_uuid, user_id)
+            await delete_association_by_check_uuid(self.session, check_uuid, user_id)
             status_message = create_event_status_message(
                 message_type=settings.Events.CHECK_DELETE_EVENT_STATUS,
                 status="success"

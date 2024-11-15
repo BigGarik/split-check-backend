@@ -11,11 +11,11 @@ router = APIRouter()
 
 
 @router.get("/profile")
-async def get_profile(current_user: Annotated[User, Depends(get_current_user)]):
+async def get_profile(user: Annotated[User, Depends(get_current_user)]):
 
     task_data = {
         "type": "get_user_profile_task",
-        "user_id": current_user.id
+        "user_id": user.id
     }
 
     await queue_processor.push_task(task_data)

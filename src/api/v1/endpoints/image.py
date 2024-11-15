@@ -13,7 +13,6 @@ async def upload_image(
     user: User = Depends(get_current_user),
     file: UploadFile = File(...)
 ):
-    logger.debug(f"User {user.id} uploading image.")
     # Подготовка данных для задачи и отправка в Redis
     task_data = await prepare_image_upload(user.id, file)
     await queue_processor.push_task(task_data)

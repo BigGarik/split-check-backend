@@ -1,7 +1,7 @@
 import json
 from typing import Dict, Any
 
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,10 +12,8 @@ from src.models import Check
 from src.redis import redis_client
 from src.schemas import AddItemRequest, EditItemRequest
 from src.utils.check import recalculate_check_totals
-from src.utils.db import with_db_session
 
 
-@with_db_session()
 async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id: int) -> dict:
     """
     Удаление элемента из чека по его id
@@ -82,7 +80,6 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
     return removed_item
 
 
-@with_db_session()
 async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: AddItemRequest) -> dict:
     """Добавление элемента в чек и возврат обновленного объекта Check"""
 
@@ -145,7 +142,6 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
     return new_item
 
 
-@with_db_session()
 async def edit_item_in_check(
     session: AsyncSession,
     check_uuid: str,
@@ -209,3 +205,38 @@ async def edit_item_in_check(
 
     logger.debug(f"Обновленные данные check: {check_data}")
     return check_data
+
+
+async def update_item_quantity(session: AsyncSession, check_uuid: str, item_id: int, quantity: int):
+    try:
+        # Проверка существования чека
+        check = await session.get(Check, check_uuid)
+        if not check:
+            logger.warning(f"Чек с UUID {check_uuid} не найден.")
+            raise ValueError("Check not found")
+
+        # Обновление количества, если элемент найден
+        updated = False
+        for item in check.check_data.get("items", []):
+            if item["id"] == item_id:
+                item["quantity"] = quantity
+                updated = True
+                logger.info(f"Обновлено количество для элемента {item_id} в чеке {check_uuid} на {quantity}")
+                break
+
+        if not updated:
+            logger.warning(f"Элемент с ID {item_id} не найден в чеке {check_uuid}")
+            raise ValueError("ItemRequest not found in check data")
+
+        # Явное обновление поля check_data
+        flag_modified(check, "check_data")
+        await session.commit()
+
+        # Обновление кэша Redis, если данные изменены
+        redis_key = f"check_uuid:{check_uuid}"
+        await redis_client.set(redis_key, json.dumps(check.check_data), expire=settings.redis_expiration)
+        logger.info(f"Данные чека {check_uuid} обновлены в Redis.")
+
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении количества элемента: {e}")
+        raise e

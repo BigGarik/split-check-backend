@@ -1,6 +1,5 @@
-import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Optional
 
 from loguru import logger
 from sqlalchemy import select, insert, delete, func
@@ -10,13 +9,9 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
-from src.config.settings import settings
 from src.models import Check, user_check_association, User
-from src.redis import redis_client
-from src.utils.db import with_db_session
 
 
-@with_db_session()
 async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[Check]:
     stmt = select(Check).filter_by(uuid=check_uuid)
     result = await session.execute(stmt)
@@ -75,7 +70,6 @@ async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[
 #         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@with_db_session()
 async def update_check_data_to_database(session: AsyncSession, check_uuid: str, check_data: dict):
 
     check = await get_check_by_uuid(session, check_uuid)
@@ -88,7 +82,6 @@ async def update_check_data_to_database(session: AsyncSession, check_uuid: str, 
     await session.commit()
 
 
-@with_db_session()
 async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id: int, check_data: dict):
     try:
         # Создаем новый чек
@@ -111,43 +104,6 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
         raise e
 
 
-@with_db_session()
-async def update_item_quantity(session: AsyncSession, check_uuid: str, item_id: int, quantity: int):
-    try:
-        # Проверка существования чека
-        check = await session.get(Check, check_uuid)
-        if not check:
-            logger.warning(f"Чек с UUID {check_uuid} не найден.")
-            raise ValueError("Check not found")
-
-        # Обновление количества, если элемент найден
-        updated = False
-        for item in check.check_data.get("items", []):
-            if item["id"] == item_id:
-                item["quantity"] = quantity
-                updated = True
-                logger.info(f"Обновлено количество для элемента {item_id} в чеке {check_uuid} на {quantity}")
-                break
-
-        if not updated:
-            logger.warning(f"Элемент с ID {item_id} не найден в чеке {check_uuid}")
-            raise ValueError("ItemRequest not found in check data")
-
-        # Явное обновление поля check_data
-        flag_modified(check, "check_data")
-        await session.commit()
-
-        # Обновление кэша Redis, если данные изменены
-        redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key, json.dumps(check.check_data), expire=settings.redis_expiration)
-        logger.info(f"Данные чека {check_uuid} обновлены в Redis.")
-
-    except Exception as e:
-        logger.error(f"Ошибка при обновлении количества элемента: {e}")
-        raise e
-
-
-@with_db_session()
 async def delete_association_by_check_uuid(session: AsyncSession, check_uuid: str, user_id: int):
     try:
         # Формируем запрос на удаление
