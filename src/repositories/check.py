@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
-from src.models import Check, user_check_association, User
+from src.models import Check, user_check_association, User, UserSelection
 
 
 async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[Check]:
@@ -106,14 +106,19 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
 
 async def delete_association_by_check_uuid(session: AsyncSession, check_uuid: str, user_id: int):
     try:
-        # Формируем запрос на удаление
-        stmt = delete(user_check_association).where(
+        # Удаление записей из user_selections перед удалением ассоциации
+        stmt_delete_selections = delete(UserSelection).where(
+            UserSelection.user_id == user_id,
+            UserSelection.check_uuid == check_uuid
+        )
+        await session.execute(stmt_delete_selections)
+
+        # Формируем запрос на удаление из user_check_association
+        stmt_delete_association = delete(user_check_association).where(
             user_check_association.c.check_uuid == check_uuid,
             user_check_association.c.user_id == user_id
         )
-
-        # Выполняем запрос
-        result = await session.execute(stmt)
+        result = await session.execute(stmt_delete_association)
 
         # Проверка на наличие ассоциации для удаления
         if result.rowcount == 0:

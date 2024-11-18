@@ -162,14 +162,15 @@ async def recognize_image_task(
 
         else:
             error_msg = {
-                    "type": settings.Events.IMAGE_RECOGNITION_EVENT_STATUS,
-                    "status": "error",
-                    "message": f"Image classification failed with result: {classification_result}"
-                }
+                "type": settings.Events.IMAGE_RECOGNITION_EVENT_STATUS,
+                "status": "error",
+                "message": f"Image classification failed with result: {classification_result}"
+            }
             msg_to_ws = json.dumps(error_msg)
             await ws_manager.send_personal_message(msg_to_ws, user_id)
 
-            logger.warning(f"Image classification for check_uuid {check_uuid} failed with result: {classification_result}")
+            logger.warning(
+                f"Image classification for check_uuid {check_uuid} failed with result: {classification_result}")
     except Exception as e:
 
         error_msg = {
