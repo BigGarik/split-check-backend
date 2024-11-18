@@ -183,6 +183,7 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
             .join(Check.users)
             .where(User.id == user_id)
             .options(selectinload(Check.users))
+            .order_by(Check.created_at.desc())
             .offset(offset)
             .limit(page_size)
         )
