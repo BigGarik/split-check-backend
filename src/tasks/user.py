@@ -23,9 +23,9 @@ async def get_user_profile_task(user_id: int):
         profile_payload = UserProfileBase(
             nickname=profile_response.nickname,
             language=profile_response.language,
-            avatar_url=profile_response.avatar_url,
-            email=email
+            avatar_url=profile_response.avatar_url
         ).model_dump()
+        profile_payload["email"] = email
 
         # Создаем структуру сообщения
         msg = {
