@@ -16,6 +16,8 @@ async def get_user_profile_task(user_id: int):
 
     email = await get_user_email(user_id)
 
+    logger.debug(f"email: {email}")
+
     if profile:
         # Преобразуем SQLAlchemy модель в Pydantic модель
         profile_response = UserProfileResponse.model_validate(profile)
