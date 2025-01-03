@@ -13,7 +13,7 @@ from src.utils.db import with_db_session
 @with_db_session()
 async def get_user_email(session, user_id: int) -> Optional[str]:
     """Получение email пользователя по user_id."""
-    stmt = select(User).filter_by(user_id=user_id)
+    stmt = select(User).filter_by(id=user_id)
     result = await session.execute(stmt)
     return result.scalars().first().email
 
