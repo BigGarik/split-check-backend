@@ -143,6 +143,7 @@ def register_redis_handlers():
 
     queue_processor.register_handler("recognize_image_task", handle_recognize_image_task)
     queue_processor.register_handler("send_all_checks_task", handle_send_all_checks_task)
+    queue_processor.register_handler("send_main_page_checks_task", handle_send_main_page_checks_task)
     queue_processor.register_handler("send_check_data_task", handle_send_check_data_task)
     queue_processor.register_handler("user_selection_task", handle_user_selection_task)
     queue_processor.register_handler("split_item_task", handle_split_item_task)

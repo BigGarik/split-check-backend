@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from loguru import logger
-from sqlalchemy import select, insert, delete, func
+from sqlalchemy import select, insert, delete, func, and_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -71,7 +71,6 @@ async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[
 
 
 async def update_check_data_to_database(session: AsyncSession, check_uuid: str, check_data: dict):
-
     check = await get_check_by_uuid(session, check_uuid)
     if not check:
         raise HTTPException(status_code=404, detail="Check not found")
@@ -130,12 +129,14 @@ async def delete_association_by_check_uuid(session: AsyncSession, check_uuid: st
         logger.debug(f"Association with check_uuid={check_uuid} and user_id={user_id} deleted successfully.")
 
     except SQLAlchemyError as e:
-        logger.error(f"Database error while deleting association for check_uuid={check_uuid} and user_id={user_id}: {e}")
+        logger.error(
+            f"Database error while deleting association for check_uuid={check_uuid} and user_id={user_id}: {e}")
         await session.rollback()
         raise RuntimeError("Database error occurred while deleting the association.")
 
     except Exception as e:
-        logger.error(f"Unexpected error while deleting association for check_uuid={check_uuid} and user_id={user_id}: {e}")
+        logger.error(
+            f"Unexpected error while deleting association for check_uuid={check_uuid} and user_id={user_id}: {e}")
         await session.rollback()
         raise RuntimeError("An unexpected error occurred while deleting the association.")
 
@@ -146,7 +147,6 @@ def format_datetime(dt: datetime) -> str:
 
 
 async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, page_size: int = 10) -> dict:
-
     try:
         # Проверка существования пользователя
         user = await session.get(User, user_id)
@@ -170,7 +170,8 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
         # Определяем общее количество страниц и проверяем диапазон страницы
         total_pages = (total_checks + page_size - 1) // page_size
         if page < 1 or page > total_pages:
-            logger.warning(f"Запрошенная страница {page} выходит за пределы допустимого диапазона для пользователя {user_id}.")
+            logger.warning(
+                f"Запрошенная страница {page} выходит за пределы допустимого диапазона для пользователя {user_id}.")
             return {
                 "items": [],
                 "total": total_checks,
@@ -241,24 +242,25 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
         total_open = await session.scalar(
             select(func.count(Check.uuid))
             .join(Check.users)
-            .where(User.id == user_id and Check.is_open == True)
+            .where(and_(User.id == user_id, Check.is_open == True))
         )
         # Подсчёт количества закрытых чеков пользователя
         total_closed = await session.scalar(
             select(func.count(Check.uuid))
             .join(Check.users)
-            .where(User.id == user_id and Check.is_open == False)
+            .where(and_(User.id == user_id, Check.is_open == False))
         )
 
         # Получаем список чеков с пагинацией
-        checks = await session.execute(
+        result = await session.execute(
             select(Check)
             .join(Check.users)
             .where(User.id == user_id)
             .options(selectinload(Check.users))
             .order_by(Check.created_at.desc())
             .limit(5)
-        ).scalars().all()
+        )
+        checks = result.scalars().all()
 
         return {
             "items": [{
