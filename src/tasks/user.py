@@ -6,13 +6,16 @@ from loguru import logger
 from src.api.v1.endpoints.websockets import ws_manager
 from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
-from src.repositories.profile import get_user_profile_db, update_user_profile_db
+from src.repositories.profile import get_user_profile_db, update_user_profile_db, get_user_email
 from src.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
 
 
 async def get_user_profile_task(user_id: int):
     """Получить профиль текущего пользователя"""
     profile = await get_user_profile_db(user_id)
+
+    email = await get_user_email(user_id)
+
     if profile:
         # Преобразуем SQLAlchemy модель в Pydantic модель
         profile_response = UserProfileResponse.model_validate(profile)
@@ -20,7 +23,8 @@ async def get_user_profile_task(user_id: int):
         profile_payload = UserProfileBase(
             nickname=profile_response.nickname,
             language=profile_response.language,
-            avatar_url=profile_response.avatar_url
+            avatar_url=profile_response.avatar_url,
+            email=email
         ).model_dump()
 
         # Создаем структуру сообщения

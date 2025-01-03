@@ -3,9 +3,19 @@ from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.future import select
 from loguru import logger
+
+from src.models import User
 from src.models.profile import UserProfile
 from src.schemas import UserProfileUpdate
 from src.utils.db import with_db_session
+
+
+@with_db_session()
+async def get_user_email(session, user_id: int) -> Optional[str]:
+    """Получение email пользователя по user_id."""
+    stmt = select(User).filter_by(user_id=user_id)
+    result = await session.execute(stmt)
+    return result.scalars().first().email
 
 
 @with_db_session()
