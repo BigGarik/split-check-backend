@@ -140,10 +140,13 @@ async def delete_association_by_check_uuid(session: AsyncSession, check_uuid: st
         raise RuntimeError("An unexpected error occurred while deleting the association.")
 
 
+def format_datetime(dt: datetime) -> str:
+    """Преобразует datetime в строку ISO формата."""
+    return dt.isoformat() if dt else None
+
+
 async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, page_size: int = 10) -> dict:
-    def format_datetime(dt: datetime) -> str:
-        """Преобразует datetime в строку ISO формата."""
-        return dt.isoformat() if dt else None
+
     try:
         # Проверка существования пользователя
         user = await session.get(User, user_id)
@@ -218,5 +221,70 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
             "page": page,
             "page_size": page_size,
             "total_pages": 0,
+            "error": "Произошла неожиданная ошибка."
+        }
+
+
+async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
+    try:
+        # Проверка существования пользователя
+        user = await session.get(User, user_id)
+        if not user:
+            logger.warning(f"Пользователь с ID {user_id} не найден.")
+            return {
+                "items": [],
+                "total_open": 0,
+                "total_closed": 0,
+            }
+
+        # Подсчёт количества открытых чеков пользователя
+        total_open = await session.scalar(
+            select(func.count(Check.uuid))
+            .join(Check.users)
+            .where(User.id == user_id and Check.is_open == True)
+        )
+        # Подсчёт количества закрытых чеков пользователя
+        total_closed = await session.scalar(
+            select(func.count(Check.uuid))
+            .join(Check.users)
+            .where(User.id == user_id and Check.is_open == False)
+        )
+
+        # Получаем список чеков с пагинацией
+        checks = await session.execute(
+            select(Check)
+            .join(Check.users)
+            .where(User.id == user_id)
+            .options(selectinload(Check.users))
+            .order_by(Check.created_at.desc())
+            .limit(5)
+        ).scalars().all()
+
+        return {
+            "items": [{
+                "uuid": check.uuid,
+                "is_open": check.is_open,
+                "data": check.check_data['date'],
+                "total": check.check_data['total'],
+                "restaurant": check.check_data['restaurant'],
+            } for check in checks],
+            "total_open": total_open,
+            "total_closed": total_closed,
+        }
+
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка базы данных при получении чеков для пользователя {user_id}: {e}")
+        return {
+            "items": [],
+            "total_open": 0,
+            "total_closed": 0,
+            "error": "Ошибка базы данных при получении чеков."
+        }
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при получении чеков для пользователя {user_id}: {e}")
+        return {
+            "items": [],
+            "total_open": 0,
+            "total_closed": 0,
             "error": "Произошла неожиданная ошибка."
         }

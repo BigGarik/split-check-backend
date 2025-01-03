@@ -42,6 +42,20 @@ async def get_all_check(page: int = Query(default=1, ge=1),
     return {"message": "Данные чеков отправлены в очередь для передачи через WebSocket"}
 
 
+@router.get("/main_page")
+async def get_all_check(user: User = Depends(get_current_user)):
+
+    task_data = {
+        "type": "send_main_page_checks_task",
+        "user_id": user.id,
+    }
+
+    await queue_processor.push_task(task_data)
+
+    return {"message": "Данные главной страницы отправлены в очередь для передачи через WebSocket"}
+
+
+
 @router.get("/{uuid}")
 async def get_check(uuid: UUID,
                     user: User = Depends(get_current_user)):

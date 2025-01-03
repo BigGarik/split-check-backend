@@ -4,7 +4,7 @@ from src.managers.check_manager import CheckManager
 from src.redis import queue_processor
 from src.schemas import UserProfileUpdate
 from src.tasks import add_item_task, add_empty_check_task, delete_item_task, edit_item_task, join_check_task, \
-    delete_check_task, split_item_task, send_check_data_task, send_all_checks_task
+    delete_check_task, split_item_task, send_check_data_task, send_all_checks_task, send_main_page_checks_task
 from src.tasks.image_recognition import recognize_image_task
 from src.tasks.user import get_user_profile_task, update_user_profile_task
 from src.tasks.user_selection import user_selection_task
@@ -28,6 +28,14 @@ async def handle_send_all_checks_task(session: AsyncSession, task_data: dict):
         user_id=task_data["user_id"],
         page=task_data["page"],
         page_size=task_data["page_size"],
+        check_manager=CheckManager(session)
+    )
+
+
+@with_db_session()
+async def handle_send_main_page_checks_task(session: AsyncSession, task_data: dict):
+    await send_main_page_checks_task(
+        user_id=task_data["user_id"],
         check_manager=CheckManager(session)
     )
 

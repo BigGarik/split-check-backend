@@ -1,6 +1,7 @@
 class Events:
     BILL_DETAIL_EVENT = 'billDetailEvent'
     ALL_BILL_EVENT = 'allBillEvent'
+    MAIN_PAGE_EVENT = 'mainPageEvent'
     CHECK_ADD_EVENT = 'checkAddEvent'
     JOIN_BILL_EVENT_STATUS = 'joinBillEventStatus'
     CHECK_DELETE_EVENT_STATUS = 'checkDeleteEventStatus'
@@ -27,6 +28,7 @@ class Events:
 EVENT_DESCRIPTIONS = {
     Events.BILL_DETAIL_EVENT: "Получение детальной информации по конкретному счету",
     Events.ALL_BILL_EVENT: "Получение списка всех доступных счетов",
+    Events.MAIN_PAGE_EVENT: "Получение главной страницы",
     Events.CHECK_ADD_EVENT: "Добавление нового чека к счету",
     Events.JOIN_BILL_EVENT_STATUS: "Статус присоединения пользователя к счету",
     Events.CHECK_DELETE_EVENT_STATUS: "Статус удаления чека из счета",

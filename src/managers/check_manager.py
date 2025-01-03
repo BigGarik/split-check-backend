@@ -15,7 +15,7 @@ from src.repositories.check import (
     add_check_to_database,
     delete_association_by_check_uuid,
     get_check_by_uuid,
-    update_check_data_to_database
+    update_check_data_to_database, get_main_page_checks
 )
 from src.repositories.user import get_users_by_check_uuid
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
@@ -128,6 +128,18 @@ class CheckManager:
                     "pageSize": checks_data["page_size"],
                     "totalPages": checks_data["total_pages"]
                 }
+            }
+        )
+        await self._send_ws_message(user_id, msg)
+
+    async def send_main_page_checks(self, user_id: int) -> None:
+        checks_data = await get_main_page_checks(self.session, user_id)
+        msg = create_event_message(
+            message_type=settings.Events.MAIN_PAGE_EVENT,
+            payload={
+                "checks": checks_data["items"],
+                "total_open": checks_data["total_open"],
+                "total_closed": checks_data["total_closed"],
             }
         )
         await self._send_ws_message(user_id, msg)
