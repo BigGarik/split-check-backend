@@ -14,4 +14,4 @@ api_router.include_router(token.router, prefix="/token", tags=["token"])
 
 api_router.include_router(websockets.router, tags=["websockets"])
 
-# api_router.include_router(test.router, prefix="/test", tags=["test"])
+api_router.include_router(test.router, prefix="/testws", tags=["testws"])
