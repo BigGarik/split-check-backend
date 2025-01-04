@@ -4,7 +4,7 @@ import io
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 from loguru import logger
-from PIL.Image import Image
+from PIL import Image
 
 executor = ThreadPoolExecutor()
 

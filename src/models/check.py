@@ -1,6 +1,7 @@
+import enum
 from datetime import datetime
 from typing import List, Dict, Any
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, Enum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -8,11 +9,16 @@ from src.db.base import Base
 from src.models.associations import user_check_association
 
 
+class StatusEnum(enum.Enum):
+    OPEN = "OPEN"
+    CLOSE = "CLOSE"
+
+
 class Check(Base):
     __tablename__ = "checks"
     uuid: Mapped[str] = mapped_column(primary_key=True)
     check_data: Mapped[Dict[str, Any]] = mapped_column(JSONB)
-    is_open: Mapped[bool] = mapped_column(default=True)
+    status: Mapped[StatusEnum] = mapped_column(Enum(StatusEnum), default=StatusEnum.OPEN)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
         default=datetime.now,

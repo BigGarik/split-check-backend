@@ -57,6 +57,7 @@ async def recognize_check_by_anthropic(file_location_directory: str):
             max_tokens=2048,
             messages=message
         )
+        logger.info(f"Response: {response.content[0].text}")
         response_json = json.loads(response.content[0].text)
         return response_json
     except json.JSONDecodeError as e:
@@ -91,4 +92,4 @@ def test_claude():
 
 if __name__ == '__main__':
 
-    print(recognize_check_by_anthropic("../images/f2c63269-7faa-4e33-ae81-15da4dc3b65e"))
+    print(recognize_check_by_anthropic("../images/8e3e9dbe-b63f-4956-b73a-ce8ef067e5cc"))

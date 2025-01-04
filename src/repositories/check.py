@@ -242,13 +242,13 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
         total_open = await session.scalar(
             select(func.count(Check.uuid))
             .join(Check.users)
-            .where(and_(User.id == user_id, Check.is_open == True))
+            .where(and_(User.id == user_id, Check.status == "OPEN"))
         )
         # Подсчёт количества закрытых чеков пользователя
         total_closed = await session.scalar(
             select(func.count(Check.uuid))
             .join(Check.users)
-            .where(and_(User.id == user_id, Check.is_open == False))
+            .where(and_(User.id == user_id, Check.status == "CLOSE"))
         )
 
         # Получаем список чеков с пагинацией
@@ -265,10 +265,10 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
         return {
             "items": [{
                 "uuid": check.uuid,
-                "is_open": check.is_open,
-                "data": check.check_data['date'],
-                "total": check.check_data['total'],
-                "restaurant": check.check_data['restaurant'],
+                "status": check.status.value,
+                "date": check.check_data.get('date') if check.check_data else None,
+                "total": check.check_data.get('total') if check.check_data else None,
+                "restaurant": check.check_data.get('restaurant') if check.check_data else None,
             } for check in checks],
             "total_open": total_open,
             "total_closed": total_closed,

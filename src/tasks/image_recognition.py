@@ -10,6 +10,7 @@ from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
 from src.repositories.check import add_check_to_database
+from src.services.ai.api_anthropic import recognize_check_by_anthropic
 from src.services.classifier.classifier_image import classifier_image
 
 
