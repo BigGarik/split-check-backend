@@ -142,6 +142,7 @@ class CheckManager:
                 "total_closed": checks_data["total_closed"],
             }
         )
+        logger.debug(msg)
         await self._send_ws_message(user_id, msg)
 
     async def create_empty(self, user_id: int, check_uuid: str) -> None:
