@@ -43,6 +43,8 @@ class Check(Base):
 @event.listens_for(Check, 'before_insert')
 def generate_name(mapper, connection, target):
     # Генерируем имя по шаблону "check_created_at_первая часть uuid до тире"
+    if target.created_at is None:
+        target.created_at = datetime.now()
     created_at_str = target.created_at.strftime('%Y%m%d')
     uuid_part = target.uuid.split('-')[0]
     target.name = f"check_{created_at_str}_{uuid_part}"
