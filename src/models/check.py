@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from typing import List, Dict, Any
-from sqlalchemy import ForeignKey, UniqueConstraint, Enum
+from sqlalchemy import ForeignKey, UniqueConstraint, Enum, event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,7 @@ class StatusEnum(enum.Enum):
 class Check(Base):
     __tablename__ = "checks"
     uuid: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str]
     check_data: Mapped[Dict[str, Any]] = mapped_column(JSONB)
     status: Mapped[StatusEnum] = mapped_column(Enum(StatusEnum), default=StatusEnum.OPEN)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
@@ -37,6 +38,14 @@ class Check(Base):
 
     def __repr__(self) -> str:
         return f"Check(uuid={self.uuid})"
+
+
+@event.listens_for(Check, 'before_insert')
+def generate_name(mapper, connection, target):
+    # Генерируем имя по шаблону "check_created_at_первая часть uuid до тире"
+    created_at_str = target.created_at.strftime('%Y%m%d')
+    uuid_part = target.uuid.split('-')[0]
+    target.name = f"check_{created_at_str}_{uuid_part}"
 
 
 class UserSelection(Base):

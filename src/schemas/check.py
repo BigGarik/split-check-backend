@@ -47,3 +47,12 @@ class DeleteItemRequest(BaseModel):
 
 class CheckSelectionRequest(BaseModel):
     selected_items: List[ItemRequest] = Field(default_factory=list, description="Список выбранных товаров")
+
+
+class CheckListResponse(BaseModel):
+    uuid: str
+    name: str
+    status: str
+    date: str
+    total: Optional[Price]
+    restaurant: str

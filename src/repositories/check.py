@@ -10,6 +10,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
 from src.models import Check, user_check_association, User, UserSelection
+from src.schemas import CheckListResponse
 
 
 async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[Check]:
@@ -194,10 +195,16 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
         checks_page = checks.scalars().all()
 
         return {
-            "items": [{
-                "uuid": check.uuid,
-                "created_at": format_datetime(check.created_at)
-            } for check in checks_page],
+            "items": [
+                CheckListResponse(
+                    uuid=check.uuid,
+                    name=check.name,
+                    status=check.status.value,
+                    date=check.check_data.get('date') if check.check_data else None,
+                    total=check.check_data.get('total') if check.check_data else None,
+                    restaurant=check.check_data.get('restaurant') if check.check_data else None,
+                ).dict()
+                for check in checks_page],
             "total": total_checks,
             "page": page,
             "page_size": page_size,
@@ -263,13 +270,17 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
         checks = result.scalars().all()
 
         return {
-            "items": [{
-                "uuid": check.uuid,
-                "status": check.status.value,
-                "date": check.check_data.get('date') if check.check_data else None,
-                "total": check.check_data.get('total') if check.check_data else None,
-                "restaurant": check.check_data.get('restaurant') if check.check_data else None,
-            } for check in checks],
+            "items": [
+                CheckListResponse(
+                    uuid=check.uuid,
+                    name=check.name,
+                    status=check.status.value,
+                    date=check.check_data.get('date') if check.check_data else None,
+                    total=check.check_data.get('total') if check.check_data else None,
+                    restaurant=check.check_data.get('restaurant') if check.check_data else None,
+                ).dict()
+                for check in checks
+            ],
             "total_open": total_open,
             "total_closed": total_closed,
         }
