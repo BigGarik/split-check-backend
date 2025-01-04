@@ -40,3 +40,6 @@ fastapi-mail
 aiofiles
 torch
 starlette
+
+google-auth
+google-auth-oauthlib
