@@ -34,7 +34,7 @@ asyncpg
 
 transformers
 psutil
-
+fastapi_mail
 
 
 aiofiles

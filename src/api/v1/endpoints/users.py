@@ -1,11 +1,25 @@
-from fastapi import APIRouter
+from datetime import timedelta
+from typing import Dict
+
+from fastapi import APIRouter, Depends
 from fastapi import HTTPException
+from fastapi_mail import FastMail
+from jose import jwt
 from loguru import logger
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
+from starlette.responses import Response
 
 from src import schemas
+from src.config.mail import mail_config
+from src.config.settings import settings
 from src.core.exceptions import UserAlreadyExistsError, DatabaseOperationError
-from src.repositories.user import create_new_user
+from src.core.security import create_token, async_hash_password
+from src.repositories.user import create_new_user, get_user_by_email
+from src.schemas import PasswordResetRequest, PasswordReset
+from src.services.auth import send_password_reset_email, generate_tokens
+from src.utils.db import with_db_session, get_async_db
 
 router = APIRouter()
 
@@ -52,4 +66,113 @@ async def create_user(user_data: schemas.UserCreate) -> schemas.User:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred"
+        )
+
+
+@router.post("/request-reset", status_code=status.HTTP_202_ACCEPTED)
+async def request_password_reset(
+        request: PasswordResetRequest,
+        session: AsyncSession = Depends(get_async_db),
+        fastmail: FastMail = Depends(lambda: FastMail(mail_config))
+) -> Dict[str, str]:
+    """
+    Эндпоинт для запроса сброса пароля.
+    Отправляет email с токеном для сброса пароля.
+    """
+    try:
+        user = await get_user_by_email(session, request.email)
+
+        if user:
+            # Генерируем временный токен для сброса пароля
+            reset_token = await create_token(
+                data={"email": user.email, "user_id": user.id, "type": "password_reset"},
+                expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+                secret_key=settings.access_secret_key
+            )
+            await send_password_reset_email(request.email, reset_token, fastmail)
+
+        # Всегда возвращаем успешный ответ для предотвращения утечки информации
+        return {"message": "If an account with this email exists, a password reset link has been sent"}
+    except Exception as e:
+        logger.error(f"Error in password reset request: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+
+
+@router.post("/reset", status_code=status.HTTP_200_OK)
+@with_db_session()
+async def reset_password(
+        reset_data: PasswordReset,
+        response: Response,
+        session: AsyncSession = Depends(get_async_db)
+) -> Dict[str, str]:
+    """
+    Эндпоинт для установки нового пароля с использованием токена сброса.
+    При успешном сбросе пароля также генерирует новую пару токенов для аутентификации.
+    """
+    try:
+        # Проверяем токен сброса пароля
+        payload = jwt.decode(
+            reset_data.token,
+            settings.access_secret_key,
+            algorithms=[settings.algorithm]
+        )
+
+        if payload.get("type") != "password_reset":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid token type"
+            )
+
+        user = await get_user_by_email(session, payload["email"])
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        try:
+            # Хешируем новый пароль
+            hashed_password = await async_hash_password(reset_data.new_password)
+            user.hashed_password = hashed_password
+            await session.commit()
+            logger.info(f"Password reset successful for user {user.email}")
+
+            # Генерируем новую пару токенов
+            tokens = await generate_tokens(user.email, user.id)
+
+            # Устанавливаем refresh token в cookie
+            response.set_cookie(
+                key="refresh_token",
+                value=tokens["refresh_token"],
+                httponly=True,
+                secure=True,
+                samesite="strict",
+                max_age=settings.refresh_token_expire_days
+            )
+
+            return tokens
+
+        except IntegrityError as e:
+            logger.error(f"Integrity error while resetting password: {e}")
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reset password due to database error"
+            )
+
+    except jwt.JWTError as e:
+        logger.warning(f"Invalid JWT token in password reset: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token"
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in password reset: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
         )

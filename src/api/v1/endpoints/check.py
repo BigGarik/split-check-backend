@@ -55,7 +55,6 @@ async def get_all_check(user: User = Depends(get_current_user)):
     return {"message": "Данные главной страницы отправлены в очередь для передачи через WebSocket"}
 
 
-
 @router.get("/{uuid}")
 async def get_check(uuid: UUID,
                     user: User = Depends(get_current_user)):

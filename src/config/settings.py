@@ -7,6 +7,19 @@ from .type_events import Events
 
 
 class Settings(BaseSettings):
+    # email
+    mail_username: str
+    mail_password: str
+    mail_from: str
+    mail_port: int
+    mail_server: str
+    mail_ssl_tls: bool
+    mail_starttls: bool
+    use_credentials: bool
+
+    # fastapi
+    base_url: str
+
     # API Anthropic
     api_key: str
     claude_model_name: str

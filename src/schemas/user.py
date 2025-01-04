@@ -51,3 +51,7 @@ class UserProfileResponse(UserProfileBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr

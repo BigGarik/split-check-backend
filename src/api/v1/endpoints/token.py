@@ -47,7 +47,7 @@ async def login_for_access_token(
         httponly=True,
         secure=True,  # для HTTPS
         samesite="strict",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60
+        max_age=settings.refresh_token_expire_days
     )
 
     return tokens

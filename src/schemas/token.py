@@ -20,3 +20,8 @@ class TokenPayload(BaseModel):
 class RefreshTokenRequest(BaseModel):
     """Запрос на обновление токена"""
     refresh_token: str
+
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str
