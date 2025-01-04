@@ -63,8 +63,10 @@ class Settings(BaseSettings):
     upload_directory: str = "images"
 
     # google
-    client_id: str
-    client_secret: str
+    google_client_id: str
+    google_client_secret: str
+    google_redirect_uri: str = "http://localhost:8089/auth/google"
+
 
     deep_link_url: str
 

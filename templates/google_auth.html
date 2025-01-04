@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Authorization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #4285F4;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #357AE8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login with Google</h1>
+    <p>Click the button below to login using your Google account.</p>
+    <a href="https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=81679201429-b86det64mf7j7eoudr87e023on306rgo.apps.googleusercontent.com&redirect_uri=http://localhost:8089/auth/google&scope=openid%20email%20profile&access_type=offline"
+        class="button">
+        Login with Google
+    </a>
+</body>
+</html>

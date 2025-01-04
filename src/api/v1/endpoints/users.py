@@ -72,7 +72,6 @@ async def create_user(user_data: schemas.UserCreate) -> schemas.User:
 @router.post("/request-reset", status_code=status.HTTP_202_ACCEPTED)
 async def request_password_reset(
         request: PasswordResetRequest,
-        session: AsyncSession = Depends(get_async_db),
         fastmail: FastMail = Depends(lambda: FastMail(mail_config))
 ) -> Dict[str, str]:
     """
@@ -80,7 +79,7 @@ async def request_password_reset(
     Отправляет email с токеном для сброса пароля.
     """
     try:
-        user = await get_user_by_email(session, request.email)
+        user = await get_user_by_email(request.email)
 
         if user:
             # Генерируем временный токен для сброса пароля
@@ -126,7 +125,7 @@ async def reset_password(
                 detail="Invalid token type"
             )
 
-        user = await get_user_by_email(session, payload["email"])
+        user = await get_user_by_email(payload["email"])
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
