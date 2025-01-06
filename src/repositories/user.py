@@ -16,7 +16,8 @@ from src.utils.db import with_db_session
 @with_db_session()
 async def create_new_user(
         session: AsyncSession,
-        user_data: UserCreate
+        user_data: UserCreate,
+        profile_data: Optional[dict] = None
 ) -> User:
     """
     Создает нового пользователя и его профиль в базе данных.
@@ -24,6 +25,7 @@ async def create_new_user(
     Args:
         session (AsyncSession): Асинхронная сессия базы данных.
         user_data (UserCreate): Модель с данными для создания пользователя.
+        profile_data (dict, optional): Данные для создания профиля пользователя.
 
     Returns:
         User: Объект нового пользователя, если успешно создан.
@@ -43,19 +45,20 @@ async def create_new_user(
         # Хешируем пароль
         hashed_password = await async_hash_password(user_data.password)
 
+        # Создаем профиль с данными, если они предоставлены
+        profile = UserProfile(**(profile_data or {}))
+
         # Создаём пользователя с вложенным профилем
         new_user = User(
             email=user_data.email,
             hashed_password=hashed_password,
-            profile=UserProfile()  # Профиль создаётся автоматически
+            profile=profile
         )
         session.add(new_user)
-
         # Сохраняем изменения в базе данных
         await session.commit()
         await session.refresh(new_user)
 
-        logger.info(f"User {new_user.email} created successfully.")
         return new_user
 
     except IntegrityError as e:

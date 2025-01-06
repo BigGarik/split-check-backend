@@ -3,13 +3,16 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import OAuth2PasswordBearer
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
 from src.auth.providers.auth_google import GoogleOAuth
 from src.config.settings import settings
+from src.models import UserProfile, User
 from src.repositories.user import get_user_by_email, create_new_user
+from src.schemas import UserCreate
 from src.services.auth import generate_tokens
 from src.utils.db import get_async_db
 from loguru import logger
@@ -39,31 +42,46 @@ async def google_auth_callback(
     session: AsyncSession = Depends(get_async_db),
 ):
     """
-    Callback после авторизации через Google.
+    Обрабатывает callback от Google OAuth2 и создает пользователя,
+    если его нет в базе. Также заполняет профиль пользователя.
+
+    Args:
+        code (str): Authorization code от Google.
+        session (AsyncSession): Асинхронная сессия базы данных.
+
+    Returns:
+        dict: Токены доступа и обновления.
     """
-    try:
-        # Получение токена доступа
-        access_token = await google_oauth.get_access_token(code)
+    # try:
+    # Получаем access token и данные пользователя от Google
+    access_token = await google_oauth.get_access_token(code)
 
-        # Получение данных пользователя
-        user_info = await google_oauth.get_user_info(access_token)
-        email = user_info.get("email")
-        logger.debug(f"User email: {email}")
-        if not email:
-            raise HTTPException(status_code=400, detail="Email not provided by Google")
+    # Получение данных пользователя
+    user_info = await google_oauth.get_user_info(access_token)
+    logger.debug(f"User info: {user_info}")
 
-        # Проверка или создание пользователя
-        user = await get_user_by_email(email)
-        if not user:
-            password = uuid.uuid4().hex
-            user = await create_new_user(
-                session,
-                user_data={"email": email, "password": password},
-            )
+    email = user_info.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not provided by Google")
 
-        # Генерация токенов
-        tokens = await generate_tokens(email=user.email, user_id=user.id)
-        return tokens
+    # Проверяем, существует ли пользователь
+    user = await get_user_by_email(email)
+    if not user:
+        # Создаем нового пользователя
+        user = await create_new_user(
+            user_data=UserCreate(
+                email=email,
+                password=uuid.uuid4().hex
+            ),
+            profile_data={
+                "nickname": user_info.get("name"),
+                "avatar_url": user_info.get("picture")
+            }
+        )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Authorization failed: {str(e)}")
+    # Генерируем токены для пользователя
+    tokens = await generate_tokens(email=user.email, user_id=user.id)
+    return tokens
+
+    # except Exception as e:
+    #     raise HTTPException(status_code=500, detail=f"Authorization failed: {str(e)}")
