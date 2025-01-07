@@ -103,6 +103,7 @@ async def get_users_by_check_uuid(session, check_uuid: str) -> List[User]:
     """Получение списка пользователей по UUID чека."""
     query = (
         select(User)
+        .options(joinedload(User.profile))
         .join(user_check_association, User.id == user_check_association.c.user_id)
         .join(Check, Check.uuid == user_check_association.c.check_uuid)
         .where(Check.uuid == check_uuid)

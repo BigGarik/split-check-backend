@@ -83,17 +83,13 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
             if user_selection:
                 selection_data = user_selection.selection
 
+        logger.debug(f"Получили selection_data: {selection_data}")
+
         # Создаем структуру для каждого участника
         participant = {
             "user_id": user.id,
-            "selected_items": []
-        }
-
-        logger.debug(f"Получили selection_data: {selection_data}")
-
-        # Формируем структуру участника
-        participant = {
-            "user_id": user.id,
+            "nickname": user.profile.nickname,
+            "avatar_url": user.profile.avatar_url,
             "selected_items": [
                 {
                     "item_id": item["item_id"],
