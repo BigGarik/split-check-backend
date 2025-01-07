@@ -3,6 +3,7 @@ class Events:
     ALL_BILL_EVENT = 'allBillEvent'
     MAIN_PAGE_EVENT = 'mainPageEvent'
     CHECK_ADD_EVENT = 'checkAddEvent'
+    USER_JOIN_EVENT = 'userJoinEvent'
     JOIN_BILL_EVENT_STATUS = 'joinBillEventStatus'
     CHECK_DELETE_EVENT_STATUS = 'checkDeleteEventStatus'
 
@@ -29,9 +30,10 @@ EVENT_DESCRIPTIONS = {
     Events.BILL_DETAIL_EVENT: "Получение детальной информации по конкретному счету",
     Events.ALL_BILL_EVENT: "Получение списка всех доступных счетов",
     Events.MAIN_PAGE_EVENT: "Получение главной страницы",
-    Events.CHECK_ADD_EVENT: "Добавление нового чека к счету",
-    Events.JOIN_BILL_EVENT_STATUS: "Статус присоединения пользователя к счету",
-    Events.CHECK_DELETE_EVENT_STATUS: "Статус удаления чека из счета",
+    Events.CHECK_ADD_EVENT: "Добавление нового чека",
+    Events.JOIN_BILL_EVENT_STATUS: "Статус присоединения пользователя к чеку",
+    Events.USER_JOIN_EVENT: "Данное пользователя присоединившегося к чеку",
+    Events.CHECK_DELETE_EVENT_STATUS: "Статус удаления чека",
 
     Events.IMAGE_RECOGNITION_EVENT: "Начало процесса распознавания изображения",
     Events.IMAGE_RECOGNITION_EVENT_STATUS: "Статус процесса распознавания изображения",

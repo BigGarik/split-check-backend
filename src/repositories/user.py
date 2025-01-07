@@ -91,10 +91,12 @@ async def get_user_by_email(session, email: str) -> Optional[User]:
         return None
 
 
-@with_db_session()
 async def get_user_by_id(session, user_id: int) -> Optional[User]:
     """Получение пользователя по ID."""
-    stmt = select(User).options(joinedload(User.checks)).filter_by(id=user_id)
+    stmt = (select(User)
+            .options(joinedload(User.checks))
+            .options(joinedload(User.profile))
+            .filter_by(id=user_id))
     result = await session.execute(stmt)
     return result.scalars().first()
 
