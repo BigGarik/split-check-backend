@@ -112,6 +112,8 @@ class CheckManager:
         participants, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
 
         check_data["participants"] = json.loads(participants)
+        check = await get_check_by_uuid(self.session, check_uuid)
+        check_data["name"] = check.name
         msg = create_event_message(settings.Events.BILL_DETAIL_EVENT, check_data)
 
         await self._send_ws_message(user_id, msg)
