@@ -109,9 +109,10 @@ class CheckManager:
 
     async def send_check_data(self, user_id: int, check_uuid: str) -> None:
         check_data = await self.get_check_data_by_uuid(check_uuid)
-        participants, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
+        participants, user_selections, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
 
         check_data["participants"] = json.loads(participants)
+        check_data["user_selections"] = json.loads(user_selections)
         check = await get_check_by_uuid(self.session, check_uuid)
         check_data["name"] = check.name
         msg = create_event_message(settings.Events.BILL_DETAIL_EVENT, check_data)

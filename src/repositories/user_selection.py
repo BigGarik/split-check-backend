@@ -66,6 +66,7 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
     logger.debug(f"Получили пользователей: {', '.join([str(user) for user in users])}")
 
     participants = []
+    user_selections = []
 
     for user in users:
         redis_key = f"user_selection:{user.id}:{check_uuid}"
@@ -87,9 +88,14 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
 
         # Создаем структуру для каждого участника
         participant = {
+            "user": {
+                "user_id": user.id,
+                "nickname": user.profile.nickname,
+                "avatar_url": user.profile.avatar_url,
+
+            }}
+        all_user_selection = {
             "user_id": user.id,
-            "nickname": user.profile.nickname,
-            "avatar_url": user.profile.avatar_url,
             "selected_items": [
                 {
                     "item_id": item["item_id"],
@@ -100,9 +106,8 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
         }
 
         participants.append(participant)
+        user_selections.append(all_user_selection)
 
     logger.debug(f"Получили participants: {participants}")
 
-    return json.dumps(participants), users
-
-
+    return json.dumps(participants), json.dumps(user_selections), users
