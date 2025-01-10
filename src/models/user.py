@@ -23,6 +23,12 @@ class User(Base):
         uselist=False,
         cascade="all, delete-orphan"
     )
+    authored_checks: Mapped[List["Check"]] = relationship(
+        "Check",
+        foreign_keys="Check.author_id",
+        back_populates="author",
+        passive_deletes=True  # Позволяет SQLAlchemy использовать ON DELETE SET NULL
+    )
     checks: Mapped[List["Check"]] = relationship(
         secondary=user_check_association,
         back_populates="users",

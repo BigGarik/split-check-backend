@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 from loguru import logger
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException
 
@@ -15,7 +16,7 @@ from src.repositories.check import (
     add_check_to_database,
     delete_association_by_check_uuid,
     get_check_by_uuid,
-    update_check_data_to_database, get_main_page_checks
+    update_check_data_to_database, get_main_page_checks, is_check_author
 )
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
@@ -275,6 +276,48 @@ class CheckManager:
                 settings.Events.CHECK_SELECTION_EVENT_STATUS,
                 e
             )
+
+    async def user_delete_from_check(self, session: AsyncSession, check_uuid: str, user_id_for_delete: int, current_user_id: int) -> None:
+        """
+        Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
+
+        Args:
+            session (AsyncSession): Асинхронная сессия SQLAlchemy
+            check_uuid (str): UUID чека
+            user_id_for_delete (int): ID пользователя, которого нужно удалить из чека
+            current_user_id (int): ID текущего пользователя (автора)
+
+        Returns:
+            bool: True если удаление успешно, False если текущий пользователь не автор
+
+        Raises:
+            SQLAlchemyError: При ошибках работы с базой данных
+        """
+        try:
+            # Проверяем права автора
+            if not await is_check_author(self.session, current_user_id, check_uuid):
+                logger.warning(
+                    f"User {current_user_id} attempted to delete user {user_id_for_delete} "
+                    f"from check {check_uuid} without author rights"
+                )
+            # Удаляем ассоциацию пользователя с чеком
+            await delete_association_by_check_uuid(self.session, check_uuid, user_id_for_delete)
+
+            status_message = create_event_status_message(
+                message_type=settings.Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
+                status="success"
+            )
+            await self._send_ws_message(current_user_id, status_message)
+
+            logger.debug(
+                f"User {user_id_for_delete} was removed from check {check_uuid} "
+                f"by author {current_user_id}"
+            )
+
+        except SQLAlchemyError as e:
+            await session.rollback()
+            logger.error(f"Database error while deleting user from check: {e}")
+            raise
 
 
 async def get_check_manager(session: AsyncSession) -> CheckManager:

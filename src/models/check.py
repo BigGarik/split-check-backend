@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from sqlalchemy import ForeignKey, UniqueConstraint, Enum, event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,12 +20,19 @@ class Check(Base):
     name: Mapped[str]
     check_data: Mapped[Dict[str, Any]] = mapped_column(JSONB)
     status: Mapped[StatusEnum] = mapped_column(Enum(StatusEnum), default=StatusEnum.OPEN)
+    author_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
         default=datetime.now,
         onupdate=datetime.now
     )
     # Relationships
+    author: Mapped["User"] = relationship(
+        "User",
+        foreign_keys="Check.author_id",
+        back_populates="authored_checks"
+    )
+
     users: Mapped[List["User"]] = relationship(
         secondary=user_check_association,
         back_populates="checks",

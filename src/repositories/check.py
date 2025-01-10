@@ -82,12 +82,40 @@ async def update_check_data_to_database(session: AsyncSession, check_uuid: str, 
     await session.commit()
 
 
-async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id: int, check_data: dict):
+async def add_check_to_database(
+        session: AsyncSession,
+        check_uuid: str,
+        user_id: int,
+        check_data: dict
+) -> None:
+    """
+    Создает новый чек в базе данных и устанавливает связь с пользователем.
+
+    Функция выполняет следующие операции:
+    1. Создает новую запись в таблице checks
+    2. Устанавливает пользователя как автора чека
+    3. Создает связь между пользователем и чеком в таблице ассоциаций
+
+    Args:
+        session (AsyncSession): Асинхронная сессия SQLAlchemy для работы с БД
+        check_uuid (str): Уникальный идентификатор создаваемого чека
+        user_id (int): ID пользователя, который создает чек
+        check_data (dict): Данные чека для сохранения в формате JSON
+
+    Raises:
+        SQLAlchemyError: При ошибках работы с базой данных
+        Exception: При любых других непредвиденных ошибках
+    """
     try:
-        # Создаем новый чек
-        new_check = Check(uuid=check_uuid, check_data=check_data)
+        # Создаем новый чек с указанием автора
+        new_check = Check(
+            uuid=check_uuid,
+            check_data=check_data,
+            author_id=user_id
+        )
         session.add(new_check)
         await session.flush()
+
         # Создаем связь между пользователем и чеком
         stmt = insert(user_check_association).values(
             user_id=user_id,
@@ -97,11 +125,15 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
 
         # Сохраняем изменения в базе данных
         await session.commit()
-        logger.debug(f"Check {check_uuid} added to database for user {user_id}.")
+        logger.debug(f"Check {check_uuid} added to database for user {user_id} as author.")
+    except SQLAlchemyError as e:
+        await session.rollback()
+        logger.error(f"Database error in add_check_to_database: {e}")
+        raise
     except Exception as e:
         await session.rollback()
         logger.error(f"Unexpected error in add_check_to_database: {e}")
-        raise e
+        raise
 
 
 async def delete_association_by_check_uuid(session: AsyncSession, check_uuid: str, user_id: int):
@@ -301,3 +333,27 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
             "total_closed": 0,
             "error": "Произошла неожиданная ошибка."
         }
+
+
+async def is_check_author(session: AsyncSession, user_id: int, check_uuid: str) -> bool:
+    """
+    Проверяет, является ли пользователь автором чека.
+
+    Args:
+        session (AsyncSession): Асинхронная сессия SQLAlchemy
+        user_id (int): ID пользователя для проверки
+        check_uuid (str): UUID чека для проверки
+
+    Returns:
+        bool: True если пользователь является автором, False в противном случае
+    """
+    result = await session.execute(
+        select(Check)
+        .where(
+            and_(
+                Check.uuid == check_uuid,
+                Check.author_id == user_id
+            )
+        )
+    )
+    return result.scalar_one_or_none() is not None

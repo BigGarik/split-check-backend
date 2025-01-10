@@ -39,7 +39,6 @@ google_oauth = GoogleOAuth(
 @router.get("/google")
 async def google_auth_callback(
     code: str = Query(..., description="Authorization code от Google"),
-    session: AsyncSession = Depends(get_async_db),
 ):
     """
     Обрабатывает callback от Google OAuth2 и создает пользователя,

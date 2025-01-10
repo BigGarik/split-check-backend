@@ -6,6 +6,7 @@ class Events:
     USER_JOIN_EVENT = 'userJoinEvent'
     JOIN_BILL_EVENT_STATUS = 'joinBillEventStatus'
     CHECK_DELETE_EVENT_STATUS = 'checkDeleteEventStatus'
+    USER_DELETE_FROM_CHECK_EVENT_STATUS = 'userDeleteFromCheckEventStatus'
 
     IMAGE_RECOGNITION_EVENT = 'imageRecognitionEvent'
     IMAGE_RECOGNITION_EVENT_STATUS = 'imageRecognitionEventStatus'
