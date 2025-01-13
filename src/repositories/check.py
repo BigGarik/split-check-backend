@@ -308,7 +308,7 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
                     name=check.name,
                     status=check.status.value,
                     date=check.check_data.get('date') if check.check_data else None,
-                    total=check.check_data.get('total') if check.check_data else None,
+                    total=check.check_data.get('total') if check.check_data else 0,
                     restaurant=check.check_data.get('restaurant') if check.check_data else None,
                 ).dict()
                 for check in checks

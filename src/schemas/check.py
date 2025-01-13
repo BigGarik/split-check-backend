@@ -9,7 +9,7 @@ from pydantic import model_validator, conint, confloat, constr
 PositiveInt = conint(gt=0)
 ItemName = constr(min_length=1, max_length=50, strip_whitespace=True)
 # Валидация цены до 2 знаков после запятой и диапазона
-Price = confloat(gt=0, le=1_000_000_000)
+Price = confloat(ge=0, le=1_000_000_000)
 
 
 class ItemRequest(BaseModel):
@@ -59,7 +59,7 @@ class CheckListResponse(BaseModel):
     status: str
     date: str
     total: Optional[Price]
-    restaurant: str
+    restaurant: Optional[str] = None
 
 
 # Валидатор для позиции в чеке
