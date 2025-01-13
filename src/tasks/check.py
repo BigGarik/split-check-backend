@@ -29,6 +29,20 @@ async def add_empty_check_task(user_id: int,
     await check_manager.create_empty(user_id, check_uuid)
 
 
+async def edit_check_name_task(user_id: int,
+                               check_uuid: str,
+                               check_name: str,
+                               check_manager: CheckManager = Depends(get_check_manager)):
+    await check_manager.edit_check_name(user_id, check_uuid, check_name)
+
+
+async def edit_check_status_task(user_id: int,
+                                 check_uuid: str,
+                                 check_status: str,
+                                 check_manager: CheckManager = Depends(get_check_manager)):
+    await check_manager.edit_check_status(user_id, check_uuid, check_status)
+
+
 async def join_check_task(user_id: int,
                           check_uuid: str,
                           check_manager: CheckManager = Depends(get_check_manager)):

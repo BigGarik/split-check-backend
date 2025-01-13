@@ -2,15 +2,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query
 from fastapi import Depends
-from loguru import logger
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.exceptions import HTTPException
 
 from src.api.deps import get_current_user
-from src.models import User, Check
+from src.models import User
 from src.redis import queue_processor
-from src.schemas import AddItemRequest, DeleteItemRequest, EditItemRequest, CheckSelectionRequest, ItemRequest, Order
+from src.schemas import CheckSelectionRequest, EditCheckStatusRequest
 from src.utils.db import get_async_db
 
 router = APIRouter()
@@ -100,6 +97,64 @@ async def user_selection(uuid: UUID,
     await queue_processor.push_task(task_data)
 
     return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
+
+
+@router.post("/name")
+async def edit_check_name(uuid: UUID,
+                          check_name: str,
+                          user: User = Depends(get_current_user)):
+    task_data = {
+        "type": "edit_check_name_task",
+        "user_id": user.id,
+        "check_uuid": str(uuid),
+        "check_name": check_name
+    }
+    await queue_processor.push_task(task_data)
+
+    return {"message": "Данные отправлены в очередь для передачи через WebSocket"}
+
+
+@router.post(
+    "/status",
+    summary="Изменение статуса чека",
+    description="Эндпоинт для изменения статуса чека. "
+                "Допустимые значения статуса: 'OPEN', 'CLOSE'.",
+    response_description="Сообщение о том, что данные отправлены в очередь."
+)
+async def edit_check_status(
+    request: EditCheckStatusRequest,
+    user: User = Depends(get_current_user),
+):
+    """
+    Изменяет статус чека и отправляет задачу в очередь для последующей обработки через WebSocket.
+
+    **Параметры запроса:**
+    - `uuid`: Уникальный идентификатор чека.
+    - `check_status`: Новый статус чека. Допустимые значения: 'OPEN', 'CLOSE'.
+
+    **Авторизация:**
+    Пользователь должен быть аутентифицирован (передавать токен через заголовок Authorization).
+
+    **Пример ответа:**
+    ```json
+    {
+        "message": "Данные отправлены в очередь для передачи через WebSocket"
+    }
+    ```
+
+    :param request: Данные для изменения статуса чека.
+    :param user: Текущий пользователь, извлекаемый через Depends(get_current_user).
+    :return: Сообщение об успешной отправке данных.
+    """
+    task_data = {
+        "type": "edit_check_status_task",
+        "user_id": user.id,
+        "check_uuid": str(request.uuid),
+        "check_status": request.check_status.value
+    }
+    await queue_processor.push_task(task_data)
+
+    return {"message": "Данные отправлены в очередь для передачи через WebSocket"}
 
 
 @router.post("/join")

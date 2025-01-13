@@ -7,6 +7,10 @@ class Events:
     JOIN_BILL_EVENT_STATUS = 'joinBillEventStatus'
     CHECK_DELETE_EVENT_STATUS = 'checkDeleteEventStatus'
     USER_DELETE_FROM_CHECK_EVENT_STATUS = 'userDeleteFromCheckEventStatus'
+    CHECK_NAME_EVENT = 'checkNameEvent'
+    CHECK_NAME_EVENT_STATUS = 'checkNameEventStatus'
+    CHECK_STATUS_EVENT = 'checkStatusEvent'
+    CHECK_STATUS_EVENT_STATUS = 'checkStatusEventStatus'
 
     IMAGE_RECOGNITION_EVENT = 'imageRecognitionEvent'
     IMAGE_RECOGNITION_EVENT_STATUS = 'imageRecognitionEventStatus'
@@ -35,6 +39,10 @@ EVENT_DESCRIPTIONS = {
     Events.JOIN_BILL_EVENT_STATUS: "Статус присоединения пользователя к чеку",
     Events.USER_JOIN_EVENT: "Данное пользователя присоединившегося к чеку",
     Events.CHECK_DELETE_EVENT_STATUS: "Статус удаления чека",
+    Events.CHECK_NAME_EVENT: "Новое имя чека",
+    Events.CHECK_NAME_EVENT_STATUS: "Статус изменения имени чека",
+    Events.CHECK_STATUS_EVENT: 'Новый статус чека',
+    Events.CHECK_STATUS_EVENT_STATUS: 'Изменение статуса чека',
 
     Events.IMAGE_RECOGNITION_EVENT: "Начало процесса распознавания изображения",
     Events.IMAGE_RECOGNITION_EVENT_STATUS: "Статус процесса распознавания изображения",

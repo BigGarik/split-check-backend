@@ -16,7 +16,8 @@ from src.repositories.check import (
     add_check_to_database,
     delete_association_by_check_uuid,
     get_check_by_uuid,
-    update_check_data_to_database, get_main_page_checks, is_check_author
+    update_check_data_to_database, get_main_page_checks, is_check_author, edit_check_name_to_database,
+    edit_check_status_to_database
 )
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
@@ -107,6 +108,57 @@ class CheckManager:
         redis_key = f"check_uuid:{check_uuid}"
         await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
         return check_data
+
+    async def edit_check_name(self, user_id: int, check_uuid: str, check_name: str):
+        new_name_status = await edit_check_name_to_database(self.session, user_id, check_uuid, check_name)
+        users = await get_users_by_check_uuid(self.session, check_uuid)
+        if new_name_status == "Check name updated successfully.":
+            msg_for_author = create_event_status_message(
+                message_type=settings.Events.CHECK_NAME_EVENT_STATUS,
+                status="success"
+            )
+
+            msg_for_all = create_event_message(
+                message_type=settings.Events.CHECK_NAME_EVENT,
+                payload={"check_name": check_name},
+            )
+
+            all_user_ids = {user.id for user in users}
+            logger.debug(f"Все пользователи для отправки: {all_user_ids}")
+
+            # Отправка сообщений всем пользователям
+            for uid in all_user_ids:
+                msg = msg_for_author if uid == user_id else msg_for_all
+                try:
+                    await self._send_ws_message(uid, msg)
+                except Exception as e:
+                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+
+    async def edit_check_status(self, user_id: int, check_uuid: str, check_status: str):
+        status = await edit_check_status_to_database(self.session, user_id, check_uuid, check_status)
+        users = await get_users_by_check_uuid(self.session, check_uuid)
+        if status == "Check status updated successfully.":
+            msg_for_author = create_event_status_message(
+                message_type=settings.Events.CHECK_STATUS_EVENT_STATUS,
+                status="success"
+            )
+
+            msg_for_all = create_event_message(
+                message_type=settings.Events.CHECK_STATUS_EVENT,
+                payload={"check_status": check_status},
+            )
+
+            all_user_ids = {user.id for user in users}
+            logger.debug(f"Все пользователи для отправки: {all_user_ids}")
+
+            # Отправка сообщений всем пользователям
+            for uid in all_user_ids:
+                msg = msg_for_author if uid == user_id else msg_for_all
+                try:
+                    await self._send_ws_message(uid, msg)
+                except Exception as e:
+                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+
 
     async def send_check_data(self, user_id: int, check_uuid: str) -> None:
         check_data = await self.get_check_data_by_uuid(check_uuid)
@@ -279,7 +331,8 @@ class CheckManager:
                 e
             )
 
-    async def user_delete_from_check(self, session: AsyncSession, check_uuid: str, user_id_for_delete: int, current_user_id: int) -> None:
+    async def user_delete_from_check(self, session: AsyncSession, check_uuid: str, user_id_for_delete: int,
+                                     current_user_id: int) -> None:
         """
         Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
 

@@ -2,14 +2,14 @@ from datetime import datetime
 from typing import Optional
 
 from loguru import logger
-from sqlalchemy import select, insert, delete, func, and_
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select, insert, delete, func, and_, update, exists
+from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
-from src.models import Check, user_check_association, User, UserSelection
+from src.models import Check, user_check_association, User, UserSelection, StatusEnum
 from src.schemas import CheckListResponse
 
 
@@ -80,6 +80,91 @@ async def update_check_data_to_database(session: AsyncSession, check_uuid: str, 
     check.check_data = check_data
     flag_modified(check, "check_data")
     await session.commit()
+
+
+async def edit_check_name_to_database(session: AsyncSession, user_id: int, check_uuid: str, check_name: str) -> str:
+    """
+    Изменяет имя чека в базе данных, если пользователь имеет право доступа.
+
+    :param session: AsyncSession для взаимодействия с базой данных
+    :param user_id: ID пользователя, выполняющего запрос
+    :param check_uuid: UUID чека
+    :param check_name: Новое имя для чека
+    :return: Статус операции
+    """
+    try:
+        # Проверка, связан ли пользователь с чеком
+        stmt_check_access = (
+            select(exists().where(
+                (user_check_association.c.user_id == user_id) &
+                (user_check_association.c.check_uuid == check_uuid)
+            ))
+        )
+        result = await session.execute(stmt_check_access)
+        has_access = result.scalar()
+
+        if not has_access:
+            return "Access denied: User is not associated with this check."
+
+        # Обновление имени чека
+        stmt_update_name = (
+            update(Check)
+            .where(Check.uuid == check_uuid)
+            .values(name=check_name, updated_at=datetime.now())
+            .execution_options(synchronize_session="fetch")
+        )
+        result = await session.execute(stmt_update_name)
+
+        if result.rowcount == 0:
+            return "Check not found."
+
+        await session.commit()
+        return "Check name updated successfully."
+
+    except NoResultFound:
+        raise ValueError("Чек не найден или у пользователя нет доступа.")
+    except Exception as e:
+        await session.rollback()
+        raise ValueError(f"Ошибка при обновлении имени чека: {e}")
+
+
+async def edit_check_status_to_database(session: AsyncSession, user_id: int, check_uuid: str, check_status: str) -> str:
+    """
+    Изменяет статус чека в базе данных.
+
+    :param session: AsyncSession для взаимодействия с базой данных
+    :param user_id: ID пользователя, выполняющего запрос
+    :param check_uuid: UUID чека
+    :param check_status: Новый статус чека (из перечисления StatusEnum)
+    :return: Статус операции
+    """
+    # Проверка, связан ли пользователь с чеком
+    stmt_check_access = (
+        select(exists().where(
+            (user_check_association.c.user_id == user_id) &
+            (user_check_association.c.check_uuid == check_uuid)
+        ))
+    )
+    result = await session.execute(stmt_check_access)
+    has_access = result.scalar()
+
+    if not has_access:
+        return "Access denied: User is not associated with this check."
+
+    # Обновление статус чека
+    stmt_update_name = (
+        update(Check)
+        .where(Check.uuid == check_uuid)
+        .values(status=check_status, updated_at=datetime.now())
+        .execution_options(synchronize_session="fetch")
+    )
+    result = await session.execute(stmt_update_name)
+
+    if result.rowcount == 0:
+        return "Check not found."
+
+    await session.commit()
+    return "Check status updated successfully."
 
 
 async def add_check_to_database(

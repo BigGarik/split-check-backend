@@ -1,9 +1,11 @@
-from datetime import date, time, datetime
+from datetime import date, time
 from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator, UUID4
 from pydantic import model_validator, conint, confloat, constr
+
+from src.models import StatusEnum
 
 # Кастомные типы с валидацией
 PositiveInt = conint(gt=0)
@@ -149,3 +151,12 @@ class Order(BaseModel):
                 f'Неверный total. Ожидается {calculated_total}, получено {v}'
             )
         return v
+
+
+# Схема запроса
+class EditCheckStatusRequest(BaseModel):
+    """
+    Схема данных для изменения статуса чека.
+    """
+    uuid: UUID4
+    check_status: StatusEnum
