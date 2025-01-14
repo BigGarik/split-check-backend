@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from src.api.v1.endpoints import users, websockets, app_router, profile, image, check, test, token, item, auth
 
 
-api_router = APIRouter()
+api_router = APIRouter(prefix="/api")
 
 api_router.include_router(users.router, prefix="/user", tags=["user"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
