@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -25,3 +26,10 @@ class RefreshTokenRequest(BaseModel):
 class PasswordReset(BaseModel):
     token: str
     new_password: str
+
+
+# Модель для входящих данных
+class AuthRequest(BaseModel):
+    token: str
+    platform: str  # ios/android
+    type: str

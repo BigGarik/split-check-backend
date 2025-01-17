@@ -3,9 +3,11 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import firebase_admin
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
+from firebase_admin import credentials
 
 from src.api.v1.router import api_router
 from src.config.settings import settings
@@ -58,6 +60,9 @@ logger = setup_app_logging(
     console_level=logging.INFO,
     file_level=logging.DEBUG
 )
+
+cred = credentials.Certificate("scannsplit-firebase-adminsdk.json")
+firebase_admin.initialize_app(cred)
 
 app.add_middleware(RestrictDocsAccessMiddleware)
 

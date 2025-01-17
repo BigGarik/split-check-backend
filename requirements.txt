@@ -36,10 +36,8 @@ transformers
 psutil
 fastapi-mail
 
-
 aiofiles
 torch
 starlette
 
-google-auth
-google-auth-oauthlib
+firebase-admin
