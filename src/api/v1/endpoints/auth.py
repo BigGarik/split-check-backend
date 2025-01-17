@@ -23,6 +23,7 @@ async def auth_callback(id_token):
     """
     Обрабатывает OAuth авторизацию для мобильных приложений (Google, другие провайдеры).
     """
+    logger.debug(f"id_token: {id_token}")
     try:
         claims = auth.verify_id_token(id_token)
         email = claims.get('email')
