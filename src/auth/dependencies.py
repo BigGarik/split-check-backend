@@ -9,7 +9,9 @@ def get_firebase_user(request: Request):
 
     :param request: The HTTP request
     """
+    logger.debug(f"request.headers: {request.headers}")
     id_token = request.headers.get('Authorization')
+    logger.debug(f"id_token: {id_token}")
     if not id_token:
         raise HTTPException(status_code=400, detail='TokenID must be provided')
 
