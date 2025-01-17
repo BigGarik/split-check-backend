@@ -1,14 +1,10 @@
-from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
-from starlette import status
+from loguru import logger
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.websockets import WebSocket, WebSocketDisconnect
-from loguru import logger
+
 from src.auth.dependencies import get_firebase_user
-from src.config.settings import settings
-from src.core.security import verify_token
 from src.repositories.user import get_user_by_email
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

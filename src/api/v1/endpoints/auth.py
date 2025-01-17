@@ -1,18 +1,14 @@
 import uuid
-from typing import Dict
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
 from loguru import logger
 from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
-from src.auth.dependencies import get_firebase_user
-from src.auth.providers.auth_google import GoogleOAuth
 from src.repositories.user import get_user_by_email, create_new_user
-from src.schemas import UserCreate, AuthRequest
-from src.services.auth import generate_tokens
+from src.schemas import UserCreate
 
 router = APIRouter()
 

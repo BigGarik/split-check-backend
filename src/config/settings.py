@@ -1,8 +1,8 @@
-import os
 from typing import ClassVar, List
 
+from pydantic import PostgresDsn, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn, RedisDsn, validator, field_validator, Field
+
 from .type_events import Events
 
 
@@ -63,9 +63,9 @@ class Settings(BaseSettings):
     upload_directory: str = "images"
 
     # google
-    google_android_client_id: str
-    google_ios_client_id: str
-    google_redirect_uri: str = "http://localhost:8089/api/auth/google"
+    # google_android_client_id: str
+    # google_ios_client_id: str
+    # google_redirect_uri: str = "http://localhost:8089/api/auth/google"
 
     deep_link_url: str
 
