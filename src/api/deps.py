@@ -25,6 +25,7 @@ async def get_current_user(request: Request):
     """
     Dependency для проверки и получения текущего пользователя через Firebase
     """
+    logger.debug(f"request: {request}")
     try:
         claims = get_firebase_user(request)
         email = claims.get('email')
