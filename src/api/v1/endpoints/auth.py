@@ -1,27 +1,24 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, HTTPException
 from firebase_admin import auth
 from loguru import logger
-from starlette.responses import HTMLResponse
-from starlette.templating import Jinja2Templates
 
 from src.repositories.user import get_user_by_email, create_new_user
 from src.schemas import UserCreate
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-templates = Jinja2Templates(directory="templates")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+# templates = Jinja2Templates(directory="templates")
 
 
-@router.get("/test", response_class=HTMLResponse)
-async def serve_html(request: Request):
-    return templates.TemplateResponse("google_auth.html", {"request": request})
+# @router.get("/test", response_class=HTMLResponse)
+# async def serve_html(request: Request):
+#     return templates.TemplateResponse("google_auth.html", {"request": request})
 
 
-@router.post("/auth/callback")
+@router.post("/firebase")
 async def auth_callback(id_token):
     """
     Обрабатывает OAuth авторизацию для мобильных приложений (Google, другие провайдеры).
