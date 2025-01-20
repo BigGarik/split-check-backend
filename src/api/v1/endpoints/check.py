@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Query
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user
@@ -42,7 +42,7 @@ async def get_all_check(page: int = Query(default=1, ge=1),
 
 
 @router.get("/main_page")
-async def get_all_check(user: User = Depends(get_current_user)):
+async def get_all_check(request: Request, user: User = Depends(get_current_user)):
     task_data = {
         "type": "send_main_page_checks_task",
         "user_id": user.id,
