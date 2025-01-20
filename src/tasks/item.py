@@ -3,7 +3,7 @@ import json
 from fastapi import Depends
 from loguru import logger
 
-from src.api.v1.endpoints.websockets import ws_manager
+from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
 from src.repositories.item import remove_item_from_check, edit_item_in_check, add_item_to_check, update_item_quantity

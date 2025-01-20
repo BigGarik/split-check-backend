@@ -30,3 +30,6 @@ class WSConnectionManager:
                 await websocket.send_text(message)
             except Exception as e:
                 logger.error(f"Error sending message to user {user_id}: {e}")
+
+
+ws_manager = WSConnectionManager()

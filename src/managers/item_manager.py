@@ -2,7 +2,7 @@ import json
 from typing import Dict, Any
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.api.v1.endpoints.websockets import ws_manager
+from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.repositories.item import (
     add_item_to_check,

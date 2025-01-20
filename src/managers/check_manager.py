@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException
 
-from src.api.v1.endpoints.websockets import ws_manager
+from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.managers.item_manager import ItemService
 from src.redis import redis_client

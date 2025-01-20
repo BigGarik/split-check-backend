@@ -5,7 +5,7 @@ from fastapi import Depends
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.v1.endpoints.websockets import ws_manager
+from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client

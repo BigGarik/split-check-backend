@@ -1,9 +1,11 @@
-from starlette.exceptions import HTTPException
-from starlette.requests import Request
-from loguru import logger
-from src.redis import redis_client
+from datetime import datetime, timedelta
 
 import jwt
+from loguru import logger
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+
+from src.redis import redis_client
 
 
 async def get_token_from_redis(request: Request):
@@ -36,3 +38,31 @@ async def get_token_from_redis(request: Request):
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=401, detail='Unauthorized')
+
+
+async def add_token_to_redis(claims):
+    try:
+        # Получаем timestamp из токена и преобразуем в datetime
+        exp_date = datetime.fromtimestamp(claims.get('exp'))
+        uid = claims.get('uid')
+
+        # Вычисляем оставшееся время действия токена
+        remaining_time = exp_date - datetime.now()
+        # Устанавливаем TTL как минимальное между 10 минутами и оставшимся временем токена
+        exp = min(remaining_time, timedelta(minutes=10))
+
+        # Проверяем, что TTL положительный
+        if exp.total_seconds() > 0:
+            await redis_client.set(
+                key=f"token:{uid}",
+                value=claims,
+                ex=int(exp.total_seconds())  # Redis ожидает TTL в секундах
+            )
+        else:
+            # Токен уже истёк
+            raise HTTPException(status_code=401, detail="Token expired")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
