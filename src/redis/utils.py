@@ -42,10 +42,12 @@ async def add_token_to_redis(token, claims):
     try:
         # Получаем timestamp из токена и преобразуем в datetime
         exp_date = datetime.fromtimestamp(claims.get('exp'))
+        logger.debug(f"exp_date: {exp_date}")
 
         # Вычисляем оставшееся время действия токена
         remaining_time = exp_date - datetime.now()
-        # Устанавливаем TTL как минимальное между 10 минутами и оставшимся временем токена
+        logger.debug(f"remaining_time: {remaining_time}")
+        # Устанавливаем TTL как минимальное между 5 минутами и оставшимся временем токена
         exp = min(remaining_time, timedelta(minutes=5))
 
         # Проверяем, что TTL положительный
