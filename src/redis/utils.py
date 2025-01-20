@@ -18,7 +18,7 @@ async def get_token_from_redis(request: Request):
         token = request.headers.get('Authorization')
         logger.debug(f"token: {token}")
         if not token:
-            raise HTTPException(status_code=400, detail='Token must be provided')
+            return None
 
         # Remove 'Bearer ' if present
         # token = token.replace('Bearer ', '')
@@ -28,15 +28,13 @@ async def get_token_from_redis(request: Request):
         # decoded = jwt.decode(token, options={"verify_signature": False})
 
         token_data = json.loads(await redis_client.get(f"firebase_idtoken_{token}"))
+        logger.debug(f"token_data: {token_data}")
         if not token_data:
             return None
         return token_data
-
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail='Invalid token')
     except Exception as e:
         logger.exception(e)
-        raise HTTPException(status_code=401, detail='Unauthorized')
+        return None
 
 
 async def add_token_to_redis(token, claims):
