@@ -15,14 +15,18 @@ async def get_token_from_redis(request: Request):
     try:
         # Get token from headers
         token = request.headers.get('Authorization')
+        logger.debug(f"token: {token}")
         if not token:
             raise HTTPException(status_code=400, detail='Token must be provided')
 
         # Remove 'Bearer ' if present
-        token = token.replace('Bearer ', '')
+        # token = token.replace('Bearer ', '')
 
         # Decode JWT without verification to get uid
+
         decoded = jwt.decode(token, options={"verify_signature": False})
+
+
         uid = decoded.get('uid')
 
         if not uid:

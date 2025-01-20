@@ -26,7 +26,6 @@ async def get_current_user(request: Request):
     """
     Dependency для проверки и получения текущего пользователя через Firebase
     """
-    logger.debug(f"request: {request}")
     try:
         claims = await get_token_from_redis(request)
         if not claims:
