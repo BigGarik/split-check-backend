@@ -53,7 +53,7 @@ async def add_token_to_redis(token, claims):
             await redis_client.set(
                 key=f"firebase_idtoken_{token}",
                 value=claims,
-                ex=int(exp.total_seconds())  # Redis ожидает TTL в секундах
+                expire=int(exp.total_seconds())  # Redis ожидает TTL в секундах
             )
         else:
             # Токен уже истёк
