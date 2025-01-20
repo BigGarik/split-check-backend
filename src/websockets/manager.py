@@ -7,18 +7,18 @@ class WSConnectionManager:
     def __init__(self):
         self.active_connections = {}  # Локальный словарь для хранения WebSocket по session_id
 
-    async def connect(self, user_id: str, websocket: WebSocket):
+    async def connect(self, user_id: int, websocket: WebSocket):
         """Принимаем новое WebSocket соединение и сохраняем его."""
         await websocket.accept()
         # Сохраняем WebSocket соединение в локальном словаре по user_id
         self.active_connections[user_id] = websocket
         logger.debug(self.active_connections)
 
-    async def disconnect(self, user_id: str):
+    async def disconnect(self, user_id: int):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
 
-    async def send_personal_message(self, message: str, user_id: str):
+    async def send_personal_message(self, message: str, user_id: int):
         if user_id in self.active_connections:
             websocket = self.active_connections[user_id]
             await websocket.send_text(message)
