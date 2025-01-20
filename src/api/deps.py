@@ -29,8 +29,9 @@ async def get_current_user(request: Request):
     try:
         claims = await get_token_from_redis(request)
         if not claims:
+            token = request.headers.get('Authorization')
             claims = get_firebase_user(request)
-            await add_token_to_redis(claims)
+            await add_token_to_redis(token, claims)
 
         email = claims.get('email')
         user = await get_user_by_email(email)

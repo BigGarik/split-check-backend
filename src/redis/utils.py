@@ -24,15 +24,9 @@ async def get_token_from_redis(request: Request):
 
         # Decode JWT without verification to get uid
 
-        decoded = jwt.decode(token, options={"verify_signature": False})
+        # decoded = jwt.decode(token, options={"verify_signature": False})
 
-
-        uid = decoded.get('uid')
-
-        if not uid:
-            raise HTTPException(status_code=400, detail='Invalid token format')
-
-        token_data = await redis_client.get(f"token:{uid}")
+        token_data = await redis_client.get(f"firebase_idtoken_{token}")
         if not token_data:
             return None
         return token_data
@@ -44,21 +38,20 @@ async def get_token_from_redis(request: Request):
         raise HTTPException(status_code=401, detail='Unauthorized')
 
 
-async def add_token_to_redis(claims):
+async def add_token_to_redis(token, claims):
     try:
         # Получаем timestamp из токена и преобразуем в datetime
         exp_date = datetime.fromtimestamp(claims.get('exp'))
-        uid = claims.get('uid')
 
         # Вычисляем оставшееся время действия токена
         remaining_time = exp_date - datetime.now()
         # Устанавливаем TTL как минимальное между 10 минутами и оставшимся временем токена
-        exp = min(remaining_time, timedelta(minutes=10))
+        exp = min(remaining_time, timedelta(minutes=5))
 
         # Проверяем, что TTL положительный
         if exp.total_seconds() > 0:
             await redis_client.set(
-                key=f"token:{uid}",
+                key=f"firebase_idtoken_{token}",
                 value=claims,
                 ex=int(exp.total_seconds())  # Redis ожидает TTL в секундах
             )
