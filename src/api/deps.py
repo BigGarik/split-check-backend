@@ -1,3 +1,4 @@
+from fastapi import Depends
 from loguru import logger
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -22,7 +23,7 @@ from src.repositories.user import get_user_by_email
 #         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
-async def get_current_user(request: Request):
+async def get_current_user(request: Request = Depends()):
     """
     Dependency для проверки и получения текущего пользователя через Firebase
     """
