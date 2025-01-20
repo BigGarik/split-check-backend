@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from loguru import logger
 
 from src.api.deps import get_current_user
@@ -12,7 +12,8 @@ router = APIRouter()
 
 
 @router.put("/item/split")
-async def split_item(uuid: UUID,
+async def split_item(request: Request,
+                     uuid: UUID,
                      item_data: ItemRequest,
                      user: User = Depends(get_current_user)):
     """Разделяет позицию на части и отправляет задачу в очередь Redis."""
@@ -31,7 +32,8 @@ async def split_item(uuid: UUID,
 
 
 @router.post("/item/add")
-async def add_item(uuid: UUID,
+async def add_item(request: Request,
+                   uuid: UUID,
                    item_data: AddItemRequest,
                    user: User = Depends(get_current_user)):
     """Добавляет позицию в чек."""
@@ -46,7 +48,8 @@ async def add_item(uuid: UUID,
 
 
 @router.post("/item/edit")
-async def add_item(uuid: UUID,
+async def add_item(request: Request,
+                   uuid: UUID,
                    item_data: EditItemRequest,
                    user: User = Depends(get_current_user)):
     """Редактирование позиции в чек."""
@@ -61,7 +64,8 @@ async def add_item(uuid: UUID,
 
 
 @router.delete("/item/delete")
-async def delete_item(uuid: UUID,
+async def delete_item(request: Request,
+                      uuid: UUID,
                       item_id: int,
                       user: User = Depends(get_current_user)):
     """Добавляет позицию в чек."""

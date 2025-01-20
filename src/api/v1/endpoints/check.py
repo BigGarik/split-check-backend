@@ -5,7 +5,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user
-from src.models import User
+from src.models import User, StatusEnum
 from src.redis import queue_processor
 from src.schemas import CheckSelectionRequest, EditCheckStatusRequest
 from src.utils.db import get_async_db
@@ -126,8 +126,10 @@ async def edit_check_name(request: Request,
     response_description="Сообщение о том, что данные отправлены в очередь."
 )
 async def edit_check_status(
-    request: EditCheckStatusRequest,
-    user: User = Depends(get_current_user),
+        request: Request,
+        uuid: UUID,
+        check_status: StatusEnum,
+        user: User = Depends(get_current_user),
 ):
     """
     Изменяет статус чека и отправляет задачу в очередь для последующей обработки через WebSocket.
@@ -146,6 +148,8 @@ async def edit_check_status(
     }
     ```
 
+    :param check_status:
+    :param uuid:
     :param request: Данные для изменения статуса чека.
     :param user: Текущий пользователь, извлекаемый через Depends(get_current_user).
     :return: Сообщение об успешной отправке данных.
@@ -153,8 +157,8 @@ async def edit_check_status(
     task_data = {
         "type": "edit_check_status_task",
         "user_id": user.id,
-        "check_uuid": str(request.uuid),
-        "check_status": request.check_status.value
+        "check_uuid": uuid,
+        "check_status": check_status.value
     }
     await queue_processor.push_task(task_data)
 

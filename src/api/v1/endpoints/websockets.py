@@ -1,10 +1,12 @@
+from typing import Annotated
+
 from fastapi import Depends, APIRouter
 from jose import JWTError
 from loguru import logger
 from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from src.api.deps import get_current_user
+from src.api.deps import get_current_user_for_websocket
 from src.models import User
 from src.websockets.manager import ws_manager
 
@@ -13,7 +15,8 @@ router = APIRouter()
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket,
-                             user: User = Depends(get_current_user)):
+                             user: Annotated[User, Depends(get_current_user_for_websocket)]):
+    logger.debug(f"websocket.headers: {websocket.headers}")
     try:
         # Пытаемся верифицировать токен
         # user = await get_current_user(token)

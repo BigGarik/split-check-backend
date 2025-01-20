@@ -3,12 +3,12 @@ from typing import Dict
 from fastapi import APIRouter, Depends, status, HTTPException, Response
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
+from starlette.requests import Request
 
 from src.config.settings import settings
 from src.core.security import verify_token
 from src.services.auth import authenticate_user, generate_tokens
 from src.schemas import RefreshTokenRequest, TokenResponse
-
 
 router = APIRouter()
 
@@ -25,10 +25,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
         429: {"description": "Too many login attempts"},
     }
 )
-async def login_for_access_token(
-        response: Response,
-        form_data: OAuth2PasswordRequestForm = Depends()
-) -> Dict[str, str]:
+async def login_for_access_token(request: Request,
+                                 response: Response,
+                                 form_data: OAuth2PasswordRequestForm = Depends()
+                                 ) -> Dict[str, str]:
     """Login endpoint to obtain access and refresh tokens."""
     user = await authenticate_user(form_data.username, form_data.password)
     if not user:
