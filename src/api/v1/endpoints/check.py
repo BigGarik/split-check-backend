@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.post("/add")
-async def add_empty_check(user: User = Depends(get_current_user)):
+async def add_empty_check(request: Request, user: User = Depends(get_current_user)):
     task_data = {
         "type": "add_empty_check_task",
         "user_id": user.id
@@ -26,7 +26,8 @@ async def add_empty_check(user: User = Depends(get_current_user)):
 
 
 @router.get("/all")
-async def get_all_check(page: int = Query(default=1, ge=1),
+async def get_all_check(request: Request,
+                        page: int = Query(default=1, ge=1),
                         page_size: int = Query(default=20, ge=1, le=100),
                         user: User = Depends(get_current_user)):
     task_data = {
@@ -54,7 +55,8 @@ async def get_all_check(request: Request, user: User = Depends(get_current_user)
 
 
 @router.get("/{uuid}")
-async def get_check(uuid: UUID,
+async def get_check(request: Request,
+                    uuid: UUID,
                     user: User = Depends(get_current_user),
                     session: AsyncSession = Depends(get_async_db)
                     ):
@@ -85,7 +87,8 @@ async def get_check(uuid: UUID,
 
 
 @router.post("/{uuid}/select")
-async def user_selection(uuid: UUID,
+async def user_selection(request: Request,
+                         uuid: UUID,
                          selection: CheckSelectionRequest,
                          user: User = Depends(get_current_user)):
     task_data = {
@@ -100,7 +103,8 @@ async def user_selection(uuid: UUID,
 
 
 @router.post("/name")
-async def edit_check_name(uuid: UUID,
+async def edit_check_name(request: Request,
+                          uuid: UUID,
                           check_name: str,
                           user: User = Depends(get_current_user)):
     task_data = {
@@ -158,7 +162,8 @@ async def edit_check_status(
 
 
 @router.post("/join")
-async def join_check(uuid: UUID,
+async def join_check(request: Request,
+                     uuid: UUID,
                      user: User = Depends(get_current_user)):
     """Присоединяет пользователя к чеку и возвращает статус операции."""
     task_data = {
@@ -171,7 +176,8 @@ async def join_check(uuid: UUID,
 
 
 @router.delete("/delete")
-async def delete_check(uuid: UUID,
+async def delete_check(request: Request,
+                       uuid: UUID,
                        user: User = Depends(get_current_user)):
     """Удаляет чек."""
     task_data = {
@@ -184,7 +190,8 @@ async def delete_check(uuid: UUID,
 
 
 @router.delete("/user/delete")
-async def user_delete_from_check(uuid: UUID,
+async def user_delete_from_check(request: Request,
+                                 uuid: UUID,
                                  user_id_for_delite,
                                  user: User = Depends(get_current_user)):
     """Удаляет пользователя из чека.

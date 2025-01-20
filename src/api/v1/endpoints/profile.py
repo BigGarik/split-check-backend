@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from src.api.deps import get_current_user
 from src.models.user import User
@@ -11,7 +11,8 @@ router = APIRouter()
 
 
 @router.get("/profile")
-async def get_profile(user: Annotated[User, Depends(get_current_user)]):
+async def get_profile(request: Request,
+                      user: Annotated[User, Depends(get_current_user)]):
 
     task_data = {
         "type": "get_user_profile_task",
@@ -22,7 +23,8 @@ async def get_profile(user: Annotated[User, Depends(get_current_user)]):
 
 
 @router.put("/profile")
-async def update_profile(profile_data: UserProfileUpdate,
+async def update_profile(request: Request,
+                         profile_data: UserProfileUpdate,
                          user: Annotated[User, Depends(get_current_user)]):
     profile_dict = profile_data.model_dump(exclude_unset=True)
     serialized_profile_dict = UserProfileUpdate.model_validate(profile_dict).model_dump_json()
