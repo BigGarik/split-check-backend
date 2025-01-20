@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 import jwt
@@ -26,7 +27,7 @@ async def get_token_from_redis(request: Request):
 
         # decoded = jwt.decode(token, options={"verify_signature": False})
 
-        token_data = await redis_client.get(f"firebase_idtoken_{token}")
+        token_data = json.loads(await redis_client.get(f"firebase_idtoken_{token}"))
         if not token_data:
             return None
         return token_data
@@ -54,7 +55,7 @@ async def add_token_to_redis(token, claims):
         if exp.total_seconds() > 0:
             await redis_client.set(
                 key=f"firebase_idtoken_{token}",
-                value=claims,
+                value=json.dumps(claims),
                 expire=int(exp.total_seconds())  # Redis ожидает TTL в секундах
             )
         else:
