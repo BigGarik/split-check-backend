@@ -1,12 +1,13 @@
 import json
-from datetime import datetime
-from typing import Dict, Any
+from datetime import datetime, date
+from typing import Dict, Any, Optional
 
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException
 
+from src.models import StatusEnum
 from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.managers.item_manager import ItemService
@@ -159,7 +160,6 @@ class CheckManager:
                 except Exception as e:
                     logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
-
     async def send_check_data(self, user_id: int, check_uuid: str) -> None:
         check_data = await self.get_check_data_by_uuid(check_uuid)
         participants, user_selections, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
@@ -174,8 +174,20 @@ class CheckManager:
 
         await self._send_ws_message(user_id, msg)
 
-    async def send_all_checks(self, user_id: int, page: int = 1, page_size: int = 10) -> None:
-        checks_data = await get_all_checks(self.session, user_id, page, page_size)
+    async def send_all_checks(self, user_id: int,
+                              page: int,
+                              page_size: int,
+                              check_name: Optional[str] = None,
+                              check_status: Optional[StatusEnum] = None,
+                              start_date: Optional[date] = None,
+                              end_date: Optional[date] = None) -> None:
+        checks_data = await get_all_checks(self.session,
+                                           user_id=user_id,
+                                           page=page,
+                                           page_size=page_size,
+                                           check_status=check_status,
+                                           start_date=start_date,
+                                           end_date=end_date)
         msg = create_event_message(
             message_type=settings.Events.ALL_BILL_EVENT,
             payload={

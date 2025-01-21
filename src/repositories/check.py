@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from loguru import logger
@@ -264,7 +264,14 @@ def format_datetime(dt: datetime) -> str:
     return dt.isoformat() if dt else None
 
 
-async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, page_size: int = 10) -> dict:
+async def get_all_checks(session: AsyncSession,
+                         user_id: int,
+                         page: int,
+                         page_size: int,
+                         check_name: Optional[str] = None,
+                         check_status: Optional[StatusEnum] = None,
+                         start_date: Optional[date] = None,
+                         end_date: Optional[date] = None) -> dict:
     try:
         # Проверка существования пользователя
         user = await session.get(User, user_id)
@@ -278,12 +285,21 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
                 "total_pages": 0
             }
 
-        # Подсчёт общего количества чеков пользователя
-        total_checks = await session.scalar(
-            select(func.count(Check.uuid))
-            .join(Check.users)
-            .where(User.id == user_id)
-        )
+        # Создаём базовый запрос для чеков
+        query = select(Check).join(Check.users).where(User.id == user_id)
+
+        # Добавляем фильтры
+        if check_name:
+            query = query.where(Check.name.ilike(f"%{check_name}%"))
+        if check_status:
+            query = query.where(Check.status == check_status)
+        if start_date:
+            query = query.where(Check.created_at >= datetime.combine(start_date, datetime.min.time()))
+        if end_date:
+            query = query.where(Check.created_at <= datetime.combine(end_date, datetime.max.time()))
+
+        # Подсчёт общего количества чеков
+        total_checks = await session.scalar(select(func.count()).select_from(query.subquery()))
 
         # Определяем общее количество страниц и проверяем диапазон страницы
         total_pages = (total_checks + page_size - 1) // page_size
@@ -300,16 +316,11 @@ async def get_all_checks(session: AsyncSession, user_id: int, page: int = 1, pag
 
         # Получаем список чеков с пагинацией
         offset = (page - 1) * page_size
-        checks = await session.execute(
-            select(Check)
-            .join(Check.users)
-            .where(User.id == user_id)
-            .options(selectinload(Check.users))
-            .order_by(Check.created_at.desc())
-            .offset(offset)
-            .limit(page_size)
-        )
-        checks_page = checks.scalars().all()
+        query = query.offset(offset).limit(page_size)
+
+        # Выполняем запрос
+        result = await session.execute(query)
+        checks_page = result.scalars().all()
 
         return {
             "items": [

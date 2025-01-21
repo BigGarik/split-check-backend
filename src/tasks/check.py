@@ -12,8 +12,8 @@ async def send_check_data_task(user_id: int,
 
 
 async def send_all_checks_task(user_id: int,
-                               page: int = 1,
-                               page_size: int = 10,
+                               page: int,
+                               page_size: int,
                                check_manager: CheckManager = Depends(get_check_manager)):
     await check_manager.send_all_checks(user_id, page, page_size)
 

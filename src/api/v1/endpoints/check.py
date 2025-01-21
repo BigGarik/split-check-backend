@@ -1,3 +1,5 @@
+from datetime import date
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Query
@@ -7,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.deps import get_current_user
 from src.models import User, StatusEnum
 from src.redis import queue_processor
-from src.schemas import CheckSelectionRequest, EditCheckStatusRequest
+from src.schemas import CheckSelectionRequest
 from src.utils.db import get_async_db
 
 router = APIRouter()
@@ -27,12 +29,20 @@ async def add_empty_check(request: Request, user: User = Depends(get_current_use
 
 @router.get("/all")
 async def get_all_check(request: Request,
+                        check_name: Optional[str] = None,
+                        check_status: Optional[StatusEnum] = None,
+                        start_date: Optional[date] = Query(None, description="Start date in YYYY-MM-DD format"),
+                        end_date: Optional[date] = Query(None, description="End date in YYYY-MM-DD format"),
                         page: int = Query(default=1, ge=1),
                         page_size: int = Query(default=20, ge=1, le=100),
                         user: User = Depends(get_current_user)):
     task_data = {
         "type": "send_all_checks_task",
         "user_id": user.id,
+        "check_name": check_name,
+        "check_status": check_status,
+        "start_date": start_date,
+        "end_date": end_date,
         "page": page,
         "page_size": page_size
     }
