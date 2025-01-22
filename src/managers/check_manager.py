@@ -178,13 +178,14 @@ class CheckManager:
                               page: int,
                               page_size: int,
                               check_name: Optional[str] = None,
-                              check_status: Optional[StatusEnum] = None,
-                              start_date: Optional[date] = None,
-                              end_date: Optional[date] = None) -> None:
+                              check_status: Optional[str] = None,
+                              start_date: Optional[str] = None,
+                              end_date: Optional[str] = None) -> None:
         checks_data = await get_all_checks(self.session,
                                            user_id=user_id,
                                            page=page,
                                            page_size=page_size,
+                                           check_name=check_name,
                                            check_status=check_status,
                                            start_date=start_date,
                                            end_date=end_date)

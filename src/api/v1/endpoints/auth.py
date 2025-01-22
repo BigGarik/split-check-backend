@@ -9,7 +9,7 @@ from src.schemas import UserCreate
 
 router = APIRouter()
 
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 # templates = Jinja2Templates(directory="templates")
 
 

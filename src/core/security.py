@@ -30,7 +30,7 @@ async def async_verify_password(password: str, hashed_password: str) -> bool:
 
 
 # OAuth2 схема
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
 
 async def create_token(

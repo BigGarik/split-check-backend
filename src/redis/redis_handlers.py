@@ -29,6 +29,10 @@ async def handle_send_all_checks_task(session: AsyncSession, task_data: dict):
         user_id=task_data["user_id"],
         page=task_data["page"],
         page_size=task_data["page_size"],
+        check_name=task_data.get('check_name'),
+        check_status=task_data.get('check_status'),
+        start_date=task_data.get('start_date'),
+        end_date=task_data.get('end_date'),
         check_manager=CheckManager(session)
     )
 

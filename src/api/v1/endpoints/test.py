@@ -8,7 +8,7 @@ router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
 
 @router.get("", response_class=HTMLResponse)

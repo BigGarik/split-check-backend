@@ -269,10 +269,23 @@ async def get_all_checks(session: AsyncSession,
                          page: int,
                          page_size: int,
                          check_name: Optional[str] = None,
-                         check_status: Optional[StatusEnum] = None,
-                         start_date: Optional[date] = None,
-                         end_date: Optional[date] = None) -> dict:
+                         check_status: Optional[str] = None,
+                         start_date: Optional[str] = None,
+                         end_date: Optional[str] = None) -> dict:
     try:
+        # Преобразование строковых дат в объекты `date`
+        if start_date:
+            try:
+                start_date = date.fromisoformat(start_date)  # Преобразование строки в дату
+            except ValueError:
+                raise ValueError(f"Invalid start_date format: {start_date}. Expected format: YYYY-MM-DD")
+
+        if end_date:
+            try:
+                end_date = date.fromisoformat(end_date)  # Преобразование строки в дату
+            except ValueError:
+                raise ValueError(f"Invalid end_date format: {end_date}. Expected format: YYYY-MM-DD")
+
         # Проверка существования пользователя
         user = await session.get(User, user_id)
         if not user:

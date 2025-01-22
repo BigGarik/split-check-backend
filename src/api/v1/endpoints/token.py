@@ -12,7 +12,7 @@ from src.schemas import RefreshTokenRequest, TokenResponse
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
 
 # Эндпоинт для получения access_token и refresh_token

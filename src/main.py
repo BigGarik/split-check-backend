@@ -80,7 +80,7 @@ app.add_middleware(
 app.include_router(api_router)
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
 if __name__ == '__main__':
     import uvicorn

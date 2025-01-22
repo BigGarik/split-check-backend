@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 from uuid import UUID
-
+from loguru import logger
 from fastapi import APIRouter, Query
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,13 +36,19 @@ async def get_all_check(request: Request,
                         page: int = Query(default=1, ge=1),
                         page_size: int = Query(default=20, ge=1, le=100),
                         user: User = Depends(get_current_user)):
+
+    logger.debug(f"check_name: {check_name}")
+    logger.debug(f"check_status: {str(check_status)}")
+    logger.debug(f"start_date: {start_date}")
+    logger.debug(f"end_date: {end_date}")
+
     task_data = {
         "type": "send_all_checks_task",
         "user_id": user.id,
         "check_name": check_name,
-        "check_status": check_status,
-        "start_date": start_date,
-        "end_date": end_date,
+        "check_status": str(check_status) if check_status else None,
+        "start_date": str(start_date) if start_date else None,
+        "end_date": str(end_date) if end_date else None,
         "page": page,
         "page_size": page_size
     }
