@@ -341,7 +341,7 @@ async def get_all_checks(session: AsyncSession,
                     uuid=check.uuid,
                     name=check.name,
                     status=check.status.value,
-                    date=check.check_data.get('date') if check.check_data else None,
+                    date=check.created_at.strftime("%d.%m.%Y"),
                     total=check.check_data.get('total') if check.check_data else None,
                     restaurant=check.check_data.get('restaurant') if check.check_data else None,
                 ).dict()
