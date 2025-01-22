@@ -37,11 +37,6 @@ async def get_all_check(request: Request,
                         page_size: int = Query(default=20, ge=1, le=100),
                         user: User = Depends(get_current_user)):
 
-    logger.debug(f"check_name: {check_name}")
-    logger.debug(f"check_status: {str(check_status)}")
-    logger.debug(f"start_date: {start_date}")
-    logger.debug(f"end_date: {end_date}")
-
     task_data = {
         "type": "send_all_checks_task",
         "user_id": user.id,
