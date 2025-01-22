@@ -311,6 +311,9 @@ async def get_all_checks(session: AsyncSession,
         if end_date:
             query = query.where(Check.created_at <= datetime.combine(end_date, datetime.max.time()))
 
+        # Добавляем сортировку по возрастанию даты
+        query = query.order_by(Check.created_at.asc())
+
         # Подсчёт общего количества чеков
         total_checks = await session.scalar(select(func.count()).select_from(query.subquery()))
 
