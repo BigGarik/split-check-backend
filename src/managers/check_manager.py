@@ -170,6 +170,7 @@ class CheckManager:
         check_data["name"] = check.name
         check_data["uuid"] = check_uuid
         check_data["author_id"] = check.author_id
+        check_data["status"] = check.status.value
         msg = create_event_message(settings.Events.BILL_DETAIL_EVENT, check_data)
 
         await self._send_ws_message(user_id, msg)
