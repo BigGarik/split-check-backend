@@ -312,7 +312,7 @@ async def get_all_checks(session: AsyncSession,
             query = query.where(Check.created_at <= datetime.combine(end_date, datetime.max.time()))
 
         # Добавляем сортировку по возрастанию даты
-        query = query.order_by(Check.created_at.asc())
+        query = query.order_by(Check.created_at.desc())
 
         # Подсчёт общего количества чеков
         total_checks = await session.scalar(select(func.count()).select_from(query.subquery()))
@@ -419,7 +419,7 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
                     uuid=check.uuid,
                     name=check.name,
                     status=check.status.value,
-                    date=check.check_data.get('date') if check.check_data else None,
+                    date=check.created_at.strftime("%d.%m.%Y"),
                     total=check.check_data.get('total') if check.check_data else 0,
                     restaurant=check.check_data.get('restaurant') if check.check_data else None,
                 ).dict()
