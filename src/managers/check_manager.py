@@ -168,6 +168,7 @@ class CheckManager:
         check_data["user_selections"] = json.loads(user_selections)
         check = await get_check_by_uuid(self.session, check_uuid)
         check_data["name"] = check.name
+        check_data["date"] = check.created_at.strftime("%d.%m.%Y")
         check_data["uuid"] = check_uuid
         check_data["author_id"] = check.author_id
         check_data["status"] = check.status.value
