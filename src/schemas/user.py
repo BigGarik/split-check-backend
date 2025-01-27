@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field, EmailStr, constr, HttpUrl, AnyUrl, AnyHttpUrl
+
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, constr
 
 
 class UserCreate(BaseModel):
@@ -22,7 +23,7 @@ class UserProfileBase(BaseModel):
     language: Optional[constr(strip_whitespace=True, pattern=r"^[a-z]{2}$")] = Field(
         None, description="Код языка в формате ISO 639-1 (например, 'en' или 'ru')"
     )
-    avatar_url: Optional[AnyHttpUrl] = Field(
+    avatar_url: Optional[str] = Field(
         None, description="URL аватара пользователя"
     )
 
