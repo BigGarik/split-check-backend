@@ -12,12 +12,12 @@ async def get_token_from_redis(id_token):
     Get uid from JWT token and save claims to Redis
     """
     try:
-        logger.debug(f"token: {id_token}")
+        logger.debug(f"id_token: {id_token}")
         if not id_token:
             return None
 
         token_data = json.loads(await redis_client.get(f"firebase_idtoken_{id_token}"))
-        logger.debug(f"token_data: {token_data}")
+        logger.debug(f"token_data_from_redis: {token_data}")
         if not token_data:
             return None
         return token_data

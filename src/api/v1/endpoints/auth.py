@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from firebase_admin import auth
 from loguru import logger
 
+from src.redis.utils import add_token_to_redis, get_token_from_redis
 from src.repositories.user import get_user_by_email, create_new_user
 from src.schemas import UserCreate
 
@@ -25,7 +26,10 @@ async def auth_callback(id_token):
     """
     logger.debug(f"id_token: {id_token}")
     try:
-        claims = auth.verify_id_token(id_token)
+        claims = await get_token_from_redis(id_token)
+        if not claims:
+            claims = auth.verify_id_token(id_token)
+            await add_token_to_redis(id_token, claims)
         email = claims.get('email')
         logger.debug(f"user: {claims}")
 
@@ -42,9 +46,7 @@ async def auth_callback(id_token):
                     "avatar_url": claims.get('picture')
                 }
             )
-        #
-        # # Генерируем токены для пользователя
-        # tokens = await generate_tokens(email=user.email, user_id=user.id)
+
         return {"user_id": user.id}
 
     except ValueError as e:
