@@ -94,7 +94,8 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
         "id": len(check.check_data.get("items", [])) + 1,
         "name": item_data.name,
         "quantity": item_data.quantity,
-        "price": item_data.price
+        "price": item_data.sum / item_data.quantity,
+        "sum": item_data.sum
     }
 
     # Инициализируем items если их нет
@@ -177,8 +178,9 @@ async def edit_item_in_check(
                 item["name"] = item_data.name
             if item_data.quantity is not None:
                 item["quantity"] = item_data.quantity
-            if item_data.price is not None:
-                item["price"] = item_data.price
+            if item_data.sum is not None:
+                item["sum"] = item_data.sum
+            item["price"] = item["sum"] / item["quantity"]
             item_found = True
             break
 
@@ -220,8 +222,9 @@ async def update_item_quantity(session: AsyncSession, check_uuid: str, item_id: 
         for item in check.check_data.get("items", []):
             if item["id"] == item_id:
                 item["quantity"] = quantity
+                item["price"] = item["sum"] / item["quantity"]
                 updated = True
-                logger.info(f"Обновлено количество для элемента {item_id} в чеке {check_uuid} на {quantity}")
+                logger.debug(f"Обновлено количество для элемента {item_id} в чеке {check_uuid} на {quantity}")
                 break
 
         if not updated:

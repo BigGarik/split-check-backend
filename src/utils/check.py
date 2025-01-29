@@ -4,7 +4,7 @@ def recalculate_check_totals(check_data: dict) -> dict:
 
     # Пересчитываем subtotal (сумма всех items)
     subtotal = sum(
-        item["price"]  # * item["quantity"]
+        item["sum"]  # * item["quantity"]
         for item in check_data.get("items", [])
     )
     check_data["subtotal"] = subtotal

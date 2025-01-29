@@ -11,7 +11,7 @@ from src.models import StatusEnum
 PositiveInt = conint(gt=0)
 ItemName = constr(min_length=1, max_length=50, strip_whitespace=True)
 # Валидация цены до 2 знаков после запятой и диапазона
-Price = confloat(ge=0, le=1_000_000_000)
+Sum = confloat(ge=0, le=1_000_000_000)
 
 
 class ItemRequest(BaseModel):
@@ -22,11 +22,11 @@ class ItemRequest(BaseModel):
 class AddItemRequest(BaseModel):
     name: ItemName = Field(description="Название товара")
     quantity: PositiveInt = Field(gt=0, le=1000, description="Количество товара (от 1 до 1000)")
-    price: Price = Field(description="Цена товара")
+    sum: Sum = Field(description="Цена товара")
 
     # Валидация цены до 2 знаков после запятой
-    @field_validator('price')
-    def validate_price(cls, value: float) -> float:
+    @field_validator('sum')
+    def validate_sum(cls, value: float) -> float:
         if round(value, 2) != value:
             raise ValueError("Цена должна иметь не более 2 знаков после запятой")
         return value
@@ -36,13 +36,13 @@ class EditItemRequest(BaseModel):
     id: PositiveInt = Field(description="ID товара")
     name: Optional[ItemName] = Field(None, description="Новое название товара")
     quantity: Optional[PositiveInt] = Field(None, gt=0, le=1000, description="Новое количество товара (от 1 до 1000)")
-    price: Optional[Price] = Field(None, description="Новая цена товара")
+    sum: Optional[Sum] = Field(None, description="Новая цена товара")
 
     # Проверка, что хотя бы одно поле заполнено
     @model_validator(mode='after')
     def check_at_least_one_field(cls, model):
         # Проверяем, что хотя бы одно из полей (кроме id) заполнено
-        if not any(getattr(model, field) is not None for field in ['name', 'quantity', 'price']):
+        if not any(getattr(model, field) is not None for field in ['name', 'quantity', 'sum']):
             raise ValueError("Необходимо указать хотя бы одно поле для обновления")
         return model
 
@@ -60,7 +60,7 @@ class CheckListResponse(BaseModel):
     name: str
     status: str
     date: str
-    total: Optional[Price]
+    total: Optional[Sum]
     restaurant: Optional[str] = None
 
 
@@ -70,6 +70,7 @@ class Item(BaseModel):
     name: str
     quantity: Decimal = Field(gt=0)  # Позволяем дробные значения
     price: Decimal = Field(gt=0)
+    sum: Decimal = Field(gt=0)
 
 
 # Валидатор для сервисного сбора
@@ -131,7 +132,7 @@ class Order(BaseModel):
     @field_validator('subtotal')
     def validate_subtotal(cls, v: Decimal, info) -> Decimal:
         items = info.data.get('items', [])
-        calculated_subtotal = sum(item.total for item in items)
+        calculated_subtotal = sum(item.sum for item in items)
         if v != calculated_subtotal:
             raise ValueError(
                 f'Неверный subtotal. Ожидается {calculated_subtotal}, получено {v}'
