@@ -3,6 +3,7 @@ import json
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from src.config.settings import settings
 from src.models import UserSelection
@@ -109,3 +110,21 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
     logger.debug(f"Получили participants: {participants}")
 
     return json.dumps(participants), json.dumps(user_selections), users
+
+
+async def delite_item_from_user_selections(session: AsyncSession, check_uuid: str, item_id: int):
+
+    users = await get_users_by_check_uuid(session, check_uuid)
+
+    for user in users:
+        stmt = select(UserSelection).filter_by(user_id=user.id, check_uuid=check_uuid)
+        result = await session.execute(stmt)
+        user_selections = result.scalars().first()
+        items = user_selections.selection.get("selected_items", [])
+        new_items = [item for item in items if item["item_id"] != item_id]
+        user_selections.selection["selected_items"] = new_items
+
+        if items != new_items:
+            logger.debug(f"Получили user_selections: {user_selections.selection["selected_items"]}")
+            flag_modified(user_selections, "selection")
+            await session.commit()

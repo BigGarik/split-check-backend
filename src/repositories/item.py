@@ -10,6 +10,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from src.config.settings import settings
 from src.models import Check
 from src.redis import redis_client
+from src.repositories.user_selection import delite_item_from_user_selections
 from src.schemas import AddItemRequest, EditItemRequest
 from src.utils.check import recalculate_check_totals
 
@@ -76,6 +77,8 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
 
     # Кэшируем данные чека в Redis для будущих обращений
     await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+
+    await delite_item_from_user_selections(session, check_uuid, item_id)
 
     return removed_item
 
@@ -209,6 +212,8 @@ async def edit_item_in_check(
 
     # Кэшируем данные чека в Redis для будущих обращений
     await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+
+    await delite_item_from_user_selections(session, check_uuid, item_data.id)
 
     logger.debug(f"Обновленные данные check: {check_data}")
     return check_data
