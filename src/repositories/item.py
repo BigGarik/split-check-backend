@@ -88,6 +88,7 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
     check = result.scalars().first()
     if not check:
         raise Exception("Check not found")
+    logger.debug(f"Add item to check: {item_data}")
 
     # Создаем новый item
     new_item = {
