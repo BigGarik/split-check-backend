@@ -82,67 +82,70 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
 
 async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: AddItemRequest) -> dict:
     """Добавление элемента в чек и возврат обновленного объекта Check"""
+    try:
+        stmt = select(Check).where(Check.uuid == check_uuid)
+        result = await session.execute(stmt)
+        check = result.scalars().first()
+        if not check:
+            raise Exception("Check not found")
+        logger.debug(f"Add item to check: {item_data}")
 
-    stmt = select(Check).where(Check.uuid == check_uuid)
-    result = await session.execute(stmt)
-    check = result.scalars().first()
-    if not check:
-        raise Exception("Check not found")
-    logger.debug(f"Add item to check: {item_data}")
+        # Создаем новый item
+        new_item = {
+            "id": len(check.check_data.get("items", [])) + 1,
+            "name": item_data.name,
+            "quantity": item_data.quantity,
+            "price": item_data.sum / item_data.quantity,
+            "sum": item_data.sum
+        }
+        logger.debug(f"New item: {new_item}")
 
-    # Создаем новый item
-    new_item = {
-        "id": len(check.check_data.get("items", [])) + 1,
-        "name": item_data.name,
-        "quantity": item_data.quantity,
-        "price": item_data.sum / item_data.quantity,
-        "sum": item_data.sum
-    }
-    logger.debug(f"New item: {new_item}")
+        # Инициализируем items если их нет
+        if "items" not in check.check_data:
+            check.check_data["items"] = []
 
-    # Инициализируем items если их нет
-    if "items" not in check.check_data:
-        check.check_data["items"] = []
+        # Добавляем новый item
+        check.check_data["items"].append(new_item)
 
-    # Добавляем новый item
-    check.check_data["items"].append(new_item)
+        # Добавляем/обновляем дополнительные поля если их нет
+        if "date" not in check.check_data:
+            from datetime import datetime
+            current_time = datetime.now()
+            check.check_data["date"] = current_time.strftime("%d.%m.%Y")
+            check.check_data["time"] = current_time.strftime("%H:%M")
 
-    # Добавляем/обновляем дополнительные поля если их нет
-    if "date" not in check.check_data:
-        from datetime import datetime
-        current_time = datetime.now()
-        check.check_data["date"] = current_time.strftime("%d.%m.%Y")
-        check.check_data["time"] = current_time.strftime("%H:%M")
+        # Убеждаемся, что все необходимые поля присутствуют
+        default_fields = {
+            "waiter": "",
+            "restaurant": "",
+            "order_number": "",
+            "table_number": ""
+        }
 
-    # Убеждаемся, что все необходимые поля присутствуют
-    default_fields = {
-        "waiter": "",
-        "restaurant": "",
-        "order_number": "",
-        "table_number": ""
-    }
+        for field, default_value in default_fields.items():
+            if field not in check.check_data:
+                check.check_data[field] = default_value
 
-    for field, default_value in default_fields.items():
-        if field not in check.check_data:
-            check.check_data[field] = default_value
+        # Пересчитываем все поля
+        check.check_data = recalculate_check_totals(check.check_data)
 
-    # Пересчитываем все поля
-    check.check_data = recalculate_check_totals(check.check_data)
+        # Помечаем check_data как измененное
+        flag_modified(check, "check_data")
+        await session.commit()
+        await session.refresh(check)
 
-    # Помечаем check_data как измененное
-    flag_modified(check, "check_data")
-    await session.commit()
-    await session.refresh(check)
+        # Кладем новые данные чека в Redis
+        redis_key = f"check_uuid:{check_uuid}"
+        check_data = check.check_data
+        logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
 
-    # Кладем новые данные чека в Redis
-    redis_key = f"check_uuid:{check_uuid}"
-    check_data = check.check_data
-    logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
+        # Кэшируем данные чека в Redis для будущих обращений
+        await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
 
-    # Кэшируем данные чека в Redis для будущих обращений
-    await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
-
-    return new_item
+        return new_item
+    except Exception as e:
+        logger.error(f"Error adding item to check: {e}")
+        raise
 
 
 async def edit_item_in_check(
