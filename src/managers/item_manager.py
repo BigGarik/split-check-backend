@@ -45,7 +45,7 @@ class ItemService:
             users = await get_users_by_check_uuid(self.session, check_uuid)
             for user in users:
                 if user.id == user_id:
-                    await self._send_ws_message(user_id, msg_for_author)
+                    await self._send_ws_message(user_id, msg_for_all)
                 else:
                     await self._send_ws_message(user.id, msg_for_all)
 
@@ -76,7 +76,7 @@ class ItemService:
             users = await get_users_by_check_uuid(self.session, check_uuid)
             for user in users:
                 if user.id == user_id:
-                    await self._send_ws_message(user_id, msg_for_author)
+                    await self._send_ws_message(user_id, msg_for_all)
                 else:
                     await self._send_ws_message(user.id, msg_for_all)
 
@@ -108,7 +108,7 @@ class ItemService:
             users = await get_users_by_check_uuid(self.session, check_uuid)
             for user in users:
                 if user.id == user_id:
-                    await self._send_ws_message(user_id, msg_for_author)
+                    await self._send_ws_message(user_id, msg_for_all)
                 else:
                     await self._send_ws_message(user.id, msg_for_all)
 
