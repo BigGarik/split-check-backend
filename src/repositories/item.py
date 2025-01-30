@@ -98,6 +98,7 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
         "price": item_data.sum / item_data.quantity,
         "sum": item_data.sum
     }
+    logger.debug(f"New item: {new_item}")
 
     # Инициализируем items если их нет
     if "items" not in check.check_data:
