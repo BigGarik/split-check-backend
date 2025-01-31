@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, date
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from loguru import logger
@@ -7,8 +7,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException
 
-from src.models import StatusEnum
-from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.managers.item_manager import ItemService
 from src.redis import redis_client
@@ -24,6 +22,7 @@ from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
 from src.services.user import join_user_to_check
 from src.utils.notifications import create_event_message, create_event_status_message
+from src.websockets.manager import ws_manager
 
 
 class CheckManager:

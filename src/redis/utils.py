@@ -12,7 +12,6 @@ async def get_token_from_redis(id_token):
     Get uid from JWT token and save claims to Redis
     """
     try:
-        logger.debug(f"id_token: {id_token}")
         if not id_token:
             return None
 
@@ -22,6 +21,7 @@ async def get_token_from_redis(id_token):
             return None
         return token_data
     except Exception as e:
+        logger.exception(e)
         return None
 
 
@@ -33,7 +33,6 @@ async def add_token_to_redis(id_token, claims):
 
         # Вычисляем оставшееся время действия токена
         remaining_time = exp_date - datetime.now()
-        logger.debug(f"remaining_time: {remaining_time}")
         # Устанавливаем TTL как минимальное между 5 минутами и оставшимся временем токена
         exp = min(remaining_time, timedelta(minutes=5))
 

@@ -1,7 +1,6 @@
 from fastapi import HTTPException
-from starlette.requests import Request
-from loguru import logger
 from firebase_admin import auth
+from loguru import logger
 
 
 def get_firebase_user(id_token):

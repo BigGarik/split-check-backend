@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.managers.check_manager import CheckManager
 from src.redis import queue_processor
-from src.schemas import UserProfileUpdate
 from src.tasks import add_item_task, add_empty_check_task, delete_item_task, edit_item_task, join_check_task, \
     delete_check_task, split_item_task, send_check_data_task, send_all_checks_task, send_main_page_checks_task, \
     user_delete_from_check_task, edit_check_name_task, edit_check_status_task
