@@ -13,7 +13,7 @@ from src.websockets.manager import ws_manager
 router = APIRouter()
 
 
-@router.websocket("/ws")
+@router.websocket("/ws", name="websocket_endpoint")
 async def websocket_endpoint(websocket: WebSocket,
                              user: Annotated[User, Depends(get_current_user_for_websocket)]):
     logger.debug(f"websocket.headers: {websocket.headers}")

@@ -26,6 +26,7 @@ router = APIRouter()
 
 @router.post(
     "/create",
+    summary="Создать пользователя",
     response_model=schemas.User,
     status_code=status.HTTP_201_CREATED,
     responses={

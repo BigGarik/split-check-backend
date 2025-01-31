@@ -15,7 +15,7 @@ from src.utils.db import get_async_db
 router = APIRouter()
 
 
-@router.post("/add")
+@router.post("/add", summary="Добавление пустого чека")
 async def add_empty_check(request: Request, user: User = Depends(get_current_user)):
     task_data = {
         "type": "add_empty_check_task",
@@ -27,7 +27,7 @@ async def add_empty_check(request: Request, user: User = Depends(get_current_use
     return {"message": "Данные чека отправлены в очередь для передачи через WebSocket"}
 
 
-@router.get("/all")
+@router.get("/all", summary="Получить все чеки")
 async def get_all_check(request: Request,
                         check_name: Optional[str] = None,
                         check_status: Optional[StatusEnum] = None,
@@ -53,8 +53,8 @@ async def get_all_check(request: Request,
     return {"message": "Данные чеков отправлены в очередь для передачи через WebSocket"}
 
 
-@router.get("/main_page")
-async def get_all_check(request: Request, user: User = Depends(get_current_user)):
+@router.get("/main_page", summary="Получить чеки на главной странице")
+async def get_main_page(request: Request, user: User = Depends(get_current_user)):
     task_data = {
         "type": "send_main_page_checks_task",
         "user_id": user.id,
@@ -65,7 +65,7 @@ async def get_all_check(request: Request, user: User = Depends(get_current_user)
     return {"message": "Данные главной страницы отправлены в очередь для передачи через WebSocket"}
 
 
-@router.get("/{uuid}")
+@router.get("/{uuid}", summary="Получить чек по UUID")
 async def get_check(request: Request,
                     uuid: UUID,
                     user: User = Depends(get_current_user),
@@ -97,7 +97,7 @@ async def get_check(request: Request,
     return {"message": "Данные чека отправлены в очередь для передачи через WebSocket"}
 
 
-@router.post("/{uuid}/select")
+@router.post("/{uuid}/select", summary="Выбор пользователя")
 async def user_selection(request: Request,
                          uuid: UUID,
                          selection: CheckSelectionRequest,
@@ -113,7 +113,7 @@ async def user_selection(request: Request,
     return {"message": "Данные о выборе отправлены в очередь для передачи через WebSocket"}
 
 
-@router.post("/name")
+@router.post("/name", summary="Изменение названия чека")
 async def edit_check_name(request: Request,
                           uuid: UUID,
                           check_name: str,
@@ -176,7 +176,7 @@ async def edit_check_status(
     return {"message": "Данные отправлены в очередь для передачи через WebSocket"}
 
 
-@router.post("/join")
+@router.post("/join", summary="Присоединение пользователя к чеку")
 async def join_check(request: Request,
                      uuid: UUID,
                      user: User = Depends(get_current_user)):
@@ -190,7 +190,7 @@ async def join_check(request: Request,
     return {"message": "Данные для присоединения отправлены в очередь"}
 
 
-@router.delete("/delete")
+@router.delete("/delete", summary="Удаление чека")
 async def delete_check(request: Request,
                        uuid: UUID,
                        user: User = Depends(get_current_user)):
@@ -204,7 +204,7 @@ async def delete_check(request: Request,
     return {"message": "Данные для удаления отправлены в очередь"}
 
 
-@router.delete("/user/delete")
+@router.delete("/user/delete", summary="Удаление пользователя из чека")
 async def user_delete_from_check(request: Request,
                                  uuid: UUID,
                                  user_id_for_delite,

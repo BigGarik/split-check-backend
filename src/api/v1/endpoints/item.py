@@ -11,7 +11,7 @@ from src.schemas import ItemRequest, AddItemRequest, EditItemRequest
 router = APIRouter()
 
 
-@router.put("/item/split")
+@router.put("/item/split", summary="Разделяет позицию на части")
 async def split_item(request: Request,
                      uuid: UUID,
                      item_data: ItemRequest,
@@ -31,7 +31,7 @@ async def split_item(request: Request,
     return {"message": "Данные отправлены в очередь для обработки"}
 
 
-@router.post("/item/add")
+@router.post("/item/add", summary="Добавляет позицию в чек.")
 async def add_item(request: Request,
                    uuid: UUID,
                    item_data: AddItemRequest,
@@ -47,12 +47,12 @@ async def add_item(request: Request,
     return {"message": "Данные для добавления отправлены в очередь"}
 
 
-@router.post("/item/edit")
-async def add_item(request: Request,
-                   uuid: UUID,
-                   item_data: EditItemRequest,
-                   user: User = Depends(get_current_user)):
-    """Редактирование позиции в чек."""
+@router.post("/item/edit", summary="Редактирование позиции в чеке.")
+async def edit_item(request: Request,
+                    uuid: UUID,
+                    item_data: EditItemRequest,
+                    user: User = Depends(get_current_user)):
+    """Редактирование позиции в чеке."""
     task_data = {
         "type": "edit_item_task",
         "user_id": user.id,
@@ -63,12 +63,12 @@ async def add_item(request: Request,
     return {"message": "Данные для добавления отправлены в очередь"}
 
 
-@router.delete("/item/delete")
+@router.delete("/item/delete", summary="Удаление позиции из чека.")
 async def delete_item(request: Request,
                       uuid: UUID,
                       item_id: int,
                       user: User = Depends(get_current_user)):
-    """Добавляет позицию в чек."""
+    """Удаление позиции из чека."""
     task_data = {
         "type": "delete_item_task",
         "user_id": user.id,

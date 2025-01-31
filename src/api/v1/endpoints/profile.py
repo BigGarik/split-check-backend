@@ -10,7 +10,7 @@ from src.schemas import UserProfileUpdate
 router = APIRouter()
 
 
-@router.get("/profile")
+@router.get("/profile", summary="Получить профиль пользователя")
 async def get_profile(request: Request,
                       user: Annotated[User, Depends(get_current_user)]):
 
@@ -22,7 +22,7 @@ async def get_profile(request: Request,
     return {"message": "Данные отправлены в WebSocket"}
 
 
-@router.put("/profile")
+@router.put("/profile", summary="Обновить профиль пользователя")
 async def update_profile(request: Request,
                          profile_data: UserProfileUpdate,
                          user: Annotated[User, Depends(get_current_user)]):

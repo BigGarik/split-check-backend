@@ -8,7 +8,7 @@ from src.services.upload_service import prepare_image_upload
 router = APIRouter()
 
 
-@router.post("/upload-image")
+@router.post("/upload-image", summary="Загрузка изображения")
 async def upload_image(request: Request,
                        user: User = Depends(get_current_user),
                        file: UploadFile = File(...)

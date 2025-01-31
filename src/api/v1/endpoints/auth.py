@@ -19,7 +19,7 @@ router = APIRouter()
 #     return templates.TemplateResponse("google_auth.html", {"request": request})
 
 
-@router.post("/firebase")
+@router.post("/firebase", summary="Авторизация через Firebase")
 async def auth_callback(id_token):
     """
     Обрабатывает OAuth авторизацию для мобильных приложений (Google, другие провайдеры).
