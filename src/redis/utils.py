@@ -15,10 +15,13 @@ async def get_token_from_redis(id_token):
         if not id_token:
             return None
 
-        token_data = json.loads(await redis_client.get(f"firebase_idtoken_{id_token}"))
-        logger.debug(f"token_data_from_redis: {token_data}")
-        if not token_data:
+        token = await redis_client.get(f"firebase_idtoken_{id_token}")
+        if not token:
             return None
+
+        token_data = json.loads(token)
+        logger.debug(f"token_data_from_redis: {token_data}")
+
         return token_data
     except Exception as e:
         logger.exception(e)
