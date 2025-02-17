@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
-redis_client = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
+redis_client = aioredis.from_url("redis://192.168.0.4", encoding="utf8", decode_responses=True)
 
 # app.include_router(webhook_router, prefix="/payment")
 
