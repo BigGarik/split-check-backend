@@ -3,7 +3,7 @@ from redis import asyncio as aioredis
 
 app = FastAPI()
 
-redis_client = aioredis.from_url("redis://192.168.0.4", encoding="utf8", decode_responses=True)
+redis_client = aioredis.from_url("redis://backendredisuser:d#q?3%.(oS1b6S@192.168.0.4", encoding="utf8", decode_responses=True)
 
 
 @app.get("/")
