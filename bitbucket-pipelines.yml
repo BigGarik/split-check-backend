@@ -10,8 +10,8 @@ pipelines:
             - rm -fR templates/
             - pipe: atlassian/scp-deploy:0.3.3
               variables:
-                USER: $PY_DJANGO_APP_TEST_SRV_USER
-                SERVER: $PY_DJANGO_APP_TEST_SRV_HOST
+                USER: $SCANNSPLIT_APP_TEST_SRV_USER
+                SERVER: $SCANNSPLIT_APP_TEST_SRV_HOST
                 REMOTE_PATH: '/app/api'
                 LOCAL_PATH: './*'
       - step:
@@ -19,8 +19,8 @@ pipelines:
           script:
             - pipe: atlassian/ssh-run:0.8.0
               variables:
-                SSH_USER: $PY_DJANGO_APP_TEST_SRV_USER
-                SERVER: $PY_DJANGO_APP_TEST_SRV_HOST
+                SSH_USER: $SCANNSPLIT_APP_TEST_SRV_USER
+                SERVER: $SCANNSPLIT_APP_TEST_SRV_HOST
                 COMMAND: cd /app && chmod 755 deploy.sh && /bin/bash deploy.sh && chmod 555 deploy.sh
     master:
       - step:
