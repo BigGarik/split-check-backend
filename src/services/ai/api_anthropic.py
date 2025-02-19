@@ -34,7 +34,6 @@ async def recognize_check_by_anthropic(file_location_directory: str):
               '"id": 1,'
               '"name": "Мохито 300 мл б/а",'
               '"quantity": 5,'
-              '"price": 13000,'
               '"sum": 65000'
            ' }'
           '],'

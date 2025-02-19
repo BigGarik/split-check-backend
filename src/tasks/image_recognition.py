@@ -14,6 +14,31 @@ from src.services.ai.api_anthropic import recognize_check_by_anthropic
 from src.services.classifier.classifier_image import classifier_image
 
 
+def calculate_price(json_data):
+    """
+    Вычисляет и записывает цену для каждого элемента в JSON.
+    Перезаписывает price, если он уже есть.
+    Считает quantity равным 1, если оно меньше 1.
+
+    Args:
+        json_data (dict): JSON данные.
+
+    Returns:
+        dict: JSON данные с добавленными ценами.
+    """
+
+    for item in json_data['items']:
+        # Проверяем quantity и устанавливаем значение 1, если оно меньше 1
+        quantity = item['quantity']
+        if quantity < 1:
+            quantity = 1
+
+        # Вычисляем и записываем цену
+        item['price'] = item['sum'] / quantity
+
+    return json_data
+
+
 async def recognize_image_task(
         check_uuid: str,
         user_id: int,
@@ -46,56 +71,48 @@ async def recognize_image_task(
                             "id": 1,
                             "name": "Бабушкин хлеб",
                             "quantity": 2,
-                            "price": 2000,
                             "sum": 4000
                         },
                         {
                             "id": 2,
                             "name": "Солянка",
                             "quantity": 1,
-                            "price": 16000,
                             "sum": 16000
                         },
                         {
                             "id": 3,
                             "name": "Куриный суп с лапшой",
                             "quantity": 1,
-                            "price": 16000,
                             "sum": 16000
                         },
                         {
                             "id": 4,
                             "name": "Говядина с грибами",
                             "quantity": 1,
-                            "price": 21000,
                             "sum": 21000
                         },
                         {
                             "id": 5,
                             "name": "Рис отварной",
                             "quantity": 0.5,
-                            "price": 7000,
                             "sum": 3500
                         },
                         {
                             "id": 6,
                             "name": "Гречка",
                             "quantity": 0.5,
-                            "price": 6000,
                             "sum": 3000
                         },
                         {
                             "id": 7,
                             "name": "Ёжик из курицы",
                             "quantity": 1,
-                            "price": 12000,
                             "sum": 12000
                         },
                         {
                             "id": 8,
                             "name": "Сендвич с курицей",
                             "quantity": 1,
-                            "price": 13000,
                             "sum": 13000
                         }
                     ],
@@ -110,6 +127,8 @@ async def recognize_image_task(
                     },
                     "total": 88500
                 }
+
+            calculate_price(recognized_json)
 
             logger.debug(f"Recognition completed for check_uuid {check_uuid}")
 
