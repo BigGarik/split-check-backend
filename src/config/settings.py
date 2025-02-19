@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     mail_starttls: bool
     use_credentials: bool
 
+    environment: str
+
     # fastapi
     base_url: str
 

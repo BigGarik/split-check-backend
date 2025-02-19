@@ -6,7 +6,7 @@ pipelines:
       - step:
           name: Copy last version to server
           script:
-            - rm -f bitbucket-pipelines.yml package.json package-lock.json .env .env.example .gitignore scr/api/v1/endpoints/test.py 
+            - rm -f bitbucket-pipelines.yml package.json package-lock.json .env .env.example .gitignore scr/api/v1/endpoints/test.py deploy.sh
             - rm -fR templates/
             - pipe: atlassian/scp-deploy:0.3.3
               variables:
@@ -21,7 +21,7 @@ pipelines:
               variables:
                 SSH_USER: $SCANNSPLIT_APP_TEST_SRV_USER
                 SERVER: $SCANNSPLIT_APP_TEST_SRV_HOST
-                COMMAND: cd /app && chmod 755 deploy.sh && /bin/bash deploy.sh && chmod 555 deploy.sh
+                COMMAND: cd '/app/api' && /bin/bash deploy.sh 
     master:
       - step:
           name: Copy last version to server
