@@ -14,14 +14,10 @@ client = Anthropic(api_key=api_key)
 
 async def recognize_check_by_anthropic(file_location_directory: str):
     prompt = (
-        # 'You have perfect vision and a keen eye for detail, making you an expert at recognizing information on cash register receipts. '
-        # 'What information is on this receipt? '
-        # 'Before you provide your answer in <answer> tags in the json format, think step by step in <thinking> tags and analyze each part of the cash register receipt.'
-
         "Внимательно изучи и распознай чек."
         "Пришли ответ со структурой: номер позиции, наименование, количество, цена, сумма."
-        "Итого сумма чека. Проверь, что сумма всех позиций равна итоговой сумме."
-        "В ответ пришли только данные в формате json без комментариев со структурой:"
+        "Итого сумма чека."
+        "Важно!!! В ответ пришли только данные в формате json без комментариев со структурой:"
         '{'
           '"restaurant": "Веранда",'
           '"table_number": "110",'
