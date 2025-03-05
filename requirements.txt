@@ -7,7 +7,7 @@ uvicorn[standard]
 setuptools
 python-multipart
 redis
-opencv-python
+#opencv-python
 
 SQLAlchemy
 httpx
