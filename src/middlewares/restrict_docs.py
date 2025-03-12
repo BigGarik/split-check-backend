@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from src.config.settings import settings
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 class RestrictDocsAccessMiddleware(BaseHTTPMiddleware):

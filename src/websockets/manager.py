@@ -1,5 +1,8 @@
+import logging
+
 from fastapi import WebSocket
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 # Менеджер для работы с WebSocket

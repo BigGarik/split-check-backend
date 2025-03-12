@@ -1,13 +1,12 @@
 import json
+import logging
 
-from fastapi import Depends
-from loguru import logger
-
-from src.websockets.manager import ws_manager
 from src.config.settings import settings
-from src.managers.check_manager import CheckManager, get_check_manager
 from src.repositories.profile import get_user_profile_db, update_user_profile_db, get_user_email
-from src.schemas import UserProfileUpdate, UserProfileBase, UserProfileResponse
+from src.schemas import UserProfileBase, UserProfileResponse
+from src.websockets.manager import ws_manager
+
+logger = logging.getLogger(__name__)
 
 
 async def get_user_profile_task(user_id: int):

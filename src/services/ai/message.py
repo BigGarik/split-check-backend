@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import os
 from typing import Optional, List
-from loguru import logger
+
 from src.utils.image_processing import process_image
+
+logger = logging.getLogger(__name__)
 
 
 async def form_message(file_location_directory: str, prompt: Optional[str] = "") -> List[dict]:

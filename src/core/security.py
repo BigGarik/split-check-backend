@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
@@ -7,9 +8,10 @@ import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from loguru import logger
 
 from src.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 # Создаем пул потоков для выполнения блокирующих операций
 executor = ThreadPoolExecutor()

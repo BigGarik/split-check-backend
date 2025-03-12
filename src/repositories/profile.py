@@ -1,13 +1,15 @@
+import logging
 from typing import Optional
 
 from fastapi import HTTPException
 from sqlalchemy.future import select
-from loguru import logger
 
 from src.models import User
 from src.models.profile import UserProfile
 from src.schemas import UserProfileUpdate
 from src.utils.db import with_db_session
+
+logger = logging.getLogger(__name__)
 
 
 @with_db_session()

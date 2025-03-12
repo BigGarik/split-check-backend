@@ -1,7 +1,9 @@
+import logging
 from typing import Optional
 
 import redis.asyncio as aioredis
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 class RedisClient:

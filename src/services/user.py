@@ -1,9 +1,12 @@
+import logging
+
 from fastapi import HTTPException, status
 from sqlalchemy.future import select
-from loguru import logger
 
 from src.models.check import Check, user_check_association
 from src.utils.db import with_db_session
+
+logger = logging.getLogger(__name__)
 
 
 @with_db_session()

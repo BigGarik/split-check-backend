@@ -1,7 +1,6 @@
 from datetime import date
 from typing import Optional
 from uuid import UUID
-from loguru import logger
 from fastapi import APIRouter, Query
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession

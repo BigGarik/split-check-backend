@@ -1,16 +1,17 @@
+import logging
 from typing import List, Optional
 
-from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError, DatabaseError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src import schemas
 from src.core.security import async_hash_password
 from src.models import User, user_check_association, Check, UserProfile
 from src.schemas import UserCreate
 from src.utils.db import with_db_session
+
+logger = logging.getLogger(__name__)
 
 
 @with_db_session()

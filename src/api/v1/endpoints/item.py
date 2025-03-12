@@ -1,12 +1,14 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from loguru import logger
 
 from src.api.deps import get_current_user
 from src.models import User
 from src.redis import queue_processor
 from src.schemas import ItemRequest, AddItemRequest, EditItemRequest
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

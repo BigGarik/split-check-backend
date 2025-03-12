@@ -1,7 +1,9 @@
+import logging
 import os
-from loguru import logger
 
 from src.services.classifier.classifier_instance import get_classifier
+
+logger = logging.getLogger(__name__)
 
 
 async def classifier_image(file_location):

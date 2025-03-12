@@ -1,10 +1,13 @@
 import asyncio
 import base64
 import io
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
-from loguru import logger
+
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 executor = ThreadPoolExecutor()
 

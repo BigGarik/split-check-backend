@@ -1,8 +1,8 @@
 import json
+import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException
@@ -23,6 +23,8 @@ from src.repositories.user_selection import get_user_selection_by_check_uuid, ad
 from src.services.user import join_user_to_check
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
+
+logger = logging.getLogger(__name__)
 
 
 class CheckManager:

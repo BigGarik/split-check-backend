@@ -1,11 +1,14 @@
+import logging
 from contextlib import asynccontextmanager
 from functools import wraps
 from typing import TypeVar, ParamSpec, Callable
 
-from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError, DatabaseError
 
 from src.db.session import AsyncSessionLocal
+
+logger = logging.getLogger(__name__)
+
 
 # Типизация
 T = TypeVar('T')

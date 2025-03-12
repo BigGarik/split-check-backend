@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from typing import Dict
 
@@ -5,7 +6,6 @@ from fastapi import APIRouter, Depends
 from fastapi import HTTPException
 from fastapi_mail import FastMail
 from jose import jwt
-from loguru import logger
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -20,6 +20,8 @@ from src.repositories.user import create_new_user, get_user_by_email
 from src.schemas import PasswordResetRequest, PasswordReset
 from src.services.auth import send_password_reset_email, generate_tokens
 from src.utils.db import with_db_session, get_async_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

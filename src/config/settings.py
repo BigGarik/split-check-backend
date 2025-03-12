@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 365
     refresh_token_expire_minutes: int  # Добавлено
 
+    # GRAYLOG
+    GRAYLOG_HOST: str = "localhost"
+    GRAYLOG_PORT: int = 12201
+    LOG_LEVEL: str = "DEBUG"
+
     # Storage
     upload_directory: str = "images"
 

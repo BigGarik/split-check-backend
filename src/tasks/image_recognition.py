@@ -2,7 +2,9 @@ import json
 import os
 
 from fastapi import Depends
-from loguru import logger
+import logging
+
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.websockets.manager import ws_manager
@@ -12,6 +14,9 @@ from src.redis import redis_client
 from src.repositories.check import add_check_to_database
 from src.services.ai.api_anthropic import recognize_check_by_anthropic
 from src.services.classifier.classifier_image import classifier_image
+
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_price(json_data):

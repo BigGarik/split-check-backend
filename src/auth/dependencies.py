@@ -1,6 +1,9 @@
+import logging
+
 from fastapi import HTTPException
 from firebase_admin import auth
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 def get_firebase_user(id_token):

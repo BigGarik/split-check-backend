@@ -1,7 +1,7 @@
+import logging
 from datetime import datetime, date
 from typing import Optional
 
-from loguru import logger
 from sqlalchemy import select, insert, delete, func, and_, update, exists
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,8 +9,10 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
-from src.models import Check, user_check_association, User, UserSelection, StatusEnum
+from src.models import Check, user_check_association, User, UserSelection
 from src.schemas import CheckListResponse
+
+logger = logging.getLogger(__name__)
 
 
 async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[Check]:

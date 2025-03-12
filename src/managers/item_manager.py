@@ -1,8 +1,9 @@
 import json
+import logging
 from typing import Dict, Any
-from loguru import logger
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.websockets.manager import ws_manager
+
 from src.config.settings import settings
 from src.repositories.item import (
     add_item_to_check,
@@ -10,8 +11,11 @@ from src.repositories.item import (
     edit_item_in_check, update_item_quantity
 )
 from src.repositories.user import get_users_by_check_uuid
-from src.utils.notifications import create_event_message, create_event_status_message
 from src.schemas import AddItemRequest, EditItemRequest
+from src.utils.notifications import create_event_message, create_event_status_message
+from src.websockets.manager import ws_manager
+
+logger = logging.getLogger(__name__)
 
 
 class ItemService:

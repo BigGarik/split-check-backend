@@ -1,8 +1,8 @@
 import json
+import logging
 from typing import Dict, Any
 
 from fastapi import HTTPException
-from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -13,6 +13,8 @@ from src.redis import redis_client
 from src.repositories.user_selection import delite_item_from_user_selections
 from src.schemas import AddItemRequest, EditItemRequest
 from src.utils.check import recalculate_check_totals
+
+logger = logging.getLogger(__name__)
 
 
 async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id: int) -> dict:

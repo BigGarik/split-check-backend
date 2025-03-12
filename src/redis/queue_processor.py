@@ -1,10 +1,11 @@
 import asyncio
 import json
+import logging
 from typing import Callable, Dict
 
-from loguru import logger
-
 from .redis_client import RedisClient
+
+logger = logging.getLogger(__name__)
 
 
 class QueueProcessor:

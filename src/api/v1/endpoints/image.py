@@ -1,9 +1,13 @@
+import logging
+
 from fastapi import APIRouter, UploadFile, File, Depends, Request
-from loguru import logger
-from src.models.user import User
+
 from src.api.deps import get_current_user
+from src.models.user import User
 from src.redis import queue_processor
 from src.services.upload_service import prepare_image_upload
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

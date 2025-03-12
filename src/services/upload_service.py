@@ -1,10 +1,13 @@
+import logging
 import os
 import uuid
+
 import aiofiles
 from starlette.datastructures import UploadFile
 
 from src.config.settings import settings
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 async def prepare_image_upload(user_id: int, file: UploadFile) -> dict:

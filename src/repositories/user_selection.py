@@ -1,6 +1,6 @@
 import json
+import logging
 
-from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -9,6 +9,8 @@ from src.config.settings import settings
 from src.models import UserSelection
 from src.redis import redis_client
 from src.repositories.user import get_users_by_check_uuid
+
+logger = logging.getLogger(__name__)
 
 
 async def add_or_update_user_selection(session: AsyncSession, user_id: int, check_uuid: str, selection_data: dict):

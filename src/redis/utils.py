@@ -1,10 +1,12 @@
 import json
+import logging
 from datetime import datetime, timedelta
 
-from loguru import logger
 from starlette.exceptions import HTTPException
 
 from src.redis import redis_client
+
+logger = logging.getLogger(__name__)
 
 
 async def get_token_from_redis(id_token):

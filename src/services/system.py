@@ -4,7 +4,6 @@ from io import BytesIO
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from PIL import Image
 import os
-from loguru import logger
 
 
 #def convert_to_png(img):

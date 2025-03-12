@@ -1,15 +1,17 @@
+import logging
 from datetime import timedelta
 from typing import Dict
 
 from fastapi import HTTPException
-from loguru import logger
 from fastapi_mail import FastMail, MessageSchema
 from starlette import status
 
-from src.core.security import create_token
-from src.repositories.user import get_user_by_email
 from src.config.settings import settings
 from src.core.security import async_verify_password
+from src.core.security import create_token
+from src.repositories.user import get_user_by_email
+
+logger = logging.getLogger(__name__)
 
 
 async def authenticate_user(email: str, password: str):
