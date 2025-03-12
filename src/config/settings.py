@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     GRAYLOG_HOST: str = "localhost"
     GRAYLOG_PORT: int = 12201
     LOG_LEVEL: str = "DEBUG"
+    SERVICE_NAME: str = "fastapi-app"
 
     # Storage
     upload_directory: str = "images"

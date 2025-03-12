@@ -54,7 +54,8 @@ logger = setup_logging(
     graylog_host=settings.GRAYLOG_HOST,
     graylog_port=settings.GRAYLOG_PORT,
     log_level=settings.LOG_LEVEL,
-    graylog_enabled=True
+    graylog_enabled=True,
+    service_name=settings.SERVICE_NAME
 )
 
 
