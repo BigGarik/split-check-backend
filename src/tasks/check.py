@@ -71,7 +71,7 @@ async def delete_check_task(user_id: int,
 
 
 async def user_delete_from_check_task(check_uuid: str,
-                                      user_id_for_delite: int,
+                                      user_id_for_delete: int,
                                       current_user_id: int,
                                       check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.user_delete_from_check(check_uuid, user_id_for_delite, current_user_id)
+    await check_manager.user_delete_from_check(check_uuid, user_id_for_delete, current_user_id)

@@ -206,7 +206,7 @@ async def delete_check(request: Request,
 @router.delete("/user/delete", summary="Удаление пользователя из чека")
 async def user_delete_from_check(request: Request,
                                  uuid: UUID,
-                                 user_id_for_delite,
+                                 user_id_for_delete,
                                  user: User = Depends(get_current_user)):
     """Удаляет пользователя из чека.
 
@@ -214,7 +214,7 @@ async def user_delete_from_check(request: Request,
     task_data = {
         "type": "user_delete_from_check_task",
         "check_uuid": str(uuid),
-        "user_id_for_delite": user_id_for_delite,
+        "user_id_for_delete": user_id_for_delete,
         "current_user_id": user.id,
     }
     await queue_processor.push_task(task_data)

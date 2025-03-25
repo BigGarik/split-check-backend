@@ -86,7 +86,7 @@ async def handle_delete_check_task(session: AsyncSession, task_data: dict):
 async def handle_user_delete_from_check_task(session: AsyncSession, task_data: dict):
     await user_delete_from_check_task(
         check_uuid=task_data["check_uuid"],
-        user_id_for_delite=task_data["user_id_for_delite"],
+        user_id_for_delete=task_data["user_id_for_delete"],
         current_user_id=task_data["current_user_id"],
         check_manager=CheckManager(session)
     )

@@ -347,7 +347,9 @@ class CheckManager:
                 e
             )
 
-    async def user_delete_from_check(self, session: AsyncSession, check_uuid: str, user_id_for_delete: int,
+    async def user_delete_from_check(self, session: AsyncSession,
+                                     check_uuid: str,
+                                     user_id_for_delete: int,
                                      current_user_id: int) -> None:
         """
         Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
