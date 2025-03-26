@@ -1,15 +1,13 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, Annotated
 from uuid import UUID
-from fastapi import APIRouter, Query
-from fastapi import Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi import APIRouter, Query, Path, Depends, Request
 
 from src.api.deps import get_current_user
 from src.models import User, StatusEnum
 from src.redis import queue_processor
 from src.schemas import CheckSelectionRequest
-from src.utils.db import get_async_db
 
 router = APIRouter()
 
@@ -67,24 +65,8 @@ async def get_main_page(request: Request, user: User = Depends(get_current_user)
 @router.get("/{uuid}", summary="Получить чек по UUID")
 async def get_check(request: Request,
                     uuid: UUID,
-                    user: User = Depends(get_current_user),
-                    session: AsyncSession = Depends(get_async_db)
+                    user: User = Depends(get_current_user)
                     ):
-    # ########    Для теста пидантик
-    # async with get_async_db() as session:
-    #     query = select(Check).where(Check.uuid == str(uuid))
-    #     result = await session.execute(query)
-    #     check = result.scalar_one_or_none()
-    #
-    #     order = Order.model_validate(check.check_data)
-    #     print(f"Check UUID: {check.uuid}")
-    #     print(f"Order data: {order}")
-    #     print(f"total: {order.total}")
-    #     # Calculate the sum of all item totals
-    #     total_sum = sum(item.price for item in order.items)
-    #     print(f"Sum of all item totals: {total_sum}")
-    # #########
-
     task_data = {
         "type": "send_check_data_task",
         "user_id": user.id,
@@ -203,11 +185,16 @@ async def delete_check(request: Request,
     return {"message": "Данные для удаления отправлены в очередь"}
 
 
-@router.delete("/user/delete", summary="Удаление пользователя из чека")
-async def user_delete_from_check(request: Request,
-                                 uuid: UUID,
-                                 user_id_for_delete,
-                                 user: User = Depends(get_current_user)):
+@router.delete(
+    "/user/{uuid}",
+    summary="Удаление пользователя из чека",
+    description="Удаляет пользователя из чека по его UUID и ID пользователя."
+)
+async def user_delete_from_check(uuid: Annotated[UUID, Path(title="UUID чека")],
+                                user_id_for_delete: Annotated[int, Query(title="ID пользователя для удаления")],
+                                request: Request,
+                                user: User = Depends(get_current_user)):
+
     """Удаляет пользователя из чека.
 
     """
@@ -218,4 +205,4 @@ async def user_delete_from_check(request: Request,
         "current_user_id": user.id,
     }
     await queue_processor.push_task(task_data)
-    return {"message": "Данные для удаления отправлены в очередь"}
+    return {"message": f"Данные для удаления пользователя{user_id_for_delete} из чека {uuid} отправлены в очередь"}

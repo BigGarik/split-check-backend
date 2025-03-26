@@ -54,7 +54,7 @@ class ItemService:
                     await self._send_ws_message(user.id, msg_for_all)
 
         except Exception as e:
-            logger.error(f"Error adding item to check: {str(e)}")
+            logger.error(f"Error adding item to check: {str(e)}", extra={"current_user_id": user_id})
             error_message = create_event_status_message(
                 message_type=settings.Events.ITEM_ADD_EVENT_STATUS,
                 status="error",
@@ -85,7 +85,7 @@ class ItemService:
                     await self._send_ws_message(user.id, msg_for_all)
 
         except Exception as e:
-            logger.error(f"Error removing item from check: {str(e)}")
+            logger.error(f"Error removing item from check: {str(e)}", extra={"current_user_id": user_id})
             error_message = create_event_status_message(
                 message_type=settings.Events.ITEM_REMOVE_EVENT_STATUS,
                 status="error",
@@ -117,7 +117,7 @@ class ItemService:
                     await self._send_ws_message(user.id, msg_for_all)
 
         except Exception as e:
-            logger.error(f"Error editing item in check: {str(e)}")
+            logger.error(f"Error editing item in check: {str(e)}", extra={"current_user_id": user_id})
             error_message = create_event_status_message(
                 message_type=settings.Events.ITEM_EDIT_EVENT_STATUS,
                 status="error",

@@ -53,7 +53,7 @@ class CheckManager:
         )
 
     async def _handle_error(self, user_id: int, event_type: str, error: Exception) -> None:
-        logger.error(f"Error in {event_type}: {str(error)}")
+        logger.error(f"Error in {event_type}: {str(error)}", extra={"current_user_id": user_id})
         error_message = create_event_status_message(
             message_type=event_type,
             status="error",
@@ -347,15 +347,14 @@ class CheckManager:
                 e
             )
 
-    async def user_delete_from_check(self, session: AsyncSession,
+    async def user_delete_from_check(self, # session: AsyncSession,
                                      check_uuid: str,
                                      user_id_for_delete: int,
-                                     current_user_id: int) -> None:
+                                     current_user_id: int)-> bool:
         """
         Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
 
         Args:
-            session (AsyncSession): Асинхронная сессия SQLAlchemy
             check_uuid (str): UUID чека
             user_id_for_delete (int): ID пользователя, которого нужно удалить из чека
             current_user_id (int): ID текущего пользователя (автора)
@@ -373,23 +372,41 @@ class CheckManager:
                     f"User {current_user_id} attempted to delete user {user_id_for_delete} "
                     f"from check {check_uuid} without author rights"
                 )
+                return False
             # Удаляем ассоциацию пользователя с чеком
             await delete_association_by_check_uuid(self.session, check_uuid, user_id_for_delete)
 
-            status_message = create_event_status_message(
+            msg_for_all = create_event_message(
+                message_type=settings.Events.USER_DELETE_FROM_CHECK_EVENT,
+                payload={"uuid": check_uuid, "user_id_for_delete ": user_id_for_delete}
+            )
+
+            msg_for_author = create_event_status_message(
                 message_type=settings.Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
                 status="success"
             )
-            await self._send_ws_message(current_user_id, status_message)
+            # Получаем участников и пользователей, связанных с чеком
+            users = await get_users_by_check_uuid(self.session, check_uuid)
+
+            all_user_ids = {user.id for user in users}
+
+            # Отправка сообщений всем пользователям
+            for uid in all_user_ids:
+                msg = msg_for_author if uid == current_user_id else msg_for_all
+                try:
+                    await self._send_ws_message(uid, msg)
+                except Exception as e:
+                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}", extra={"current_user_id": current_user_id})
 
             logger.debug(
                 f"User {user_id_for_delete} was removed from check {check_uuid} "
-                f"by author {current_user_id}"
+                f"by author {current_user_id}", extra={"current_user_id": current_user_id}
             )
+            return True
 
         except SQLAlchemyError as e:
-            await session.rollback()
-            logger.error(f"Database error while deleting user from check: {e}")
+            await self.session.rollback()
+            logger.error(f"Database error while deleting user from check: {e}", extra={"current_user_id": current_user_id})
             raise
 
 

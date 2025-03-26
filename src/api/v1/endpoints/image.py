@@ -20,5 +20,5 @@ async def upload_image(request: Request,
     # Подготовка данных для задачи и отправка в Redis
     task_data = await prepare_image_upload(user.id, file)
     await queue_processor.push_task(task_data)
-    logger.debug(f"Task {task_data['check_uuid']} sent to Redis queue for processing.")
+    logger.debug(f"Task {task_data['check_uuid']} sent to Redis queue for processing.", extra={"current_user_id": user.id})
     return {"message": "Файл успешно загружен. Обработка..."}

@@ -18,7 +18,7 @@ router = APIRouter()
 @router.websocket("/ws", name="websocket_endpoint")
 async def websocket_endpoint(websocket: WebSocket,
                              user: Annotated[User, Depends(get_current_user_for_websocket)]):
-    logger.debug(f"websocket.headers: {websocket.headers}")
+    logger.debug(f"websocket.headers: {websocket.headers}", extra={"current_user_id": user.id})
     try:
         # Пытаемся верифицировать токен
         # user = await get_current_user(token)
@@ -44,17 +44,17 @@ async def websocket_endpoint(websocket: WebSocket,
             logger.debug(f"User {user_id} disconnected")
     except JWTError as e:
         # Обработка ошибок JWT
-        logger.error(f"JWT error: {e}")
+        logger.error(f"JWT error: {e}", extra={"current_user_id": user.id})
         await websocket.accept()
         await websocket.send_json({"error": "unauthorized", "message": "Invalid token. Redirect to login page."})
         await websocket.close()
     except HTTPException as e:
         # Обработка HTTP ошибок
-        logger.error(f"HTTP error: {e.detail}")
+        logger.error(f"HTTP error: {e.detail}", extra={"current_user_id": user.id})
         await websocket.accept()
         await websocket.send_json({"error": "unauthorized", "message": f"{e.detail}. Redirect to login page."})
         await websocket.close()
     except Exception as e:
         # Логируем и закрываем соединение при любой другой ошибке
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}", extra={"current_user_id": user.id})
         await websocket.close()

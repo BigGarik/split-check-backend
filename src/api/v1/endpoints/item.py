@@ -26,7 +26,7 @@ async def split_item(request: Request,
         "user_id": user.id,
         "item_data": item_data.model_dump()
     }
-    logger.debug(f"Позиция отправлена для разделения: {item_data}")
+    logger.debug(f"Позиция отправлена для разделения: {item_data}", extra={"current_user_id": user.id})
 
     # Добавляем задачу в очередь Redis
     await queue_processor.push_task(task_data)
