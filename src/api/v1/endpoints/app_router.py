@@ -4,6 +4,7 @@ from starlette.responses import HTMLResponse
 
 from src.config.settings import settings
 from src.config.type_events import EVENT_DESCRIPTIONS
+from src.version import APP_VERSION
 
 router = APIRouter()
 
@@ -47,3 +48,8 @@ async def redirect_to_app(uuid: str):
     </html>
     """
     return html_content
+
+
+@router.get("/version")
+def read_version():
+    return {"version": APP_VERSION}

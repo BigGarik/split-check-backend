@@ -15,6 +15,7 @@ from src.db.session import sync_engine
 from src.middlewares.restrict_docs import RestrictDocsAccessMiddleware
 from src.redis import queue_processor, redis_client, register_redis_handlers
 from src.services.classifier.classifier_instance import init_classifier
+from src.version import APP_VERSION
 
 Base.metadata.create_all(bind=sync_engine)
 
@@ -41,11 +42,13 @@ async def lifespan(app: FastAPI):
 
 
 # app = FastAPI(root_path="/split_check", lifespan=lifespan)
+
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
               docs_url="/docs" if settings.enable_docs else None,
               redoc_url="/redoc" if settings.enable_docs else None,
               openapi_url="/openapi.json" if settings.enable_docs else None,
+              version=APP_VERSION
               )
 
 # Настраиваем логирование
