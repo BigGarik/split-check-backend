@@ -186,7 +186,7 @@ def register_redis_handlers():
     queue_processor.register_handler("user_selection_task", handle_user_selection_task)
     queue_processor.register_handler("split_item_task", handle_split_item_task)
     queue_processor.register_handler("delete_check_task", handle_delete_check_task)
-    queue_processor.register_handler("handle_user_delete_from_check_task", handle_user_delete_from_check_task)
+    queue_processor.register_handler("user_delete_from_check_task", handle_user_delete_from_check_task)
     queue_processor.register_handler("get_user_profile_task", handle_get_user_profile_task)
     queue_processor.register_handler("update_user_profile_task", handle_update_user_profile_task)
     queue_processor.register_handler("join_check_task", handle_join_check_task)

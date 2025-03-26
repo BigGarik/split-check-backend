@@ -205,4 +205,4 @@ async def user_delete_from_check(uuid: Annotated[UUID, Path(title="UUID чека
         "current_user_id": user.id,
     }
     await queue_processor.push_task(task_data)
-    return {"message": f"Данные для удаления пользователя{user_id_for_delete} из чека {uuid} отправлены в очередь"}
+    return {"message": f"Данные для удаления пользователя {user_id_for_delete} из чека {uuid} отправлены в очередь"}
