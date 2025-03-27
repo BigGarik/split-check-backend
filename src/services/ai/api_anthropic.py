@@ -51,7 +51,8 @@ async def recognize_check_by_anthropic(file_location_directory: str):
             "name": процент_скидки,
             "amount": сумма_скидки
           },
-          "total": итоговая_сумма
+          "total": итоговая_сумма,
+          "currency": валюта в ISO 4217 (если можно определить) иначе none
         }
     """)
     message = await form_message(file_location_directory, prompt=prompt)
