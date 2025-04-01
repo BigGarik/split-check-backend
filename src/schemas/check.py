@@ -58,7 +58,7 @@ class CheckSelectionRequest(BaseModel):
 class CheckListResponse(BaseModel):
     uuid: str
     name: str
-    currency: str
+    currency: Optional[str] = None
     status: str
     date: str
     total: Optional[Sum]
