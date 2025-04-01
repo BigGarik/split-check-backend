@@ -420,7 +420,7 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
                 CheckListResponse(
                     uuid=check.uuid,
                     name=check.name,
-                    currency=getattr(check, "currency", None),
+                    currency=check.check_data.get('currency') if check.check_data else None,
                     status=check.status.value,
                     date=check.created_at.strftime("%d.%m.%Y"),
                     total=check.check_data.get('total') if check.check_data else 0,
