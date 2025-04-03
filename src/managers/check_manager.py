@@ -5,7 +5,6 @@ from typing import Dict, Any, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.exceptions import HTTPException
 
 from src.config.settings import settings
 from src.managers.item_manager import ItemService
@@ -13,14 +12,14 @@ from src.redis import redis_client
 from src.repositories.check import (
     get_all_checks,
     add_check_to_database,
-    delete_association_by_check_uuid,
-    get_check_by_uuid,
-    update_check_data_to_database, get_main_page_checks, is_check_author, edit_check_name_to_database,
-    edit_check_status_to_database
+    delete_association_by_check_uuid, get_main_page_checks, is_check_author, edit_check_name_to_database,
+    edit_check_status_to_database, get_check_data_from_database
 )
+from src.repositories.item import get_items_by_check_uuid
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
 from src.services.user import join_user_to_check
+from src.utils.check import to_float
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
@@ -61,15 +60,11 @@ class CheckManager:
         )
         await self._send_ws_message(user_id, error_message)
 
-    async def add_check(self, user_id: int, check_uuid: str, check_data: dict) -> None:
+    async def add_check(self, user_id: int, check_uuid: str, recognized_json: dict) -> None:
 
-        await add_check_to_database(self.session, check_uuid, user_id, check_data)
-
-        # Сохранение результатов в Redis
-        redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key,
-                               json.dumps(check_data),
-                               expire=settings.redis_expiration)
+        await add_check_to_database(self.session, check_uuid, user_id, recognized_json)
+        cached_data = await self.get_check_data_by_uuid(check_uuid)
+        logger.info(f"Чек {check_uuid} добавлен. cached_data: {cached_data}", extra={"current_user_id": user_id})
 
         msg = create_event_message(
             message_type=settings.Events.IMAGE_RECOGNITION_EVENT,
@@ -78,43 +73,34 @@ class CheckManager:
         await self._send_ws_message(user_id, msg)
 
     async def get_check_data_by_uuid(self, check_uuid: str) -> Dict[str, Any]:
-        redis_key = f"check_uuid:{check_uuid}"
 
+        redis_key = f"check_uuid:{check_uuid}"
         # Попытка получить данные из Redis
         cached_data = await redis_client.get(redis_key)
         if cached_data:
-            logger.debug(f"Получены данные чека из Redis: {check_uuid}")
+            logger.debug(f"Получены данные чека из Redis: {cached_data}")
             return json.loads(cached_data)
 
-        # Если нет в Redis, ищем в базе данных
-        check = await get_check_by_uuid(self.session, check_uuid)
-        if not check:
-            logger.warning(f"Чек не найден: {check_uuid}")
-            raise HTTPException(status_code=404, detail="Check not found")
+        check_data = await get_check_data_from_database(self.session, check_uuid)
+        logger.debug(f"Данные чека получены из БД: {check_data}")
 
-        # Кэширование в Redis
-        await redis_client.set(
-            redis_key,
-            json.dumps(check.check_data),
-            expire=settings.redis_expiration
-        )
-
-        logger.debug(f"Данные чека получены из БД: {check_uuid}")
-        return check.check_data
-
-    async def update_check_data(self, check_uuid: str, check_data: dict) -> dict:
-
-        await update_check_data_to_database(self.session, check_uuid, check_data)
-
-        # Обновляем кэш Redis
-        redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
         return check_data
+
+    # async def update_check_data(self, check_uuid: str, check_data: dict) -> dict:
+    #
+    #     await update_check_data_to_database(self.session, check_uuid, check_data)
+    #
+    #     # Обновляем кэш Redis
+    #     redis_key = f"check_uuid:{check_uuid}"
+    #     await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+    #     return check_data
 
     async def edit_check_name(self, user_id: int, check_uuid: str, check_name: str):
         new_name_status = await edit_check_name_to_database(self.session, user_id, check_uuid, check_name)
-        users = await get_users_by_check_uuid(self.session, check_uuid)
+
         if new_name_status == "Check name updated successfully.":
+            users = await get_users_by_check_uuid(self.session, check_uuid)
+            await self.get_check_data_by_uuid(check_uuid)
             msg_for_author = create_event_status_message(
                 message_type=settings.Events.CHECK_NAME_EVENT_STATUS,
                 status="success"
@@ -122,7 +108,7 @@ class CheckManager:
 
             msg_for_all = create_event_message(
                 message_type=settings.Events.CHECK_NAME_EVENT,
-                payload={"check_name": check_name},
+                payload={"check_uuid": check_uuid, "check_name": check_name},
             )
 
             all_user_ids = {user.id for user in users}
@@ -138,8 +124,10 @@ class CheckManager:
 
     async def edit_check_status(self, user_id: int, check_uuid: str, check_status: str):
         status = await edit_check_status_to_database(self.session, user_id, check_uuid, check_status)
-        users = await get_users_by_check_uuid(self.session, check_uuid)
+
         if status == "Check status updated successfully.":
+            users = await get_users_by_check_uuid(self.session, check_uuid)
+            await self.get_check_data_by_uuid(check_uuid)
             msg_for_author = create_event_status_message(
                 message_type=settings.Events.CHECK_STATUS_EVENT_STATUS,
                 status="success"
@@ -147,7 +135,7 @@ class CheckManager:
 
             msg_for_all = create_event_message(
                 message_type=settings.Events.CHECK_STATUS_EVENT,
-                payload={"check_status": check_status},
+                payload={"check_uuid": check_uuid, "check_status": check_status},
             )
 
             all_user_ids = {user.id for user in users}
@@ -167,12 +155,6 @@ class CheckManager:
 
         check_data["participants"] = json.loads(participants)
         check_data["user_selections"] = json.loads(user_selections)
-        check = await get_check_by_uuid(self.session, check_uuid)
-        check_data["name"] = check.name
-        check_data["date"] = check.created_at.strftime("%d.%m.%Y")
-        check_data["uuid"] = check_uuid
-        check_data["author_id"] = check.author_id
-        check_data["status"] = check.status.value
         msg = create_event_message(settings.Events.BILL_DETAIL_EVENT, check_data)
 
         await self._send_ws_message(user_id, msg)
@@ -221,26 +203,11 @@ class CheckManager:
 
     async def create_empty(self, user_id: int, check_uuid: str) -> None:
         check_data = {
-            "restaurant": "",
-            "table_number": "",
-            "order_number": "",
             "date": datetime.now().strftime("%d.%m.%Y"),
             "time": datetime.now().strftime("%H:%M"),
-            "waiter": "",
-            "items": [],
-            "subtotal": 0,
-            "service_charge": {"name": "", "amount": 0},
-            "vat": {"rate": 0, "amount": 0},
-            "total": 0
         }
         await add_check_to_database(self.session, check_uuid, user_id, check_data)
-
-        # Кэширование в Redis
-        await redis_client.set(
-            f"check_uuid:{check_uuid}",
-            json.dumps(check_data),
-            expire=settings.redis_expiration
-        )
+        await self.get_check_data_by_uuid(check_uuid)
 
         msg = create_event_message(
             message_type=settings.Events.CHECK_ADD_EVENT,

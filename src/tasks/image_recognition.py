@@ -126,14 +126,11 @@ async def recognize_image_task(
                         "name": "",
                         "amount": 0
                     },
-                    "vat": {
-                        "rate": 0,
-                        "amount": 0
-                    },
-                    "total": 88500
+                    "total": 88500,
+                    "currency": "SUM"
                 }
 
-            calculate_price(recognized_json)
+            # calculate_price(recognized_json)
 
             logger.debug(f"Recognition completed for check_uuid {check_uuid}")
 

@@ -60,9 +60,9 @@ class CheckListResponse(BaseModel):
     name: str
     currency: Optional[str] = None
     status: str
+    error_comment: Optional[str] = None
     date: str
-    total: Optional[Sum]
-    restaurant: Optional[str] = None
+    total: float
 
 
 # Валидатор для позиции в чеке

@@ -38,17 +38,17 @@ async def recognize_check_by_anthropic(file_location_directory: str):
             // другие позиции
           ],
           "subtotal": промежуточный_итог,
-          "service_charge": {
+          "service_charge": { // (если есть)
             "name": "Название сбора",
             "percentage": процент_сбора,
             "amount": сумма_сбора
           },
-          "vat": {
+          "vat": { // (если есть)
             "rate": ставка_ндс,
             "amount": сумма_ндс
           },
-          "discount": {
-            "name": процент_скидки,
+          "discount": { // (если есть)
+            "percentage": процент_скидки,
             "amount": сумма_скидки
           },
           "total": итоговая_сумма,
