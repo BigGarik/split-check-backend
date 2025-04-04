@@ -48,7 +48,7 @@ async def recognize_check_by_anthropic(file_location_directory: str):
             "amount": сумма_ндс
           },
           "discount": {
-            "name": процент_скидки,
+            "percentage": процент_скидки,
             "amount": сумма_скидки
           },
           "total": итоговая_сумма,
