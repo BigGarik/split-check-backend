@@ -20,6 +20,7 @@ from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
 from src.services.user import join_user_to_check
 from src.utils.check import to_float
+from src.utils.exchange import get_exchange_rate
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
@@ -376,6 +377,76 @@ class CheckManager:
             logger.error(f"Database error while deleting user from check: {e}", extra={"current_user_id": current_user_id})
             raise
 
+    async def convert_check_currency(self, check_uuid: str, target_currency: str) -> dict:
+        """
+        Конвертирует данные чека из его валюты в целевую валюту.
+
+        Args:
+            session: AsyncSession - сессия базы данных
+            check_uuid: str - UUID чека
+            target_currency: str - Целевая валюта (например, "USD", "EUR")
+
+        Returns:
+            dict: Данные чека с конвертированными суммами в целевой валюте
+
+        Raises:
+            Exception: Если чек не найден или произошла ошибка при конвертации
+        """
+        try:
+            # Получаем данные чека из базы
+            check_data = await get_check_data_from_database(self.session, check_uuid)
+
+            # Валюта чека
+            check_currency = check_data["currency"]
+            if check_currency == target_currency:
+                logger.info(f"Валюта чека {check_currency} совпадает с целевой валютой {target_currency}")
+                return check_data  # Нет необходимости конвертировать, если валюты совпадают
+
+            # Получаем курс обмена
+            exchange_rate = await get_exchange_rate(check_currency, target_currency)
+            if exchange_rate is None:
+                raise Exception(f"Не удалось получить курс обмена между {check_currency} и {target_currency}")
+
+            # Создаем копию данных чека для изменений
+            converted_check_data = check_data.copy()
+
+            # Конвертируем основные суммы
+            converted_check_data["subtotal"] = converted_check_data["subtotal"] / exchange_rate
+            converted_check_data["total"] = converted_check_data["total"] / exchange_rate
+
+            # Конвертируем дополнительные суммы (service_charge, vat, discount), если они есть
+            if converted_check_data["service_charge"]:
+                converted_check_data["service_charge"]["amount"] = (
+                    converted_check_data["service_charge"]["amount"] / exchange_rate
+                    if converted_check_data["service_charge"]["amount"] is not None else None
+                )
+
+            if converted_check_data["vat"]:
+                converted_check_data["vat"]["amount"] = (
+                    converted_check_data["vat"]["amount"] / exchange_rate
+                    if converted_check_data["vat"]["amount"] is not None else None
+                )
+
+            if converted_check_data["discount"]:
+                converted_check_data["discount"]["amount"] = (
+                    converted_check_data["discount"]["amount"] / exchange_rate
+                    if converted_check_data["discount"]["amount"] is not None else None
+                )
+
+            # Конвертируем суммы для каждой позиции в чеке
+            for item in converted_check_data["items"]:
+                item["sum"] = item["sum"] / exchange_rate
+
+            # Обновляем валюту чека
+            converted_check_data["currency"] = target_currency
+
+            print(converted_check_data)
+
+            return converted_check_data
+
+        except Exception as e:
+            logger.error(f"Error while converting check currency: {e}")
+            raise
 
 async def get_check_manager(session: AsyncSession) -> CheckManager:
     return CheckManager(session)

@@ -127,7 +127,7 @@ async def recognize_image_task(
                         "amount": 0
                     },
                     "total": 88500,
-                    "currency": "SUM"
+                    "currency": "UZS"
                 }
 
             # calculate_price(recognized_json)

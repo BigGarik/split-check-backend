@@ -81,6 +81,15 @@ class Settings(BaseSettings):
 
     allowed_ips: List[str]
 
+    # Fixer
+    FIXER_API_KEY: str
+
+    # currencylayer
+    CURRENCYLAYER_API_KEY: str
+
+    # openexchangerates
+    OPEN_EXCHANGE_RATES_API_KEY: str
+
     # События
     Events: ClassVar[type] = Events
 
