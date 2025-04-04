@@ -1,7 +1,10 @@
 import asyncio
+import os
+import tracemalloc
 from contextlib import asynccontextmanager
 
 import firebase_admin
+import psutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -20,25 +23,49 @@ from src.version import APP_VERSION
 Base.metadata.create_all(bind=sync_engine)
 
 
+def get_memory_usage():
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    return mem_info.rss / 1024 / 1024  # Возвращает память в MB
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Код, который выполняется при запуске
-
-    # Инициализация классификатора при запуске приложения
+    tracemalloc.start()  # Старт отслеживания
     classifier = init_classifier()
-
     await redis_client.connect()
-
-    # Регистрируем обработчики задач для Redis
     register_redis_handlers()
+    queue_task = asyncio.create_task(queue_processor.process_queue())
+    logger.info(f"Старт, память: {get_memory_usage():.2f} MB")
 
-    asyncio.create_task(queue_processor.process_queue())
+    async def monitor():
+        while True:
+            tasks = len(asyncio.all_tasks())
+            logger.info(f"Память: {get_memory_usage():.2f} MB, активных задач: {tasks}")
+            snapshot = tracemalloc.take_snapshot()
+            top_stats = snapshot.statistics('lineno')[:5]
+            logger.info("Топ 5 потребителей памяти:")
+            for stat in top_stats:
+                logger.info(stat)
+            await asyncio.sleep(60)
+
+    asyncio.create_task(monitor())
+
     yield
-    # Код, который выполняется при завершении
+    queue_task.cancel()
+    try:
+        await queue_task
+    except asyncio.CancelledError:
+        logger.info("QueueProcessor cancelled")
     if classifier:
         classifier.cleanup()
-    # Закрытие соединения с Redis при завершении работы приложения
     await redis_client.disconnect()
+    logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
+    snapshot = tracemalloc.take_snapshot()
+    top_stats = snapshot.statistics('lineno')[:10]
+    logger.info("Топ 10 потребителей памяти при завершении:")
+    for stat in top_stats:
+        logger.info(stat)
 
 
 # app = FastAPI(root_path="/split_check", lifespan=lifespan)
@@ -86,4 +113,4 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080, log_level="debug")
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_level=settings.LOG_LEVEL)

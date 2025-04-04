@@ -1,11 +1,13 @@
 import asyncio
 import json
-import logging
+# import logging
+from loguru import logger
+import os
 from typing import Callable, Dict
 
 from .redis_client import RedisClient
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 
 class QueueProcessor:
@@ -13,7 +15,10 @@ class QueueProcessor:
         self.redis_client = redis_client
         self.queue_name = queue_name
         self.task_handlers: Dict[str, Callable] = {}
-        self.queue_semaphore = asyncio.Semaphore(10)  # Ограничиваем до 10 одновременных обработчиков
+        # Устанавливаем количество обработчиков на основе числа CPU ядер
+        cpu_count = os.cpu_count() or 1  # Если os.cpu_count() вернёт None, используем 1
+        self.queue_semaphore = asyncio.Semaphore(cpu_count * 2)  # Ограничиваем по числу ядер
+        logger.info(f"Инициализирован QueueProcessor с {self.queue_semaphore} обработчиками (по числу CPU ядер)")
 
     def register_handler(self, task_type: str, handler: Callable):
         self.task_handlers[task_type] = handler
@@ -36,16 +41,14 @@ class QueueProcessor:
 
                     if task_type in self.task_handlers:
                         handler = self.task_handlers[task_type]
-                        await handler(task_data)
+                        await asyncio.wait_for(handler(task_data), timeout=60)  # Таймаут 60 секунд
                     else:
                         logger.warning(f"Unknown message type: {task_type}")
+            except asyncio.TimeoutError:
+                logger.error(f"Task {task_type} exceeded 60-second timeout")
             except Exception as e:
                 logger.error(f"Error processing task: {e}")
-                await asyncio.sleep(1)  # Prevent tight loop in case of persistent errors
+                await asyncio.sleep(1)
 
     async def push_task(self, task_data: dict):
         await self.redis_client.push_task(self.queue_name, json.dumps(task_data))
-
-
-if __name__ == '__main__':
-    pass

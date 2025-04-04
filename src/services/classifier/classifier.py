@@ -122,6 +122,7 @@ class AsyncImageClassifier:
             }
             batch_results = self._batch_predict(batch_inputs)
             results.extend(batch_results)
+            del batch_inputs_list, batch_inputs  # Очистка
         return results
 
     async def classify_image(self, image_path: str) -> Dict[str, Any]:
@@ -129,6 +130,11 @@ class AsyncImageClassifier:
         return results[0]
 
     def cleanup(self):
-        """Очистка ресурсов классификатора"""
         if self.executor:
             self.executor.shutdown()
+        if hasattr(self.model, 'cpu'):
+            self.model.cpu()  # Переместить модель на CPU
+        del self.model  # Удалить ссылку на модель
+        del self.processor
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
