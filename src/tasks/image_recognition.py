@@ -7,6 +7,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.utils.system import get_memory_usage
 from src.websockets.manager import ws_manager
 from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
@@ -54,7 +55,7 @@ async def recognize_image_task(
     """ Обработка изображения: классификация и распознавание. """
 
     image_path = os.path.join(file_location_directory, file_name)
-    logger.info(f"Processing image at {image_path} for user_id {user_id}")
+    logger.info(f"Начало обработки изображения {image_path} для пользователя  {user_id}, память: {get_memory_usage():.2f} MB")
 
     try:
         # Классификация изображения
@@ -161,3 +162,4 @@ async def recognize_image_task(
         await ws_manager.send_personal_message(msg_to_ws, user_id)
 
         logger.error(f"Error processing image {check_uuid}: {e}")
+    logger.info(f"Конец обработки изображения {image_path} для пользователя  {user_id}, память: {get_memory_usage():.2f} MB")

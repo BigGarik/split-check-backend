@@ -15,11 +15,12 @@ class WSConnectionManager:
         await websocket.accept()
         # Сохраняем WebSocket соединение в локальном словаре по user_id
         self.active_connections[user_id] = websocket
-        logger.debug(self.active_connections)
+        logger.info(f"Новое соединение, всего: {len(self.active_connections)}")
 
     async def disconnect(self, user_id: int):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
+            logger.info(f"Соединение закрыто, всего: {len(self.active_connections)}")
 
     async def send_personal_message(self, message: str, user_id: int):
         if user_id in self.active_connections:

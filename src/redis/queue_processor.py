@@ -18,7 +18,7 @@ class QueueProcessor:
         # Устанавливаем количество обработчиков на основе числа CPU ядер
         cpu_count = os.cpu_count() or 1  # Если os.cpu_count() вернёт None, используем 1
         self.queue_semaphore = asyncio.Semaphore(cpu_count * 2)  # Ограничиваем по числу ядер
-        logger.info(f"Инициализирован QueueProcessor с {self.queue_semaphore} обработчиками (по числу CPU ядер)")
+        logger.info(f"Инициализирован QueueProcessor с {self.queue_semaphore._value} обработчиками (по числу CPU ядер)")
 
     def register_handler(self, task_type: str, handler: Callable):
         self.task_handlers[task_type] = handler

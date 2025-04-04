@@ -9,8 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 async def form_message(file_location_directory: str, prompt: Optional[str] = "") -> List[dict]:
-    images = []
-
     # Создаем список задач для параллельной обработки всех изображений
     tasks = [
         process_image(os.path.join(file_location_directory, filename))
@@ -25,7 +23,7 @@ async def form_message(file_location_directory: str, prompt: Optional[str] = "")
     images = [img for img in processed_images if img is not None]
 
     # Формируем итоговое сообщение
-    return [
+    result = [
         {
             "role": "user",
             "content": [
@@ -34,3 +32,5 @@ async def form_message(file_location_directory: str, prompt: Optional[str] = "")
             ]
         }
     ]
+    del processed_images, images  # Явная очистка
+    return result

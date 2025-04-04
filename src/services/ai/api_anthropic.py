@@ -79,13 +79,16 @@ async def recognize_check_by_anthropic(file_location_directory: str):
             return data
         else:
             logger.error("JSON не найден в строке")
+            return None
 
     except json.JSONDecodeError as e:
         # Обработка ошибок, если строка не является корректным JSON
         logger.error(f"Ошибка при декодировании JSON: {e}")
     except Exception as e:
         logger.error(f"Ошибка при декодировании JSON: {e}")
-    return None
+    finally:
+        del message  # Очистка в любом случае
+
 
 
 def test_claude():

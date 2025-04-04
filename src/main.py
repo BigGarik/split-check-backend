@@ -18,15 +18,10 @@ from src.db.session import sync_engine
 from src.middlewares.restrict_docs import RestrictDocsAccessMiddleware
 from src.redis import queue_processor, redis_client, register_redis_handlers
 from src.services.classifier.classifier_instance import init_classifier
+from src.utils.system import get_memory_usage
 from src.version import APP_VERSION
 
 Base.metadata.create_all(bind=sync_engine)
-
-
-def get_memory_usage():
-    process = psutil.Process(os.getpid())
-    mem_info = process.memory_info()
-    return mem_info.rss / 1024 / 1024  # Возвращает память в MB
 
 
 @asynccontextmanager
@@ -40,13 +35,15 @@ async def lifespan(app: FastAPI):
 
     async def monitor():
         while True:
-            tasks = len(asyncio.all_tasks())
-            logger.info(f"Память: {get_memory_usage():.2f} MB, активных задач: {tasks}")
+            tasks = asyncio.all_tasks()
+            logger.info(f"Память: {get_memory_usage():.2f} MB, активных задач: {len(tasks)}")
             snapshot = tracemalloc.take_snapshot()
             top_stats = snapshot.statistics('lineno')[:5]
             logger.info("Топ 5 потребителей памяти:")
             for stat in top_stats:
                 logger.info(stat)
+            for task in tasks:
+                logger.info(f"Активная задача: {task}")
             await asyncio.sleep(60)
 
     asyncio.create_task(monitor())
