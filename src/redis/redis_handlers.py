@@ -177,6 +177,7 @@ async def handle_convert_check_currency_task(session: AsyncSession, task_data: d
     await convert_check_currency_task(
         check_uuid=task_data["check_uuid"],
         target_currency=task_data["target_currency"],
+        user_id=task_data["current_user_id"],
         check_manager=CheckManager(session)
     )
 

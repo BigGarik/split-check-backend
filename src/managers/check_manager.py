@@ -377,17 +377,14 @@ class CheckManager:
             logger.error(f"Database error while deleting user from check: {e}", extra={"current_user_id": current_user_id})
             raise
 
-    async def convert_check_currency(self, check_uuid: str, target_currency: str) -> dict:
+    async def convert_check_currency(self, check_uuid: str, target_currency: str, user_id: int) -> None:
         """
         Конвертирует данные чека из его валюты в целевую валюту.
 
         Args:
-            session: AsyncSession - сессия базы данных
             check_uuid: str - UUID чека
             target_currency: str - Целевая валюта (например, "USD", "EUR")
-
-        Returns:
-            dict: Данные чека с конвертированными суммами в целевой валюте
+            user_id: int - ИД пользователя
 
         Raises:
             Exception: Если чек не найден или произошла ошибка при конвертации
@@ -398,9 +395,6 @@ class CheckManager:
 
             # Валюта чека
             check_currency = check_data["currency"]
-            if check_currency == target_currency:
-                logger.info(f"Валюта чека {check_currency} совпадает с целевой валютой {target_currency}")
-                return check_data  # Нет необходимости конвертировать, если валюты совпадают
 
             # Получаем курс обмена
             exchange_rate = await get_exchange_rate(check_currency, target_currency)
@@ -440,9 +434,11 @@ class CheckManager:
             # Обновляем валюту чека
             converted_check_data["currency"] = target_currency
 
-            print(converted_check_data)
+            logger.info(converted_check_data)
 
-            return converted_check_data
+            msg = create_event_message(settings.Events.CHECK_CONVERT_CURRENCY_EVENT, converted_check_data)
+
+            await self._send_ws_message(user_id, msg)
 
         except Exception as e:
             logger.error(f"Error while converting check currency: {e}")

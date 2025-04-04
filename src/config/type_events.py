@@ -14,6 +14,7 @@ class Events:
     CHECK_NAME_EVENT_STATUS = 'checkNameEventStatus'
     CHECK_STATUS_EVENT = 'checkStatusEvent'
     CHECK_STATUS_EVENT_STATUS = 'checkStatusEventStatus'
+    CHECK_CONVERT_CURRENCY_EVENT = 'checkConvertCurrencyEvent'
 
     IMAGE_RECOGNITION_EVENT = 'imageRecognitionEvent'
     IMAGE_RECOGNITION_EVENT_STATUS = 'imageRecognitionEventStatus'
@@ -48,6 +49,7 @@ EVENT_DESCRIPTIONS = {
     Events.CHECK_NAME_EVENT_STATUS: "Статус изменения имени чека",
     Events.CHECK_STATUS_EVENT: 'Новый статус чека',
     Events.CHECK_STATUS_EVENT_STATUS: 'Изменение статуса чека',
+    Events.CHECK_CONVERT_CURRENCY_EVENT: 'Конвертация валюты',
 
     Events.IMAGE_RECOGNITION_EVENT: "Начало процесса распознавания изображения",
     Events.IMAGE_RECOGNITION_EVENT_STATUS: "Статус процесса распознавания изображения",

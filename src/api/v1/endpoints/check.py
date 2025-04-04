@@ -212,7 +212,8 @@ async def user_delete_from_check(uuid: Annotated[UUID, Path(title="UUID чека
 async def convert_check_currency_endpoint(
     request: Request,
     uuid: Annotated[UUID, Path(title="UUID чека")],
-    target_currency: str
+    target_currency: str,
+    user: User = Depends(get_current_user)
 ):
     """
     Конвертирует суммы чека в указанную валюту.
@@ -220,9 +221,7 @@ async def convert_check_currency_endpoint(
     Args:
         uuid (str): UUID чека
         target_currency (str): Целевая валюта (например, "USD", "EUR")
-
-    Returns:
-        dict: Данные чека с конвертированными суммами
+        user: Текущий пользователь, извлекаемый через Depends(get_current_user).
 
     Raises:
         HTTPException: Если чек не найден или произошла ошибка при конвертации
@@ -231,7 +230,8 @@ async def convert_check_currency_endpoint(
     task_data = {
         "type": "convert_check_currency_task",
         "check_uuid": str(uuid),
-        "target_currency": target_currency
+        "target_currency": target_currency,
+        "current_user_id": user.id
     }
     await queue_processor.push_task(task_data)
     return {"message": f"Данные чека {uuid} отправлены в очередь для конвертации валюты"}
