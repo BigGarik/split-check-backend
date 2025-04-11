@@ -1,0 +1,157 @@
+import logging
+import sys
+import time
+from typing import Callable, Optional
+
+import graypy
+import uuid
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware для логирования всех HTTP-запросов и ответов."""
+
+    def __init__(
+            self,
+            app: FastAPI,
+            logger: logging.Logger
+    ):
+        super().__init__(app)
+        self.logger = logger
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
+
+        start_time = time.time()
+
+        self.logger.info(
+            f"Request started | ID: {request_id} | Method: {request.method} | "
+            f"Path: {request.url.path} | Client: {request.client.host if request.client else 'Unknown'}"
+        )
+
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+
+            self.logger.info(
+                f"Request completed | ID: {request_id} | Status: {response.status_code} | "
+                f"Duration: {process_time:.4f}s"
+            )
+
+            response.headers["X-Request-ID"] = request_id
+            return response
+
+        except Exception as exc:
+            process_time = time.time() - start_time
+            self.logger.exception(
+                f"Request failed | ID: {request_id} | Duration: {process_time:.4f}s | "
+                f"Error: {str(exc)}"
+            )
+            raise
+
+
+def setup_logging(
+        app: Optional[FastAPI] = None,
+        service_name: str = "fastapi-app",
+        log_level: str = "INFO",
+        graylog_enabled: bool = False,
+        graylog_host: str = "localhost",
+        graylog_port: int = 12201,
+        add_middleware: bool = True
+) -> logging.Logger:
+    """
+    Настраивает централизованное логирование для всего приложения FastAPI.
+
+    Args:
+        app: Экземпляр FastAPI. Может быть None если middleware не нужен.
+        service_name: Имя сервиса для идентификации в логах
+        log_level: Уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        graylog_enabled: Флаг активации отправки логов в Graylog
+        graylog_host: Хост Graylog-сервера
+        graylog_port: Порт Graylog-сервера для GELF UDP
+        add_middleware: Добавлять ли middleware для логирования запросов
+
+    Returns:
+        Настроенный логгер
+    """
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(numeric_level)
+
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    log_format = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(module)s:%(lineno)d | "
+        f"service={service_name} | %(message)s"
+    )
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(log_format)
+    console_handler.stream.reconfigure(encoding="utf-8")
+    root_logger.addHandler(console_handler)
+
+    if graylog_enabled:
+        graylog_handler = graypy.GELFUDPHandler(
+            graylog_host,
+            graylog_port,
+            localname=service_name
+        )
+        root_logger.addHandler(graylog_handler)
+
+    logger = logging.getLogger(service_name)
+
+    if app and add_middleware:
+        app.add_middleware(RequestLoggingMiddleware, logger=logger)
+
+        @app.on_event("startup")
+        async def startup_event():
+            logger.info("FastAPI application starting up")
+
+        @app.on_event("shutdown")
+        async def shutdown_event():
+            logger.info("FastAPI application shutting down")
+
+    return logger
+
+
+def get_context_logger(name: str, **context) -> logging.Logger:
+    """
+    Создает логгер с дополнительной контекстной информацией.
+
+    Args:
+        name: Имя логгера
+        context: Дополнительная контекстная информация
+
+    Returns:
+        Логгер с добавленным контекстом
+    """
+    logger = logging.getLogger(name)
+    old_factory = logging.getLogRecordFactory()
+
+    def record_factory(*args, **kwargs):
+        record = old_factory(*args, **kwargs)
+        record.__dict__.update(context)  # Добавляем контекст напрямую в запись лога
+        return record
+
+    logging.setLogRecordFactory(record_factory)
+    return logger
+
+
+def get_request_logger(request: Request) -> logging.Logger:
+    """
+    Создает логгер, включающий ID запроса из контекста запроса.
+
+    Args:
+        request: Объект запроса FastAPI
+
+    Returns:
+        Логгер с контекстом запроса
+    """
+    if not hasattr(request.state, "request_id"):
+        request.state.request_id = str(uuid.uuid4())
+
+    return get_context_logger("request", request_id=request.state.request_id)

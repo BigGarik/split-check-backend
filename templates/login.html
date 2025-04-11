@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация FastAPI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .auth-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #message {
+            margin-top: 1rem;
+            text-align: center;
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <h1>Вход в систему</h1>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Email или имя пользователя" required>
+            <input type="password" id="password" placeholder="Пароль" required>
+            <button type="submit">Войти</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageElement = document.getElementById('message');
+
+            try {
+                const formBody = new URLSearchParams();
+                formBody.append('username', username.trim());
+                formBody.append('password', password.trim());
+
+                const response = await fetch('/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formBody.toString(),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка сети или сервера');
+                }
+
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new TypeError("Ожидался JSON, получен другой тип данных");
+                }
+
+                const data = await response.json();
+
+                // Сохраняем Access и Refresh токены в localStorage
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('refresh_token', data.refresh_token);
+
+                messageElement.textContent = 'Авторизация успешна!';
+                messageElement.style.color = '#28a745';
+                // Здесь можно добавить редирект на главную страницу
+                // window.location.href = '/dashboard';
+            } catch (error) {
+                console.error('Ошибка:', error);
+                messageElement.textContent = 'Произошла ошибка при попытке входа: ' + error.message;
+                messageElement.style.color = '#dc3545';
+            }
+        });
+
+        // Функция для получения токена из localStorage
+        function getAccessToken() {
+            return localStorage.getItem('access_token');
+        }
+
+        // Функция для обновления токена
+        async function refreshAccessToken() {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) {
+                console.error('Отсутствует refresh_token');
+                return;
+            }
+
+            try {
+                const response = await fetch('/token/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'refresh_token': refreshToken
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Не удалось обновить токен');
+                }
+
+                const data = await response.json();
+                // Обновляем токен
+                localStorage.setItem('access_token', data.access_token);
+            } catch (error) {
+                console.error('Ошибка при обновлении токена:', error);
+            }
+        }
+
+        // Пример использования обновления токена перед запросом к API
+        async function makeAuthenticatedRequest() {
+            const token = getAccessToken();
+
+            // Если токен не найден или истек, пытаемся обновить его
+            if (!token) {
+                await refreshAccessToken();
+            }
+
+            // Далее можно выполнять защищенные запросы с использованием нового токена
+            const response = await fetch('/upload-image', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${getAccessToken()}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Данные:', data);
+            } else {
+                console.error('Ошибка при запросе:', response.status);
+            }
+        }
+
+        // Пример вызова защищенного запроса
+        makeAuthenticatedRequest();
+    </script>
+</body>
+</html>
