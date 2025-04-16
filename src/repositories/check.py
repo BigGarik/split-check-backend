@@ -1,6 +1,7 @@
+import json
 import logging
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from sqlalchemy import select, insert, delete, func, and_, update, exists
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
@@ -9,8 +10,12 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
+from src.config.settings import settings
 from src.models import Check, user_check_association, User, UserSelection
+from src.redis import redis_client
+from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.schemas import CheckListResponse
+from src.utils.db import with_db_session
 
 logger = logging.getLogger(__name__)
 
@@ -425,7 +430,7 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
                     date=check.created_at.strftime("%d.%m.%Y"),
                     total=check.check_data.get('total') if check.check_data else 0,
                     restaurant=check.check_data.get('restaurant') if check.check_data else None,
-                ).dict()
+                ).model_dump()
                 for check in checks
             ],
             "total_open": total_open,
@@ -472,3 +477,72 @@ async def is_check_author(session: AsyncSession, user_id: int, check_uuid: str) 
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def is_user_check_association(session: AsyncSession, user_id: int, check_uuid: str) -> bool:
+    result = await session.execute(
+        select(user_check_association).where(
+            and_(
+                user_check_association.c.user_id == user_id,
+                user_check_association.c.check_uuid == check_uuid
+            )
+        )
+    )
+    exists = result.scalar_one_or_none() is not None
+    logger.debug(f"Проверка наличия ассоциации для пользователя {user_id} и чека {check_uuid}: {exists}")
+    return exists
+
+
+async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str) -> Dict[str, Any]:
+    redis_key = f"check_uuid:{check_uuid}"
+
+    # Попытка получить данные из Redis
+    cached_data = await redis_client.get(redis_key)
+    if cached_data:
+        logger.debug(f"Получены данные чека из Redis: {cached_data}")
+        return json.loads(cached_data)
+
+    # Если нет в Redis, ищем в базе данных
+    check = await get_check_by_uuid(session, check_uuid)
+    if not check:
+        logger.warning(f"Чек не найден: {check_uuid}")
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    # Кэширование в Redis
+    await redis_client.set(
+        redis_key,
+        json.dumps(check.check_data),
+        expire=settings.redis_expiration
+    )
+
+    logger.debug(f"Данные чека получены из БД: {check.check_data}")
+    return check.check_data
+
+
+async def get_check_data(session: AsyncSession, user_id: int, check_uuid: str) -> dict:
+    try:
+        is_check_association = await is_user_check_association(session, user_id, check_uuid)
+        logger.debug(f"is_check_association: {is_check_association}")
+        if not is_check_association:
+            raise HTTPException(status_code=404, detail="Check not found")
+
+        check_data = await get_check_data_by_uuid(session, check_uuid)
+
+        logger.debug(f"check_data: {check_data}")
+
+        participants, user_selections, _ = await get_user_selection_by_check_uuid(session, check_uuid)
+
+        check_data["participants"] = json.loads(participants)
+        check_data["user_selections"] = json.loads(user_selections)
+        check = await get_check_by_uuid(session, check_uuid)
+        check_data["name"] = check.name
+        check_data["date"] = check.created_at.strftime("%d.%m.%Y")
+        check_data["uuid"] = check_uuid
+        check_data["author_id"] = check.author_id
+        check_data["status"] = check.status.value
+
+        return check_data
+
+    except Exception as e:
+        logger.error(f"Ошибка при получении данных чека: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

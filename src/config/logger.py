@@ -1,17 +1,18 @@
 import logging
+import socket
 import sys
 import time
+import uuid
+from logging.handlers import SysLogHandler
 from typing import Callable, Optional
 
-import graypy
-import uuid
 from fastapi import FastAPI, Request, Response
+from rfc5424logging import Rfc5424SysLogHandler
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware для логирования всех HTTP-запросов и ответов."""
-
     def __init__(
             self,
             app: FastAPI,
@@ -21,6 +22,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self.logger = logger
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        EXCLUDED_PATHS = {"/metrics", "/healthz"}
+
+        if request.url.path in EXCLUDED_PATHS:
+            return await call_next(request)
+
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
@@ -53,29 +59,37 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def setup_logging(
-        app: Optional[FastAPI] = None,
-        service_name: str = "fastapi-app",
-        log_level: str = "INFO",
-        graylog_enabled: bool = False,
-        graylog_host: str = "localhost",
-        graylog_port: int = 12201,
-        add_middleware: bool = True
+    app: Optional[FastAPI] = None,
+    service_name: str = "fastapi-app",
+    log_level: str = "INFO",
+    syslog_enabled: bool = True,
+    syslog_host: str = "localhost",
+    syslog_port: int = 1514,
+    syslog_facility: int = SysLogHandler.LOG_USER,
+    add_middleware: bool = True
 ) -> logging.Logger:
     """
-    Настраивает централизованное логирование для всего приложения FastAPI.
+    Настраивает централизованное логирование для FastAPI-приложения в формате RFC5424.
 
     Args:
-        app: Экземпляр FastAPI. Может быть None если middleware не нужен.
-        service_name: Имя сервиса для идентификации в логах
-        log_level: Уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        graylog_enabled: Флаг активации отправки логов в Graylog
-        graylog_host: Хост Graylog-сервера
-        graylog_port: Порт Graylog-сервера для GELF UDP
-        add_middleware: Добавлять ли middleware для логирования запросов
+        app: Экземпляр FastAPI, если требуется middleware.
+        service_name: Имя сервиса для логов.
+        log_level: Уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        syslog_enabled: Включение отправки логов в Syslog.
+        syslog_host: Хост Syslog-сервера.
+        syslog_port: Порт Syslog-сервера.
+        syslog_facility: Facility для Syslog.
+        add_middleware: Добавить middleware для логирования запросов.
 
     Returns:
-        Настроенный логгер
+        Настроенный логгер.
     """
+
+    logging.getLogger("tzlocal").setLevel(logging.WARNING)
+    logging.getLogger("tzlocal").propagate = False
+    logging.getLogger("zoneinfo").setLevel(logging.WARNING)
+    logging.getLogger("zoneinfo").propagate = False
+
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
 
     root_logger = logging.getLogger()
@@ -94,29 +108,28 @@ def setup_logging(
     console_handler.stream.reconfigure(encoding="utf-8")
     root_logger.addHandler(console_handler)
 
-    if graylog_enabled:
-        graylog_handler = graypy.GELFUDPHandler(
-            graylog_host,
-            graylog_port,
-            localname=service_name
-        )
-        root_logger.addHandler(graylog_handler)
+    # Syslog обработчик
+    if syslog_enabled:
+        # Настройка обработчика syslog
+        try:
+            rfc5424handler = Rfc5424SysLogHandler(
+                address=(syslog_host, syslog_port),
+                socktype=socket.SOCK_STREAM,
+                appname=service_name,
+                msg_as_utf8=True,
+                facility=syslog_facility
+            )
+            rfc5424handler.setLevel(logging.DEBUG)
+            root_logger.addHandler(rfc5424handler)
+        except Exception as e:
+            print(f"Ошибка настройки обработчика: {e}")
 
     logger = logging.getLogger(service_name)
 
     if app and add_middleware:
         app.add_middleware(RequestLoggingMiddleware, logger=logger)
 
-        @app.on_event("startup")
-        async def startup_event():
-            logger.info("FastAPI application starting up")
-
-        @app.on_event("shutdown")
-        async def shutdown_event():
-            logger.info("FastAPI application shutting down")
-
     return logger
-
 
 def get_context_logger(name: str, **context) -> logging.Logger:
     """
