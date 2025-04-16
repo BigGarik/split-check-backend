@@ -1,9 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
 from functools import wraps
-from typing import TypeVar, ParamSpec, Callable
+from typing import TypeVar, ParamSpec, Callable, AsyncGenerator
 
 from sqlalchemy.exc import SQLAlchemyError, DatabaseError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.session import AsyncSessionLocal
 
@@ -21,6 +22,22 @@ async def get_async_db():
     async with AsyncSessionLocal() as session:
         try:
             yield session
+        finally:
+            await session.close()
+
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Создает и возвращает асинхронную сессию для работы с базой данных.
+    Автоматически закрывает сессию после использования.
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
         finally:
             await session.close()
 

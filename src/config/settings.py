@@ -62,10 +62,13 @@ class Settings(BaseSettings):
     refresh_token_expire_minutes: int  # Добавлено
 
     # GRAYLOG
-    GRAYLOG_HOST: str = "localhost"
-    GRAYLOG_PORT: int = 12201
+    # GRAYLOG_HOST: str = "localhost"
+    # GRAYLOG_PORT: int = 12201
     LOG_LEVEL: str = "DEBUG"
     SERVICE_NAME: str = "fastapi-app"
+
+    SYSLOG_HOST: str = "localhost"
+    SYSLOG_PORT: int = 1514
 
     # Storage
     upload_directory: str = "images"
