@@ -12,6 +12,7 @@ from src.config.logger import setup_logging
 from src.config.settings import settings
 from src.db.base import Base
 from src.db.session import sync_engine
+from src.managers.ws_instance import init_redis_ws_manager, get_redis_ws_manager
 from src.middlewares.restrict_docs import RestrictDocsAccessMiddleware
 from src.redis import queue_processor, redis_client, register_redis_handlers
 from src.services.classifier.classifier_instance import init_classifier
@@ -27,6 +28,11 @@ async def lifespan(app: FastAPI):
     classifier = init_classifier()
     await redis_client.connect()
     register_redis_handlers()
+
+    # Инициализируем Redis WebSocket Manager
+    redis_ws_manager = init_redis_ws_manager(redis_client)
+    await redis_ws_manager.start()
+
     queue_task = asyncio.create_task(queue_processor.process_queue())
     logger.info(f"Старт, память: {get_memory_usage():.2f} MB")
 
@@ -46,6 +52,9 @@ async def lifespan(app: FastAPI):
     # asyncio.create_task(monitor())
 
     yield
+    # Останавливаем Redis WebSocket Manager
+    redis_ws_manager = get_redis_ws_manager()
+    await redis_ws_manager.stop()
     queue_task.cancel()
     try:
         await queue_task
