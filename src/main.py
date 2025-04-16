@@ -5,7 +5,6 @@ import firebase_admin
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from firebase_admin import credentials
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.routes import include_routers
@@ -84,7 +83,7 @@ logger = setup_logging(
 )
 
 
-cred = credentials.Certificate("scannsplit-firebase-adminsdk.json")
+cred = firebase_admin.credentials.Certificate("scannsplit-firebase-adminsdk.json")
 firebase_admin.initialize_app(cred)
 
 app.add_middleware(RestrictDocsAccessMiddleware)
