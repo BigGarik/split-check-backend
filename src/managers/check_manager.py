@@ -9,6 +9,7 @@ from starlette.exceptions import HTTPException
 
 from src.config.settings import settings
 from src.managers.item_manager import ItemService
+from src.models import user_check_association
 from src.redis import redis_client
 from src.repositories.check import (
     get_all_checks,
@@ -16,7 +17,7 @@ from src.repositories.check import (
     delete_association_by_check_uuid,
     get_check_by_uuid,
     update_check_data_to_database, get_main_page_checks, is_check_author, edit_check_name_to_database,
-    edit_check_status_to_database
+    edit_check_status_to_database, is_user_check_association
 )
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection

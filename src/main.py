@@ -1,16 +1,14 @@
 import asyncio
-import os
-import tracemalloc
 from contextlib import asynccontextmanager
 
 import firebase_admin
-import psutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import credentials
+from prometheus_fastapi_instrumentator import Instrumentator
 
-from src.api.v1.router import api_router
+from src.api.routes import include_routers
 from src.config.logger import setup_logging
 from src.config.settings import settings
 from src.db.base import Base
@@ -26,27 +24,27 @@ Base.metadata.create_all(bind=sync_engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    tracemalloc.start()  # Старт отслеживания
+    # tracemalloc.start()  # Старт отслеживания
     classifier = init_classifier()
     await redis_client.connect()
     register_redis_handlers()
     queue_task = asyncio.create_task(queue_processor.process_queue())
     logger.info(f"Старт, память: {get_memory_usage():.2f} MB")
 
-    async def monitor():
-        while True:
-            tasks = asyncio.all_tasks()
-            logger.info(f"Память: {get_memory_usage():.2f} MB, активных задач: {len(tasks)}")
-            snapshot = tracemalloc.take_snapshot()
-            top_stats = snapshot.statistics('lineno')[:5]
-            logger.info("Топ 5 потребителей памяти:")
-            for stat in top_stats:
-                logger.info(stat)
-            for task in tasks:
-                logger.info(f"Активная задача: {task}")
-            await asyncio.sleep(60)
-
-    asyncio.create_task(monitor())
+    # async def monitor():
+    #     while True:
+    #         tasks = asyncio.all_tasks()
+    #         logger.info(f"Память: {get_memory_usage():.2f} MB, активных задач: {len(tasks)}")
+    #         snapshot = tracemalloc.take_snapshot()
+    #         top_stats = snapshot.statistics('lineno')[:5]
+    #         logger.info("Топ 5 потребителей памяти:")
+    #         for stat in top_stats:
+    #             logger.info(stat)
+    #         for task in tasks:
+    #             logger.info(f"Активная задача: {task}")
+    #         await asyncio.sleep(60)
+    #
+    # asyncio.create_task(monitor())
 
     yield
     queue_task.cancel()
@@ -58,11 +56,11 @@ async def lifespan(app: FastAPI):
         classifier.cleanup()
     await redis_client.disconnect()
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
-    snapshot = tracemalloc.take_snapshot()
-    top_stats = snapshot.statistics('lineno')[:10]
-    logger.info("Топ 10 потребителей памяти при завершении:")
-    for stat in top_stats:
-        logger.info(stat)
+    # snapshot = tracemalloc.take_snapshot()
+    # top_stats = snapshot.statistics('lineno')[:10]
+    # logger.info("Топ 10 потребителей памяти при завершении:")
+    # for stat in top_stats:
+    #     logger.info(stat)
 
 
 # app = FastAPI(root_path="/split_check", lifespan=lifespan)
@@ -78,10 +76,10 @@ app = FastAPI(lifespan=lifespan,
 # Настраиваем логирование
 logger = setup_logging(
     app,
-    graylog_host=settings.GRAYLOG_HOST,
-    graylog_port=settings.GRAYLOG_PORT,
+    syslog_host=settings.SYSLOG_HOST,
+    syslog_port=settings.SYSLOG_PORT,
     log_level=settings.LOG_LEVEL,
-    graylog_enabled=True,
+    syslog_enabled=True,
     service_name=settings.SERVICE_NAME
 )
 
@@ -102,7 +100,11 @@ app.add_middleware(
 
 
 # Подключаем маршруты
-app.include_router(api_router)
+include_routers(app)
+
+instrumentator = Instrumentator(excluded_handlers=["/metrics"])
+
+instrumentator.instrument(app).expose(app)
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
