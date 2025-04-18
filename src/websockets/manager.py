@@ -1,16 +1,9 @@
 import logging
+from src.websockets.lazy_manager import ws_manager
 
-from src.websockets.redis_manager import get_redis_ws_manager
 
 logger = logging.getLogger(__name__)
 
-
-# Для обратной совместимости
-def get_manager():
-    return get_redis_ws_manager()
-
-# Экспортируем текущий активный менеджер для остальной части приложения
-ws_manager = get_manager()
 
 
 #
