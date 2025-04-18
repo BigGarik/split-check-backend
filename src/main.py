@@ -44,9 +44,37 @@ async def lifespan(app: FastAPI):
     #         await asyncio.sleep(60)
     #
     # asyncio.create_task(monitor())
+    async def monitor_memory():
+        import psutil
+        import gc
+
+        process = psutil.Process()
+
+        while True:
+            # Вызываем сборщик мусора вручную
+            gc.collect()
+
+            # Получаем информацию о памяти
+            memory_info = process.memory_info()
+            memory_mb = memory_info.rss / (1024 * 1024)
+
+            if memory_mb > 500:  # Порог, например 500 МБ
+                logger.warning(f"Высокое потребление памяти: {memory_mb:.2f} МБ")
+
+                # Опционально: вывод информации о типах объектов
+                from collections import Counter
+                obj_counts = Counter(type(o).__name__ for o in gc.get_objects())
+                top_types = obj_counts.most_common(10)
+                logger.warning(f"Топ объектов в памяти: {top_types}")
+
+            await asyncio.sleep(30)  # Проверять каждые 30 секунд
+
+    # Запускаем мониторинг в фоновом режиме
+    memory_task = asyncio.create_task(monitor_memory())
 
     yield
     queue_task.cancel()
+    memory_task.cancel()
     try:
         await queue_task
     except asyncio.CancelledError:

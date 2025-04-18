@@ -1,3 +1,4 @@
+import json
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -6,7 +7,7 @@ load_dotenv()
 MAIL_USERNAME = os.getenv("MAIL_USERNAME")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_FROM = os.getenv("MAIL_FROM")
-MAIL_PORT = os.getenv("MAIL_PORT", 587)
+MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
 MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
 MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", False)
 MAIL_STARTTLS = os.getenv("MAIL_STARTTLS", True)
@@ -25,7 +26,7 @@ CLAUDE_MODEL_NAME = os.getenv("CLAUDE_MODEL_NAME")
 
 ### Database
 DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", 5432)
+DB_PORT = int(os.getenv("DB_PORT", 5432))
 DATABASE = os.getenv("DATABASE", "split_check")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
@@ -38,9 +39,9 @@ SYNC_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{
 REDIS_USERNAME = os.getenv("REDIS_USERNAME")
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = os.getenv("REDIS_PORT", 6379)
-REDIS_DB = os.getenv("REDIS_DB", 0)
-REDIS_EXPIRATION = os.getenv("REDIS_EXPIRATION", 3600)
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_DB = int(os.getenv("REDIS_DB", 0))
+REDIS_EXPIRATION = int(os.getenv("REDIS_EXPIRATION", 3600))
 
 
 ### auth.py
@@ -52,14 +53,14 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 # Настройки для Syslog
 LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
 SERVICE_NAME = os.getenv("SERVICE_NAME", "fastapi-app")
-SYSLOG_HOST = os.getenv("SYSLOG_HOST", "localhost")
-SYSLOG_PORT = os.getenv("SYSLOG_PORT", 1514)
+SYSLOG_HOST = os.getenv("SYSLOG_HOST", "biggarik.ru")
+SYSLOG_PORT = int(os.getenv("SYSLOG_PORT", 1514))
 
 # Время действия токенов
-ACCESS_TOKEN_EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 600)
-REFRESH_TOKEN_EXPIRE_DAYS = os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 365)
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 600))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 365))
 
-REFRESH_TOKEN_EXPIRE_MINUTES = os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 525600)  # 365*24*60 = 1 year
+REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 525600) ) # 365*24*60 = 1 year
 
 
 UPLOAD_DIRECTORY = os.getenv("UPLOAD_DIRECTORY", "images")
@@ -68,7 +69,7 @@ DEEP_LINK_URL = os.getenv("DEEP_LINK_URL")
 
 ENABLE_DOCS = os.getenv("ENABLE_DOCS", True)
 
-ALLOWED_IPS = [ip.strip() for ip in os.getenv("ALLOWED_IPS", "127.0.0.1").split(",")]
+ALLOWED_IPS = json.loads(os.getenv("ALLOWED_IPS", '["127.0.0.1"]'))
 
 
 # from typing import ClassVar, List
