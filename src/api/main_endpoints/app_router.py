@@ -50,5 +50,10 @@ async def redirect_to_app(uuid: str):
 
 
 @router.get("/version")
-def read_version():
+async def read_version():
     return {"version": APP_VERSION}
+
+
+@router.get("/health")
+async def health_check():
+    return {"status": "ok"}
