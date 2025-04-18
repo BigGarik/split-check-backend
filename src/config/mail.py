@@ -2,7 +2,8 @@ from pathlib import Path
 
 from fastapi_mail import ConnectionConfig
 
-from src.config.settings import settings
+from src.config import MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM, MAIL_PORT, MAIL_SERVER, MAIL_SSL_TLS, MAIL_STARTTLS, \
+    USE_CREDENTIALS
 
 # Путь к корню проекта
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -16,13 +17,13 @@ if not TEMPLATE_FOLDER.is_dir():
 
 # Конфигурация для отправки email
 mail_config = ConnectionConfig(
-    MAIL_USERNAME=settings.mail_username,
-    MAIL_PASSWORD=settings.mail_password,
-    MAIL_FROM=settings.mail_from,
-    MAIL_PORT=settings.mail_port,
-    MAIL_SERVER=settings.mail_server,
-    MAIL_SSL_TLS=settings.mail_ssl_tls,
-    MAIL_STARTTLS=settings.mail_starttls,
-    USE_CREDENTIALS=settings.use_credentials,
+    MAIL_USERNAME=MAIL_USERNAME,
+    MAIL_PASSWORD=MAIL_PASSWORD,
+    MAIL_FROM=MAIL_FROM,
+    MAIL_PORT=MAIL_PORT,
+    MAIL_SERVER=MAIL_SERVER,
+    MAIL_SSL_TLS=MAIL_SSL_TLS,
+    MAIL_STARTTLS=MAIL_STARTTLS,
+    USE_CREDENTIALS=USE_CREDENTIALS,
     TEMPLATE_FOLDER=TEMPLATE_FOLDER
 )

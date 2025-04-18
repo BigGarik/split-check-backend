@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
-from src.config.settings import settings
+from src.config import REDIS_EXPIRATION
 from src.models import Check, user_check_association, User, UserSelection
 from src.redis import redis_client
 from src.repositories.user_selection import get_user_selection_by_check_uuid
@@ -512,7 +512,7 @@ async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str) -> Dict
     await redis_client.set(
         redis_key,
         json.dumps(check.check_data),
-        expire=settings.redis_expiration
+        expire=REDIS_EXPIRATION
     )
 
     logger.debug(f"Данные чека получены из БД: {check.check_data}")

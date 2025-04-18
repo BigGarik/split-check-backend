@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from src.config.settings import settings
+from src.config import REDIS_EXPIRATION
 from src.models import UserSelection
 from src.redis import redis_client
 from src.repositories.user import get_users_by_check_uuid
@@ -47,7 +47,7 @@ async def add_or_update_user_selection(session: AsyncSession, user_id: int, chec
 
         # После успешного сохранения в БД — добавляем данные в Redis
         redis_key = f"user_selection:{user_id}:{check_uuid}"
-        await redis_client.set(redis_key, json.dumps(selection_data), expire=settings.redis_expiration)
+        await redis_client.set(redis_key, json.dumps(selection_data), expire=REDIS_EXPIRATION)
         logger.debug(f"Данные сохранены в Redis для ключа {redis_key}")
 
     except Exception as e:

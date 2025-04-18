@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.api.v1.endpoints import users, websockets, profile, image, check, test, token, item, auth
-from src.config.settings import settings
+from src.config import ENVIRONMENT
 
 api_router = APIRouter(prefix="/api")
 
@@ -16,5 +16,5 @@ api_router.include_router(token.router, prefix="/token", tags=["token"])
 api_router.include_router(websockets.router, tags=["websockets"])
 
 
-if settings.environment != "prod":
+if ENVIRONMENT != "prod":
     api_router.include_router(test.router, prefix="/testws", tags=["testws"])

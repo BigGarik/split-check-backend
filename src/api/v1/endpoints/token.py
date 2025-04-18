@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from starlette.requests import Request
 
-from src.config.settings import settings
+from src.config import REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY
 from src.core.security import verify_token
 from src.services.auth import authenticate_user, generate_tokens
 from src.schemas import RefreshTokenRequest, TokenResponse
@@ -47,7 +47,7 @@ async def login_for_access_token(request: Request,
         httponly=True,
         secure=True,  # для HTTPS
         samesite="strict",
-        max_age=settings.refresh_token_expire_days
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS
     )
 
     return tokens
@@ -73,7 +73,7 @@ async def refresh_access_token(request: RefreshTokenRequest) -> Dict[str, str]:
 
     try:
         email, user_id = await verify_token(
-            secret_key=settings.refresh_secret_key,
+            secret_key=REFRESH_SECRET_KEY,
             token=token
         )
         tokens = await generate_tokens(email, user_id)

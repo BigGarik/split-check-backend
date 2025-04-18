@@ -4,15 +4,11 @@ import os
 from fastapi import Depends
 import logging
 
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from src.config import ENVIRONMENT
+from src.config.type_events import Events
 from src.utils.system import get_memory_usage
 from src.websockets.manager import ws_manager
-from src.config.settings import settings
 from src.managers.check_manager import CheckManager, get_check_manager
-from src.redis import redis_client
-from src.repositories.check import add_check_to_database
 from src.services.ai.api_anthropic import recognize_check_by_anthropic
 from src.services.classifier.classifier_image import classifier_image
 
@@ -62,7 +58,7 @@ async def recognize_image_task(
         classification_result = await classifier_image(image_path)
         if classification_result == "Allowed Content":
             # Распознавание чека
-            if settings.environment == "prod":
+            if ENVIRONMENT == "prod":
                 recognized_json = await recognize_check_by_anthropic(file_location_directory)
             else:
                 recognized_json = {
@@ -142,7 +138,7 @@ async def recognize_image_task(
 
         else:
             error_msg = {
-                "type": settings.Events.IMAGE_RECOGNITION_EVENT_STATUS,
+                "type": Events.IMAGE_RECOGNITION_EVENT_STATUS,
                 "status": "error",
                 "message": f"Image classification failed with result: {classification_result}"
             }
@@ -154,7 +150,7 @@ async def recognize_image_task(
     except Exception as e:
 
         error_msg = {
-            "type": settings.Events.IMAGE_RECOGNITION_EVENT_STATUS,
+            "type": Events.IMAGE_RECOGNITION_EVENT_STATUS,
             "status": "error",
             "message": f"Error processing image {check_uuid}: {e}"
         }

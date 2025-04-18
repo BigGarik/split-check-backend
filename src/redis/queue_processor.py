@@ -1,13 +1,12 @@
 import asyncio
 import json
-# import logging
-from loguru import logger
+import logging
 import os
 from typing import Callable, Dict
 
 from .redis_client import RedisClient
 
-# logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class QueueProcessor:
@@ -24,30 +23,56 @@ class QueueProcessor:
         self.task_handlers[task_type] = handler
 
     async def process_queue(self):
+        # Ограничивать количество задач в обработке
+        active_tasks = set()
+
         while True:
             try:
-                # Получение задачи из очереди
-                task = await self.redis_client.pop_task(self.queue_name)
+                # Проверяем, не слишком ли много активных задач
+                if len(active_tasks) >= self.queue_semaphore._value * 2:
+                    # Если слишком много задач в обработке, делаем паузу
+                    await asyncio.sleep(0.5)
+                    continue
+
+                # Получение задачи из очереди с таймаутом
+                try:
+                    task = await asyncio.wait_for(
+                        self.redis_client.pop_task(self.queue_name),
+                        timeout=1.0
+                    )
+                except asyncio.TimeoutError:
+                    # Если таймаут, продолжаем цикл
+                    continue
 
                 if not task:
-                    await asyncio.sleep(1)  # Если нет задач, подождите 1 секунду
+                    await asyncio.sleep(0.5)
                     continue
 
                 _, task_json = task  # Распаковка задачи
                 task_data = json.loads(task_json)
 
-                async with self.queue_semaphore:  # Ограничиваем количество одновременно работающих консьюмеров
-                    task_type = task_data.get('type')
+                # Создаем и запускаем задачу асинхронно
+                task_type = task_data.get('type')
+                if task_type in self.task_handlers:
+                    handler = self.task_handlers[task_type]
 
-                    if task_type in self.task_handlers:
-                        handler = self.task_handlers[task_type]
-                        await asyncio.wait_for(handler(task_data), timeout=60)  # Таймаут 60 секунд
-                    else:
-                        logger.warning(f"Unknown message type: {task_type}")
-            except asyncio.TimeoutError:
-                logger.error(f"Task {task_type} exceeded 60-second timeout")
+                    async def process_with_semaphore():
+                        task_id = id(task_data)
+                        active_tasks.add(task_id)
+                        try:
+                            async with self.queue_semaphore:
+                                await asyncio.wait_for(handler(task_data), timeout=60)
+                        except Exception as e:
+                            logger.error(f"Error processing task {task_type}: {e}")
+                        finally:
+                            active_tasks.discard(task_id)
+
+                    asyncio.create_task(process_with_semaphore())
+                else:
+                    logger.warning(f"Unknown message type: {task_type}")
+
             except Exception as e:
-                logger.error(f"Error processing task: {e}")
+                logger.error(f"Error in queue processor: {e}")
                 await asyncio.sleep(1)
 
     async def push_task(self, task_data: dict):

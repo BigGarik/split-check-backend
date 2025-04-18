@@ -8,8 +8,8 @@ from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.routes import include_routers
+from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME
 from src.config.logger import setup_logging
-from src.config.settings import settings
 from src.db.base import Base
 from src.db.session import sync_engine
 from src.middlewares.restrict_docs import RestrictDocsAccessMiddleware
@@ -66,20 +66,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
-              docs_url="/docs" if settings.enable_docs else None,
-              redoc_url="/redoc" if settings.enable_docs else None,
-              openapi_url="/openapi.json" if settings.enable_docs else None,
+              docs_url="/docs" if ENABLE_DOCS else None,
+              redoc_url="/redoc" if ENABLE_DOCS else None,
+              openapi_url="/openapi.json" if ENABLE_DOCS else None,
               version=APP_VERSION
               )
 
 # Настраиваем логирование
 logger = setup_logging(
     app,
-    syslog_host=settings.SYSLOG_HOST,
-    syslog_port=settings.SYSLOG_PORT,
-    log_level=settings.LOG_LEVEL,
+    syslog_host=SYSLOG_HOST,
+    syslog_port=SYSLOG_PORT,
+    log_level=LOG_LEVEL,
     syslog_enabled=True,
-    service_name=settings.SERVICE_NAME
+    service_name=SERVICE_NAME
 )
 
 
@@ -111,4 +111,4 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080, log_level=settings.LOG_LEVEL)
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_level=LOG_LEVEL)

@@ -5,7 +5,7 @@ import uuid
 import aiofiles
 from starlette.datastructures import UploadFile
 
-from src.config.settings import settings
+from src.config import UPLOAD_DIRECTORY
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 async def prepare_image_upload(user_id: int, file: UploadFile) -> dict:
     """Подготовка данных для задачи загрузки и обработки изображения."""
     check_uuid = str(uuid.uuid4())
-    directory = os.path.join(settings.upload_directory, check_uuid)
+    directory = os.path.join(UPLOAD_DIRECTORY, check_uuid)
     os.makedirs(directory, exist_ok=True)
 
     file_name = file.filename
