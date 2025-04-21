@@ -2,13 +2,13 @@ from sqlalchemy import MetaData, create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from src.config.settings import settings
+from src.config import SYNC_DATABASE_URL, ASYNC_DATABASE_URL
 
 # Синхронный движок для DDL операций (например, для миграций)
-sync_engine = create_engine(settings.sync_database_url)
+sync_engine = create_engine(SYNC_DATABASE_URL)
 
 # Асинхронный движок для работы с FastAPI
-async_engine = create_async_engine(settings.async_database_url)
+async_engine = create_async_engine(ASYNC_DATABASE_URL)
 
 # Асинхронные сессии для FastAPI
 AsyncSessionLocal = async_sessionmaker(

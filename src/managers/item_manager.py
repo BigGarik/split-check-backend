@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.settings import settings
+from src.config.type_events import Events
 from src.repositories.item import (
     add_item_to_check,
     remove_item_from_check,
@@ -37,11 +37,11 @@ class ItemService:
 
             # Формируем сообщение для отправки
             msg_for_all = create_event_message(
-                message_type=settings.Events.ITEM_ADD_EVENT,
+                message_type=Events.ITEM_ADD_EVENT,
                 payload={"uuid": check_uuid, "item": new_item}
             )
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.ITEM_ADD_EVENT_STATUS,
+                message_type=Events.ITEM_ADD_EVENT_STATUS,
                 status="success",
                 message="Item successfully added to check"
             )
@@ -56,7 +56,7 @@ class ItemService:
         except Exception as e:
             logger.error(f"Error adding item to check: {str(e)}", extra={"current_user_id": user_id})
             error_message = create_event_status_message(
-                message_type=settings.Events.ITEM_ADD_EVENT_STATUS,
+                message_type=Events.ITEM_ADD_EVENT_STATUS,
                 status="error",
                 message=str(e)
             )
@@ -68,11 +68,11 @@ class ItemService:
             await remove_item_from_check(self.session, check_uuid, item_id)
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.ITEM_REMOVE_EVENT,
+                message_type=Events.ITEM_REMOVE_EVENT,
                 payload={"uuid": check_uuid, "itemId": item_id}
             )
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.ITEM_REMOVE_EVENT_STATUS,
+                message_type=Events.ITEM_REMOVE_EVENT_STATUS,
                 status="success",
                 message="Item successfully removed from check"
             )
@@ -87,7 +87,7 @@ class ItemService:
         except Exception as e:
             logger.error(f"Error removing item from check: {str(e)}", extra={"current_user_id": user_id})
             error_message = create_event_status_message(
-                message_type=settings.Events.ITEM_REMOVE_EVENT_STATUS,
+                message_type=Events.ITEM_REMOVE_EVENT_STATUS,
                 status="error",
                 message=str(e)
             )
@@ -100,11 +100,11 @@ class ItemService:
             updated_data = await edit_item_in_check(self.session, check_uuid, item_request)
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.ITEM_EDIT_EVENT,
+                message_type=Events.ITEM_EDIT_EVENT,
                 payload={"uuid": check_uuid, "new_check_data": updated_data}
             )
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.ITEM_EDIT_EVENT_STATUS,
+                message_type=Events.ITEM_EDIT_EVENT_STATUS,
                 status="success",
                 message="Item successfully edited in check"
             )
@@ -119,7 +119,7 @@ class ItemService:
         except Exception as e:
             logger.error(f"Error editing item in check: {str(e)}", extra={"current_user_id": user_id})
             error_message = create_event_status_message(
-                message_type=settings.Events.ITEM_EDIT_EVENT_STATUS,
+                message_type=Events.ITEM_EDIT_EVENT_STATUS,
                 status="error",
                 message=str(e)
             )
@@ -135,14 +135,14 @@ class ItemService:
             users = await get_users_by_check_uuid(self.session, check_uuid)
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.ITEM_SPLIT_EVENT,
+                message_type=Events.ITEM_SPLIT_EVENT,
                 payload={"check_uuid": check_uuid, "item_id": item_id, "quantity": quantity}
             )
 
             for user in users:
                 if user.id == user_id:
                     status_message = create_event_status_message(
-                        message_type=settings.Events.ITEM_SPLIT_EVENT_STATUS,
+                        message_type=Events.ITEM_SPLIT_EVENT_STATUS,
                         status="success"
                     )
                     await self._send_ws_message(user_id, status_message)
@@ -152,7 +152,7 @@ class ItemService:
         except Exception as e:
             logger.error(f"Error splitting item: {str(e)}")
             error_message = create_event_status_message(
-                message_type=settings.Events.ITEM_SPLIT_EVENT_STATUS,
+                message_type=Events.ITEM_SPLIT_EVENT_STATUS,
                 status="error",
                 message=str(e)
             )

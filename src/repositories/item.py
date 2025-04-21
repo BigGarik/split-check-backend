@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from src.config.settings import settings
+from src.config import REDIS_EXPIRATION
 from src.models import Check
 from src.redis import redis_client
 from src.repositories.user_selection import delite_item_from_user_selections
@@ -78,7 +78,7 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
     logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
 
     # Кэшируем данные чека в Redis для будущих обращений
-    await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+    await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
 
     await delite_item_from_user_selections(session, check_uuid, item_id)
 
@@ -145,7 +145,7 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
         logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
 
         # Кэшируем данные чека в Redis для будущих обращений
-        await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+        await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
 
         return new_item
     except Exception as e:
@@ -213,7 +213,7 @@ async def edit_item_in_check(
     logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
 
     # Кэшируем данные чека в Redis для будущих обращений
-    await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+    await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
 
     await delite_item_from_user_selections(session, check_uuid, item_data.id)
 
@@ -249,7 +249,7 @@ async def update_item_quantity(session: AsyncSession, check_uuid: str, item_id: 
 
         # Обновление кэша Redis, если данные изменены
         redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key, json.dumps(check.check_data), expire=settings.redis_expiration)
+        await redis_client.set(redis_key, json.dumps(check.check_data), expire=REDIS_EXPIRATION)
         logger.info(f"Данные чека {check_uuid} обновлены в Redis.")
 
     except Exception as e:

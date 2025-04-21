@@ -7,9 +7,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException
 
-from src.config.settings import settings
+from src.config import REDIS_EXPIRATION
+from src.config.type_events import Events
 from src.managers.item_manager import ItemService
-from src.models import user_check_association
 from src.redis import redis_client
 from src.repositories.check import (
     get_all_checks,
@@ -17,7 +17,7 @@ from src.repositories.check import (
     delete_association_by_check_uuid,
     get_check_by_uuid,
     update_check_data_to_database, get_main_page_checks, is_check_author, edit_check_name_to_database,
-    edit_check_status_to_database, is_user_check_association
+    edit_check_status_to_database
 )
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
@@ -70,10 +70,10 @@ class CheckManager:
         redis_key = f"check_uuid:{check_uuid}"
         await redis_client.set(redis_key,
                                json.dumps(check_data),
-                               expire=settings.redis_expiration)
+                               expire=REDIS_EXPIRATION)
 
         msg = create_event_message(
-            message_type=settings.Events.IMAGE_RECOGNITION_EVENT,
+            message_type=Events.IMAGE_RECOGNITION_EVENT,
             payload={"uuid": check_uuid}
         )
         await self._send_ws_message(user_id, msg)
@@ -97,7 +97,7 @@ class CheckManager:
         await redis_client.set(
             redis_key,
             json.dumps(check.check_data),
-            expire=settings.redis_expiration
+            expire=REDIS_EXPIRATION
         )
 
         logger.debug(f"Данные чека получены из БД: {check_uuid}")
@@ -109,7 +109,7 @@ class CheckManager:
 
         # Обновляем кэш Redis
         redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key, json.dumps(check_data), expire=settings.redis_expiration)
+        await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
         return check_data
 
     async def edit_check_name(self, user_id: int, check_uuid: str, check_name: str):
@@ -117,12 +117,12 @@ class CheckManager:
         users = await get_users_by_check_uuid(self.session, check_uuid)
         if new_name_status == "Check name updated successfully.":
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.CHECK_NAME_EVENT_STATUS,
+                message_type=Events.CHECK_NAME_EVENT_STATUS,
                 status="success"
             )
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.CHECK_NAME_EVENT,
+                message_type=Events.CHECK_NAME_EVENT,
                 payload={"check_name": check_name},
             )
 
@@ -142,12 +142,12 @@ class CheckManager:
         users = await get_users_by_check_uuid(self.session, check_uuid)
         if status == "Check status updated successfully.":
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.CHECK_STATUS_EVENT_STATUS,
+                message_type=Events.CHECK_STATUS_EVENT_STATUS,
                 status="success"
             )
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.CHECK_STATUS_EVENT,
+                message_type=Events.CHECK_STATUS_EVENT,
                 payload={"check_status": check_status},
             )
 
@@ -174,7 +174,7 @@ class CheckManager:
         check_data["uuid"] = check_uuid
         check_data["author_id"] = check.author_id
         check_data["status"] = check.status.value
-        msg = create_event_message(settings.Events.BILL_DETAIL_EVENT, check_data)
+        msg = create_event_message(Events.BILL_DETAIL_EVENT, check_data)
 
         await self._send_ws_message(user_id, msg)
 
@@ -194,7 +194,7 @@ class CheckManager:
                                            start_date=start_date,
                                            end_date=end_date)
         msg = create_event_message(
-            message_type=settings.Events.ALL_BILL_EVENT,
+            message_type=Events.ALL_BILL_EVENT,
             payload={
                 "checks": checks_data["items"],
                 "pagination": {
@@ -210,7 +210,7 @@ class CheckManager:
     async def send_main_page_checks(self, user_id: int) -> None:
         checks_data = await get_main_page_checks(self.session, user_id)
         msg = create_event_message(
-            message_type=settings.Events.MAIN_PAGE_EVENT,
+            message_type=Events.MAIN_PAGE_EVENT,
             payload={
                 "checks": checks_data["items"],
                 "total_open": checks_data["total_open"],
@@ -240,11 +240,11 @@ class CheckManager:
         await redis_client.set(
             f"check_uuid:{check_uuid}",
             json.dumps(check_data),
-            expire=settings.redis_expiration
+            expire=REDIS_EXPIRATION
         )
 
         msg = create_event_message(
-            message_type=settings.Events.CHECK_ADD_EVENT,
+            message_type=Events.CHECK_ADD_EVENT,
             payload={"uuid": check_uuid}
         )
         await self._send_ws_message(user_id, msg)
@@ -256,12 +256,12 @@ class CheckManager:
             users = await get_users_by_check_uuid(self.session, check_uuid)
 
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.JOIN_BILL_EVENT_STATUS,
+                message_type=Events.JOIN_BILL_EVENT_STATUS,
                 status="success"
             )
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.USER_JOIN_EVENT,
+                message_type=Events.USER_JOIN_EVENT,
                 payload={"user_id": joined_user.id,
                          "nickname": joined_user.profile.nickname,
                          "avatar_url": joined_user.profile.avatar_url,
@@ -280,18 +280,18 @@ class CheckManager:
                     logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
         except Exception as e:
-            await self._handle_error(user_id, settings.Events.JOIN_BILL_EVENT_STATUS, e)
+            await self._handle_error(user_id, Events.JOIN_BILL_EVENT_STATUS, e)
 
     async def delete_check(self, user_id: int, check_uuid: str) -> None:
         try:
             await delete_association_by_check_uuid(self.session, check_uuid, user_id)
             status_message = create_event_status_message(
-                message_type=settings.Events.CHECK_DELETE_EVENT_STATUS,
+                message_type=Events.CHECK_DELETE_EVENT_STATUS,
                 status="success"
             )
             await self._send_ws_message(user_id, status_message)
         except Exception as e:
-            await self._handle_error(user_id, settings.Events.CHECK_DELETE_EVENT_STATUS, e)
+            await self._handle_error(user_id, Events.CHECK_DELETE_EVENT_STATUS, e)
 
     async def handle_user_selection(self, user_id: int, check_uuid: str, selection_data: dict) -> None:
         """
@@ -322,11 +322,11 @@ class CheckManager:
 
             # Формируем сообщения
             msg_for_all = create_event_message(
-                message_type=settings.Events.CHECK_SELECTION_EVENT,
+                message_type=Events.CHECK_SELECTION_EVENT,
                 payload={"uuid": check_uuid, "participants": [selections]},
             )
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.CHECK_SELECTION_EVENT_STATUS,
+                message_type=Events.CHECK_SELECTION_EVENT_STATUS,
                 status="success"
             )
 
@@ -344,7 +344,7 @@ class CheckManager:
         except Exception as e:
             await self._handle_error(
                 user_id,
-                settings.Events.CHECK_SELECTION_EVENT_STATUS,
+                Events.CHECK_SELECTION_EVENT_STATUS,
                 e
             )
 
@@ -378,12 +378,12 @@ class CheckManager:
             await delete_association_by_check_uuid(self.session, check_uuid, user_id_for_delete)
 
             msg_for_all = create_event_message(
-                message_type=settings.Events.USER_DELETE_FROM_CHECK_EVENT,
+                message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
                 payload={"uuid": check_uuid, "user_id_for_delete ": user_id_for_delete}
             )
 
             msg_for_author = create_event_status_message(
-                message_type=settings.Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
+                message_type=Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
                 status="success"
             )
             # Получаем участников и пользователей, связанных с чеком

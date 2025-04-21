@@ -2,7 +2,6 @@ from fastapi import Request, APIRouter
 from fastapi.responses import RedirectResponse
 from starlette.responses import HTMLResponse
 
-from src.config.settings import settings
 from src.config.type_events import EVENT_DESCRIPTIONS
 from src.version import APP_VERSION
 
@@ -51,5 +50,10 @@ async def redirect_to_app(uuid: str):
 
 
 @router.get("/version")
-def read_version():
+async def read_version():
     return {"version": APP_VERSION}
+
+
+@router.get("/health")
+async def health_check():
+    return {"status": "ok"}

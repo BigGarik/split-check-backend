@@ -8,8 +8,8 @@ from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.routes import include_routers
+from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME
 from src.config.logger import setup_logging
-from src.config.settings import settings
 from src.db.base import Base
 from src.db.session import sync_engine
 from src.managers.redis_ws_manager import RedisWSManager
@@ -54,10 +54,38 @@ async def lifespan(app: FastAPI):
     #         await asyncio.sleep(60)
     #
     # asyncio.create_task(monitor())
+    async def monitor_memory():
+        import psutil
+        import gc
+
+        process = psutil.Process()
+
+        while True:
+            # Вызываем сборщик мусора вручную
+            gc.collect()
+
+            # Получаем информацию о памяти
+            memory_info = process.memory_info()
+            memory_mb = memory_info.rss / (1024 * 1024)
+
+            if memory_mb > 500:  # Порог, например 500 МБ
+                logger.warning(f"Высокое потребление памяти: {memory_mb:.2f} МБ")
+
+                # Опционально: вывод информации о типах объектов
+                from collections import Counter
+                obj_counts = Counter(type(o).__name__ for o in gc.get_objects())
+                top_types = obj_counts.most_common(10)
+                logger.warning(f"Топ объектов в памяти: {top_types}")
+
+            await asyncio.sleep(30)  # Проверять каждые 30 секунд
+
+    # Запускаем мониторинг в фоновом режиме
+    memory_task = asyncio.create_task(monitor_memory())
 
     yield
     await redis_ws_manager.stop()
     queue_task.cancel()
+    memory_task.cancel()
     try:
         await queue_task
     except asyncio.CancelledError:
@@ -77,27 +105,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
-              docs_url="/docs" if settings.enable_docs else None,
-              redoc_url="/redoc" if settings.enable_docs else None,
-              openapi_url="/openapi.json" if settings.enable_docs else None,
+              docs_url="/docs" if ENABLE_DOCS else None,
+              redoc_url="/redoc" if ENABLE_DOCS else None,
+              openapi_url="/openapi.json" if ENABLE_DOCS else None,
               version=APP_VERSION
               )
 
 # Настраиваем логирование
 logger = setup_logging(
     app,
-    syslog_host=settings.SYSLOG_HOST,
-    syslog_port=settings.SYSLOG_PORT,
-    log_level=settings.LOG_LEVEL,
+    syslog_host=SYSLOG_HOST,
+    syslog_port=SYSLOG_PORT,
+    log_level=LOG_LEVEL,
     syslog_enabled=True,
-    service_name=settings.SERVICE_NAME
+    service_name=SERVICE_NAME
 )
 
 
 cred = firebase_admin.credentials.Certificate("scannsplit-firebase-adminsdk.json")
 firebase_admin.initialize_app(cred)
 
-app.add_middleware(RestrictDocsAccessMiddleware)
+# app.add_middleware(RestrictDocsAccessMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -122,4 +150,4 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080, log_level=settings.LOG_LEVEL)
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_level=LOG_LEVEL)

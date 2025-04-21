@@ -12,8 +12,8 @@ from starlette import status
 from starlette.responses import Response
 
 from src import schemas
+from src.config import ACCESS_TOKEN_EXPIRE_MINUTES, ACCESS_SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 from src.config.mail import mail_config
-from src.config.settings import settings
 from src.core.exceptions import UserAlreadyExistsError, DatabaseOperationError
 from src.core.security import create_token, async_hash_password
 from src.repositories.user import create_new_user, get_user_by_email
@@ -88,8 +88,8 @@ async def request_password_reset(
             # Генерируем временный токен для сброса пароля
             reset_token = await create_token(
                 data={"email": user.email, "user_id": user.id, "type": "password_reset"},
-                expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
-                secret_key=settings.access_secret_key
+                expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+                secret_key=ACCESS_SECRET_KEY
             )
             await send_password_reset_email(request.email, reset_token, fastmail)
 
@@ -118,8 +118,8 @@ async def reset_password(
         # Проверяем токен сброса пароля
         payload = jwt.decode(
             reset_data.token,
-            settings.access_secret_key,
-            algorithms=[settings.algorithm]
+            ACCESS_SECRET_KEY,
+            algorithms=[ALGORITHM]
         )
 
         if payload.get("type") != "password_reset":
@@ -152,7 +152,7 @@ async def reset_password(
                 httponly=True,
                 secure=True,
                 samesite="strict",
-                max_age=settings.refresh_token_expire_days
+                max_age=REFRESH_TOKEN_EXPIRE_DAYS
             )
 
             return tokens

@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 
-from src.config.settings import settings
+from src.config import ALGORITHM
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ async def create_token(
         return jwt.encode(
             to_encode,
             secret_key,
-            algorithm=settings.algorithm
+            algorithm=ALGORITHM
         )
     except Exception as e:
         logger.error(f"Token creation error: {str(e)}")
@@ -66,7 +66,7 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM])
         email: str = payload.get("email")
         user_id: int = payload.get("user_id")
         expires = payload.get("exp")

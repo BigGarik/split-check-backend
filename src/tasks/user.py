@@ -1,7 +1,7 @@
 import json
 import logging
 
-from src.config.settings import settings
+from src.config.type_events import Events
 from src.repositories.profile import get_user_profile_db, update_user_profile_db, get_user_email
 from src.schemas import UserProfileBase, UserProfileResponse
 from src.websockets.manager import ws_manager
@@ -30,7 +30,7 @@ async def get_user_profile_task(user_id: int):
 
         # Создаем структуру сообщения
         msg = {
-            "type": settings.Events.USER_PROFILE_DATA_RECEIVED_EVENT,
+            "type": Events.USER_PROFILE_DATA_RECEIVED_EVENT,
             "payload": profile_payload
         }
 
@@ -60,7 +60,7 @@ async def update_user_profile_task(user_id: int,
 
         # Создаем структуру сообщения
         msg = {
-            "type": settings.Events.USER_PROFILE_DATA_UPDATE_EVENT,
+            "type": Events.USER_PROFILE_DATA_UPDATE_EVENT,
             "payload": profile_payload
             }
 

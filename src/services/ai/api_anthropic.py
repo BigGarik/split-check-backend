@@ -4,13 +4,13 @@ import re
 
 from anthropic import Anthropic
 
-from src.config.settings import settings
+from src.config import API_KEY, CLAUDE_MODEL_NAME
 from .message import form_message
 
 logger = logging.getLogger(__name__)
 
-api_key = settings.api_key
-claude_model_name = settings.claude_model_name
+api_key = API_KEY
+claude_model_name = CLAUDE_MODEL_NAME
 
 client = Anthropic(api_key=api_key)
 
