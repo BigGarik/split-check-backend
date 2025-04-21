@@ -114,7 +114,7 @@ logger = setup_logging(
 cred = firebase_admin.credentials.Certificate("scannsplit-firebase-adminsdk.json")
 firebase_admin.initialize_app(cred)
 
-app.add_middleware(RestrictDocsAccessMiddleware)
+# app.add_middleware(RestrictDocsAccessMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
