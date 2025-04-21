@@ -5,8 +5,11 @@ from fastapi import APIRouter, Depends, Request
 
 from src.api.deps import get_current_user
 from src.models import User
-from src.redis import queue_processor
+from src.redis.queue_processor import get_queue_processor
+
 from src.schemas import ItemRequest, AddItemRequest, EditItemRequest
+
+queue_processor = get_queue_processor()
 
 logger = logging.getLogger(__name__)
 
