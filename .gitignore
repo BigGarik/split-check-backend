@@ -22,7 +22,6 @@ images/
 
 # Maven
 target/
-dist/
 
 # JetBrains IDE
 .idea/
@@ -55,4 +54,8 @@ venv
 
 /src/db/migrations/
 /tests/
+templates/
 /scannsplit-f8c5f-firebase-adminsdk-qbv0s-0366c88bab.json
+/src/api/deps.py
+docker-compose.yml
+

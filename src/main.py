@@ -13,9 +13,11 @@ from src.config.logger import setup_logging
 from src.db.base import Base
 from src.db.session import sync_engine
 from src.redis import redis_client, register_redis_handlers
+
 from src.services.classifier.classifier_instance import init_classifier
 from src.utils.system import get_memory_usage
 from src.version import APP_VERSION
+from src.websockets.lazy_manager import ws_manager
 
 
 Base.metadata.create_all(bind=sync_engine)
@@ -46,6 +48,7 @@ async def lifespan(app: FastAPI):
     # Ограничиваем количество задач, выполняемых одновременно
     queue_processor.queue_semaphore = asyncio.Semaphore(max_processes)
     # Запускаем только одну задачу процессора очереди
+
     queue_task = asyncio.create_task(queue_processor.process_queue())
 
     logger.info(f"Старт, память: {get_memory_usage():.2f} MB")
@@ -107,6 +110,7 @@ async def lifespan(app: FastAPI):
     memory_task = asyncio.create_task(monitor_memory())
 
     yield
+    await redis_ws_manager.stop()
     queue_task.cancel()
     memory_task.cancel()
     try:

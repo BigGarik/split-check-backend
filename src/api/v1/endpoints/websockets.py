@@ -20,28 +20,19 @@ async def websocket_endpoint(websocket: WebSocket,
                              user: Annotated[User, Depends(get_current_user_for_websocket)]):
     logger.debug(f"websocket.headers: {websocket.headers}", extra={"current_user_id": user.id})
     try:
-        # Пытаемся верифицировать токен
-        # user = await get_current_user(token)
         user_id = user.id
         # Подключаем пользователя
         await ws_manager.connect(user_id, websocket)
         try:
             while True:
-                # Получаем данные от клиента
+                # Обработка входящих сообщений от клиента
                 data = await websocket.receive_text()
-                # Логируем полученные данные
                 logger.debug(f"Received message from {user_id}: {data}")
-
-                # Пример: отправляем сообщение обратно пользователю
-                # await ws_manager.send_personal_message(f"Echo: {data}", user_id)
-
-                # Пример: отправляем сообщение всем подключённым пользователям
-                # await ws_manager.broadcast(f"{user_id}: {data}")
 
         except WebSocketDisconnect:
             # Отключаем пользователя при разрыве соединения
             await ws_manager.disconnect(user_id)
-            logger.debug(f"User {user_id} disconnected")
+            logger.info(f"WebSocket disconnected for user {user_id}")
     except JWTError as e:
         # Обработка ошибок JWT
         logger.error(f"JWT error: {e}", extra={"current_user_id": user.id})
