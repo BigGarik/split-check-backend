@@ -8,7 +8,8 @@ def init_classifier():
     """Инициализация и возврат глобального экземпляра классификатора"""
     global classifier
     if classifier is None:
-        classifier = AsyncImageClassifier(batch_size=2, num_threads=4)
+        # Изменяем параметры: уменьшаем batch_size и num_threads
+        classifier = AsyncImageClassifier(batch_size=1, num_threads=2)
     return classifier
 
 

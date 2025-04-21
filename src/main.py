@@ -12,48 +12,47 @@ from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE
 from src.config.logger import setup_logging
 from src.db.base import Base
 from src.db.session import sync_engine
-from src.managers.redis_ws_manager import RedisWSManager
-from src.middlewares.restrict_docs import RestrictDocsAccessMiddleware
-from src.redis import queue_processor, redis_client, register_redis_handlers
+from src.redis import redis_client, register_redis_handlers
+
 from src.services.classifier.classifier_instance import init_classifier
 from src.utils.system import get_memory_usage
 from src.version import APP_VERSION
 from src.websockets.lazy_manager import ws_manager
+
 
 Base.metadata.create_all(bind=sync_engine)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # tracemalloc.start()  # Старт отслеживания
+    # Ограничиваем количество процессов на уровне Python multiprocessing
+    import os
+    import multiprocessing
+
+    # Устанавливаем максимальное количество процессов
+    max_processes = int(os.getenv("MAX_PROCESSES", "4"))  # По умолчанию 4 процесса
+
+    # Устанавливаем метод запуска процессов 'spawn' для более контролируемого поведения
+    if not hasattr(multiprocessing, 'get_start_method') or multiprocessing.get_start_method() != 'spawn':
+        multiprocessing.set_start_method('spawn', force=True)
+
     classifier = init_classifier()
+
+    # Подключаемся к Redis
     await redis_client.connect()
+    # Регистрируем обработчики Redis
     register_redis_handlers()
 
-    # Инициализируем Redis WebSocket Manager и привязываем его к прокси
-    redis_ws_manager = RedisWSManager(redis_client)
-    await redis_ws_manager.start()
-
-    # Устанавливаем реальный менеджер в прокси
-    ws_manager.set_real_manager(redis_ws_manager)
+    from src.redis.queue_processor import get_queue_processor
+    queue_processor = get_queue_processor()
+    # Ограничиваем количество задач, выполняемых одновременно
+    queue_processor.queue_semaphore = asyncio.Semaphore(max_processes)
+    # Запускаем только одну задачу процессора очереди
 
     queue_task = asyncio.create_task(queue_processor.process_queue())
+
     logger.info(f"Старт, память: {get_memory_usage():.2f} MB")
 
-    # async def monitor():
-    #     while True:
-    #         tasks = asyncio.all_tasks()
-    #         logger.info(f"Память: {get_memory_usage():.2f} MB, активных задач: {len(tasks)}")
-    #         snapshot = tracemalloc.take_snapshot()
-    #         top_stats = snapshot.statistics('lineno')[:5]
-    #         logger.info("Топ 5 потребителей памяти:")
-    #         for stat in top_stats:
-    #             logger.info(stat)
-    #         for task in tasks:
-    #             logger.info(f"Активная задача: {task}")
-    #         await asyncio.sleep(60)
-    #
-    # asyncio.create_task(monitor())
     async def monitor_memory():
         import psutil
         import gc
@@ -67,6 +66,34 @@ async def lifespan(app: FastAPI):
             # Получаем информацию о памяти
             memory_info = process.memory_info()
             memory_mb = memory_info.rss / (1024 * 1024)
+
+            # Получаем все процессы Python, связанные с нашим приложением
+            python_processes = []
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    # Проверяем, является ли это Python-процессом
+                    if proc.info['name'] == 'python3' or proc.info['name'] == 'python':
+                        # Проверяем, содержит ли командная строка имя нашего приложения или модуля
+                        cmdline = " ".join(proc.info['cmdline'] or [])
+                        if 'multiprocessing' in cmdline or 'spam_main' in cmdline:
+                            python_processes.append(proc)
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    pass
+
+            logger.info(f"Активных Python процессов: {len(python_processes)}, использовано памяти: {memory_mb:.2f} МБ")
+
+            # Можно также вывести детали процессов
+            for proc in python_processes[:5]:  # Ограничиваем вывод первыми 5 для краткости
+                try:
+                    proc_info = {
+                        'pid': proc.pid,
+                        'cpu': proc.cpu_percent(),
+                        'memory': proc.memory_info().rss / (1024 * 1024),
+                        'status': proc.status()
+                    }
+                    logger.debug(f"Процесс {proc.pid}: {proc_info}")
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
 
             if memory_mb > 500:  # Порог, например 500 МБ
                 logger.warning(f"Высокое потребление памяти: {memory_mb:.2f} МБ")
@@ -90,18 +117,13 @@ async def lifespan(app: FastAPI):
         await queue_task
     except asyncio.CancelledError:
         logger.info("QueueProcessor cancelled")
+
     if classifier:
         classifier.cleanup()
+
     await redis_client.disconnect()
+
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
-    # snapshot = tracemalloc.take_snapshot()
-    # top_stats = snapshot.statistics('lineno')[:10]
-    # logger.info("Топ 10 потребителей памяти при завершении:")
-    # for stat in top_stats:
-    #     logger.info(stat)
-
-
-# app = FastAPI(root_path="/split_check", lifespan=lifespan)
 
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
