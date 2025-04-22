@@ -112,11 +112,12 @@ class QueueProcessor:
             self.running = False
             logger.info("Процесс обработки очереди остановлен")
 
-    async def push_task(self, task_data: dict) -> None:
+    async def push_task(self, task_data: dict, queue_name: Optional[str] = None) -> None:
         """Добавляет задачу в очередь Redis"""
+        target_queue = queue_name or self.queue_name
         task_type = task_data.get('type', 'unknown')
         logger.debug(f"Добавление задачи типа '{task_type}' в очередь '{self.queue_name}'")
-        await self.redis_client.push_task(self.queue_name, json.dumps(task_data))
+        await self.redis_client.push_task(target_queue, json.dumps(task_data))
 
     async def stop(self) -> None:
         """Корректная остановка обработчика очереди"""

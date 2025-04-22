@@ -196,3 +196,5 @@ def register_redis_handlers():
     queue_processor.register_handler("add_item_task", handle_add_item_task)
     queue_processor.register_handler("delete_item_task", handle_delete_item_task)
     queue_processor.register_handler("edit_item_task", handle_edit_item_task)
+
+

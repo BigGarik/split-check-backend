@@ -130,7 +130,7 @@ async def recognize_image_task(
                     "total": 88500
                 }
 
-            calculate_price(recognized_json)
+            recognized_json = calculate_price(recognized_json)
 
             logger.debug(f"Recognition completed for check_uuid {check_uuid}")
 
