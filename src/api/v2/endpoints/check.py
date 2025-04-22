@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from src.api.deps import get_current_user
-from src.config import UPLOAD_DIRECTORY, REDIS_EXPIRATION
+from src.config import UPLOAD_DIRECTORY, REDIS_EXPIRATION, BASE_URL
 from src.config.type_events import Events
 from src.models import User, StatusEnum
 from src.redis import redis_client
@@ -195,3 +195,28 @@ async def upload_image(
     except Exception as e:
         logger.error(f"Ошибка при загрузке изображения: {str(e)}")
         raise HTTPException(status_code=500, detail="Ошибка загрузки изображения")
+
+
+@router.get("/{uuid}/images", summary="Получить список ссылок на изображения")
+async def get_images(uuid: UUID, user: User = Depends(get_current_user)):
+    """
+    Возвращает список URL-ов на изображения из папки UUID.
+    """
+    folder_path = os.path.join(UPLOAD_DIRECTORY, str(uuid))
+    if not os.path.exists(folder_path):
+        raise HTTPException(status_code=404, detail="Папка с изображениями не найдена")
+
+    image_files = [
+        f for f in os.listdir(folder_path)
+        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))
+    ]
+
+    if not image_files:
+        raise HTTPException(status_code=404, detail="Изображения не найдены")
+
+    base_url = f"{BASE_URL}/images/{uuid}/"
+
+    return {
+        "uuid": str(uuid),
+        "images": [base_url + fname for fname in image_files]
+    }
