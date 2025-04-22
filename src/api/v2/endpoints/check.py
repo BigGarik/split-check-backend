@@ -36,28 +36,6 @@ router = APIRouter()
 # Имя очереди для заданий обработки изображений
 IMAGE_PROCESSING_QUEUE = "image_processing_tasks"
 
-@router.get("/mainPage", summary="Получить чеки на главной странице")
-async def get_main_page(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
-):
-    try:
-        checks_data = await get_main_page_checks(session, user.id)
-
-        payload = {
-            "checks": checks_data["items"],
-            "total_open": checks_data["total_open"],
-            "total_closed": checks_data["total_closed"],
-        }
-        logger.debug(f"Отправлены данные главной страницы для пользователя ИД {user.id}: {payload}")
-        return payload
-    except Exception as e:
-        logger.error(f"Ошибка при отправке главной страницы: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Ошибка при получении данных: {str(e)}"
-        )
-
 
 @router.get("/", summary="Получить все чеки")
 async def get_all_check(
