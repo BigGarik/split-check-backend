@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from src.api.v2.endpoints import check, image
+from src.api.v2.endpoints import check
 
 api_v2_router = APIRouter(prefix="/api/v2")
 

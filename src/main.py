@@ -6,9 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.staticfiles import StaticFiles
 
 from src.api.routes import include_routers
-from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME
+from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME, UPLOAD_DIRECTORY
 from src.config.logger import setup_logging
 from src.db.base import Base
 from src.db.session import sync_engine
@@ -153,7 +154,7 @@ app.add_middleware(
     allow_headers=["*"],
 
 )
-
+app.mount("/images", StaticFiles(directory=UPLOAD_DIRECTORY), name="images")
 
 # Подключаем маршруты
 include_routers(app)
