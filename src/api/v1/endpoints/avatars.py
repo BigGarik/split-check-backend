@@ -25,7 +25,7 @@ os.makedirs(AVATAR_DIR, exist_ok=True)
 @router.post("/upload", summary="Загрузка нескольких аватаров")
 async def upload_avatars(
     files: List[UploadFile] = File(...),
-    user: User = Depends(get_current_user)
+    # user: User = Depends(get_current_user)
 ):
     """Загружает несколько изображений и сохраняет их на диск."""
     try:
