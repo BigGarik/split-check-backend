@@ -22,3 +22,13 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 alembic revision --autogenerate -m "add user profile table"
 Применить миграцию:
 alembic upgrade head
+
+
+На проде 
+из директории /app/api
+
+alembic -c src/migrations/alembic.ini revision --autogenerate -m "Name of migration"
+
+после этого проверить что он там наколбасил и только после этого применить миграцию
+
+alembic -c src/migrations/alembic.ini upgrade head

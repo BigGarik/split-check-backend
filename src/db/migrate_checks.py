@@ -3,13 +3,15 @@ import logging
 import os
 from dotenv import load_dotenv
 
+from src.utils.check import to_float, to_int
+
 # Загружаем .env до всех импортов, зависящих от settings
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.utils.check import to_float, to_int
+
 from src.db.session import sync_engine
 from src.models import Check, CheckItem, UserSelection, SelectedItem
 
@@ -19,9 +21,6 @@ engine = sync_engine
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-# Вспомогательная функция для проверки числовых значений
-
 
 
 def migrate_check(check_uuid):
@@ -255,6 +254,6 @@ def migrate_user_selection_data():
 
 if __name__ == "__main__":
     # restore_check_data()
-    # migrate_checks()
+    migrate_checks()
     # migrate_check('45b934b7-96ca-44d3-8176-02a17ff4df02')
     migrate_user_selection_data()
