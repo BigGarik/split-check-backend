@@ -350,7 +350,7 @@ async def get_all_checks(session: AsyncSession,
                 CheckListResponse(
                     uuid=check.uuid,
                     name=check.name,
-                    currency=check.currency,
+                    currency=check.check_data.get('currency') if check.check_data else None,
                     status=check.status.value,
                     date=check.created_at.strftime("%d.%m.%Y"),
                     total=check.check_data.get('total') if check.check_data else None,
