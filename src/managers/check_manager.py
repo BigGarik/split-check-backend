@@ -205,6 +205,7 @@ class CheckManager:
                 }
             }
         )
+        logger.debug(f"Страница все чеки: {msg}")
         await self._send_ws_message(user_id, msg)
 
     async def send_main_page_checks(self, user_id: int) -> None:

@@ -166,7 +166,8 @@ class SelectedItem(Base):
     __table_args__ = (
         ForeignKeyConstraint(
             ['user_selection_user_id', 'user_selection_check_uuid'],
-            ['user_selections.user_id', 'user_selections.check_uuid']
+            ['user_selections.user_id', 'user_selections.check_uuid'],
+            ondelete="CASCADE"
         ),
         ForeignKeyConstraint(
             ['user_selection_check_uuid', 'item_id'],

@@ -350,11 +350,12 @@ async def get_all_checks(session: AsyncSession,
                 CheckListResponse(
                     uuid=check.uuid,
                     name=check.name,
+                    currency=check.currency,
                     status=check.status.value,
                     date=check.created_at.strftime("%d.%m.%Y"),
                     total=check.check_data.get('total') if check.check_data else None,
                     restaurant=check.check_data.get('restaurant') if check.check_data else None,
-                ).dict()
+                ).model_dump()
                 for check in checks_page],
             "total": total_checks,
             "page": page,
