@@ -2,6 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 import firebase_admin
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -121,6 +122,20 @@ async def lifespan(app: FastAPI):
     await redis_client.disconnect()
 
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
+
+
+sentry_sdk.init(
+    dsn="https://37e3cff9e212e28d8dfd0c03a6e6501c@o4509195406016512.ingest.de.sentry.io/4509195408244816",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for tracing.
+    traces_sample_rate=1.0,
+    # Set profile_session_sample_rate to 1.0 to profile 100%
+    # of profile sessions.
+    profile_session_sample_rate=1.0,
+    # Set profile_lifecycle to "trace" to automatically
+    # run the profiler on when there is an active transaction
+    profile_lifecycle="trace"
+)
 
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
