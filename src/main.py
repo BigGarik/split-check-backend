@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
 
-            if memory_mb > 500:  # Порог, например 500 МБ
+            if memory_mb > 1500:  # Порог, например 500 МБ
                 logger.warning(f"Высокое потребление памяти: {memory_mb:.2f} МБ")
 
                 # Опционально: вывод информации о типах объектов

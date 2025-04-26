@@ -22,7 +22,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self.logger = logger
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        EXCLUDED_PATHS = {"/metrics", "/api/health"}
+        EXCLUDED_PATHS = {"/metrics", "/api/health", "/api/4509195408244816/envelope"}
 
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
