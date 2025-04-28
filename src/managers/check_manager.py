@@ -5,9 +5,7 @@ from typing import Dict, Any, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.exceptions import HTTPException
 
-from src.config import REDIS_EXPIRATION
 from src.config.type_events import Events
 from src.managers.item_manager import ItemService
 from src.redis import redis_client
@@ -17,11 +15,9 @@ from src.repositories.check import (
     delete_association_by_check_uuid, get_main_page_checks, is_check_author, edit_check_name_to_database,
     edit_check_status_to_database, get_check_data_from_database
 )
-from src.repositories.item import get_items_by_check_uuid
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
 from src.services.user import join_user_to_check
-from src.utils.check import to_float
 from src.utils.exchange import get_exchange_rate
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager

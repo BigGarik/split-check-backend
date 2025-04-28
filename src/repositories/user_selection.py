@@ -120,6 +120,7 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
         else:
             # Получаем UserSelection и связанные SelectedItem
             user_selection = await get_user_selection_by_user(session, user.id, check_uuid)
+
             logger.debug(f"user_selection: {user_selection}")
             if user_selection:
                 # Формируем selection_data из отношения selected_items
