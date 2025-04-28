@@ -21,6 +21,9 @@ engine = sync_engine
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Вспомогательная функция для проверки числовых значений
+
+
 
 def migrate_check(check_uuid):
     with Session(engine) as db:

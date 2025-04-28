@@ -4,7 +4,7 @@ from src.managers.check_manager import CheckManager
 from src.redis.queue_processor import get_queue_processor
 from src.tasks import add_item_task, add_empty_check_task, delete_item_task, edit_item_task, join_check_task, \
     delete_check_task, split_item_task, send_check_data_task, send_all_checks_task, send_main_page_checks_task, \
-    user_delete_from_check_task, edit_check_name_task, edit_check_status_task
+    user_delete_from_check_task, edit_check_name_task, edit_check_status_task, convert_check_currency_task
 from src.tasks.image_recognition import recognize_image_task
 from src.tasks.user import get_user_profile_task, update_user_profile_task
 from src.tasks.user_selection import user_selection_task
@@ -174,6 +174,16 @@ async def handle_edit_item_task(session: AsyncSession, task_data: dict):
     )
 
 
+@with_db_session()
+async def handle_convert_check_currency_task(session: AsyncSession, task_data: dict):
+    await convert_check_currency_task(
+        check_uuid=task_data["check_uuid"],
+        target_currency=task_data["target_currency"],
+        user_id=task_data["current_user_id"],
+        check_manager=CheckManager(session)
+    )
+
+
 def register_redis_handlers():
     """Регистрируем обработчики для обработки задач из очередей Redis."""
 
@@ -193,8 +203,8 @@ def register_redis_handlers():
     queue_processor.register_handler("update_user_profile_task", handle_update_user_profile_task)
     queue_processor.register_handler("join_check_task", handle_join_check_task)
     queue_processor.register_handler("add_empty_check_task", handle_add_empty_check_task)
+    queue_processor.register_handler("convert_check_currency_task", handle_convert_check_currency_task)
+
     queue_processor.register_handler("add_item_task", handle_add_item_task)
     queue_processor.register_handler("delete_item_task", handle_delete_item_task)
     queue_processor.register_handler("edit_item_task", handle_edit_item_task)
-
-

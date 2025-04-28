@@ -20,7 +20,7 @@ from src.config.type_events import Events
 from src.models import User, StatusEnum
 from src.redis import redis_client
 from src.redis.queue_processor import get_queue_processor
-from src.repositories.check import get_main_page_checks, get_all_checks, get_check_data, add_check_to_database
+from src.repositories.check import get_all_checks, add_check_to_database, get_check_data_from_database
 from src.tasks import calculate_price
 from src.utils.db import get_session
 from src.utils.notifications import create_event_message
@@ -83,7 +83,8 @@ async def get_check(
                     session: AsyncSession = Depends(get_session)
                     ):
     try:
-        check_data = await get_check_data(session, user.id, str(uuid))
+
+        check_data = await get_check_data_from_database(session, str(uuid))
 
         logger.debug(f"Отправлены данные чека для пользователя ИД {user.id}: {check_data}")
         return check_data
