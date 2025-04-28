@@ -114,6 +114,8 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
         # Добавляем новый item
         check.check_data["items"].append(new_item)
 
+        logger.debug(f"new check data: {check.check_data}")
+
         # # Добавляем/обновляем дополнительные поля если их нет
         # if "date" not in check.check_data:
         #     from datetime import datetime
@@ -135,6 +137,8 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
 
         # Пересчитываем все поля
         check.check_data = recalculate_check_totals(check.check_data)
+
+        logger.debug(f"recalculated check data: {check.check_data}")
 
         # Помечаем check_data как измененное
         flag_modified(check, "check_data")
