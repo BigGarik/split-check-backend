@@ -153,8 +153,14 @@ class CheckManager:
                     logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
     async def send_check_data(self, user_id: int, check_uuid: str) -> None:
+
         check_data = await self.get_check_data_by_uuid(check_uuid)
+        logger.debug(f"check_data: {check_data}")
+
         participants, user_selections, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
+
+        logger.debug(f"participants: {participants}")
+        logger.debug(f"user_selections: {user_selections}")
 
         check_data["participants"] = json.loads(participants)
         check_data["user_selections"] = json.loads(user_selections)
