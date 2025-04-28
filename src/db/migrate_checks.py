@@ -2,7 +2,6 @@ import json
 import logging
 import os
 from dotenv import load_dotenv
-
 from src.utils.check import to_float, to_int
 
 # Загружаем .env до всех импортов, зависящих от settings
@@ -11,7 +10,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".en
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-
+from src.utils.check import to_float, to_int
 from src.db.session import sync_engine
 from src.models import Check, CheckItem, UserSelection, SelectedItem
 
@@ -48,7 +47,9 @@ def migrate_check(check_uuid):
             check.waiter = json_data.get("waiter")
             check.subtotal = to_float(json_data.get("subtotal"), 0)
             check.total = to_float(json_data.get("total"), 0)
-            check.currency = json_data.get("currency")
+
+            currency = json_data.get("currency")
+            check.currency = currency if currency and len(currency) <= 3 else None
 
             # Сервисный сбор
             service_charge = json_data.get("service_charge")
