@@ -3,7 +3,6 @@ import logging
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from src.config import REDIS_EXPIRATION
 from src.models import UserSelection, SelectedItem
@@ -129,7 +128,7 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
                     ]
                 }
                 # Сохраняем в Redis для последующих запросов
-                await redis_client.set(redis_key, json.dumps(selection_data), expire=settings.redis_expiration)
+                await redis_client.set(redis_key, json.dumps(selection_data), expire=REDIS_EXPIRATION)
 
         logger.debug(f"Получили selection_data: {selection_data}")
 
