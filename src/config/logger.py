@@ -6,6 +6,7 @@ import uuid
 from logging.handlers import SysLogHandler
 from typing import Callable, Optional
 
+import graypy
 from fastapi import FastAPI, Request, Response
 from rfc5424logging import Rfc5424SysLogHandler
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -62,10 +63,13 @@ def setup_logging(
     app: Optional[FastAPI] = None,
     service_name: str = "fastapi-app",
     log_level: str = "INFO",
-    syslog_enabled: bool = True,
+    syslog_enabled: bool = False,
     syslog_host: str = "localhost",
     syslog_port: int = 1514,
     syslog_facility: int = SysLogHandler.LOG_USER,
+    graylog_enabled: bool = False,
+    graylog_host: str = "localhost",
+    graylog_port: int = 12201,
     add_middleware: bool = True
 ) -> logging.Logger:
     """
@@ -79,6 +83,9 @@ def setup_logging(
         syslog_host: Хост Syslog-сервера.
         syslog_port: Порт Syslog-сервера.
         syslog_facility: Facility для Syslog.
+        graylog_enabled: Включение отправки логов в Graylog
+        graylog_host: Хост Graylog-сервера.
+        graylog_port: Порт Graylog-сервера.
         add_middleware: Добавить middleware для логирования запросов.
 
     Returns:
@@ -107,6 +114,14 @@ def setup_logging(
     console_handler.setFormatter(log_format)
     console_handler.stream.reconfigure(encoding="utf-8")
     root_logger.addHandler(console_handler)
+
+    if graylog_enabled:
+        graylog_handler = graypy.GELFUDPHandler(
+            graylog_host,
+            graylog_port,
+            localname=service_name
+        )
+        root_logger.addHandler(graylog_handler)
 
     # Syslog обработчик
     if syslog_enabled:

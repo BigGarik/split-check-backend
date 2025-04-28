@@ -50,11 +50,19 @@ ACCESS_SECRET_KEY = os.getenv("ACCESS_SECRET_KEY")
 REFRESH_SECRET_KEY =os.getenv("REFRESH_SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-# Настройки для Syslog
+
 LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
-SERVICE_NAME = os.getenv("SERVICE_NAME", "fastapi-app")
+SERVICE_NAME = os.getenv("SERVICE_NAME", "scannsplit-app")
+
+# Настройки для Syslog
 SYSLOG_HOST = os.getenv("SYSLOG_HOST", "biggarik.ru")
 SYSLOG_PORT = int(os.getenv("SYSLOG_PORT", 1514))
+SYSLOG_ENABLED = os.getenv("SYSLOG_ENABLED", False)
+
+# GRAYLOG
+GRAYLOG_HOST = os.getenv("GRAYLOG_HOST", "biggarik.ru")
+GRAYLOG_PORT = int(os.getenv("GRAYLOG_PORT", 12201))
+GRAYLOG_ENABLED = os.getenv("GRAYLOG_ENABLED", True)
 
 # Время действия токенов
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 600))

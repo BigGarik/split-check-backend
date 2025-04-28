@@ -10,7 +10,8 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.staticfiles import StaticFiles
 
 from src.api.routes import include_routers
-from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME, UPLOAD_DIRECTORY, ENVIRONMENT
+from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME, UPLOAD_DIRECTORY, ENVIRONMENT, \
+    GRAYLOG_HOST, GRAYLOG_PORT, SYSLOG_ENABLED, GRAYLOG_ENABLED
 from src.config.logger import setup_logging
 from src.db.base import Base
 from src.db.session import sync_engine
@@ -103,7 +104,7 @@ async def lifespan(app: FastAPI):
                 top_types = obj_counts.most_common(10)
                 logger.warning(f"Топ объектов в памяти: {top_types}")
 
-            await asyncio.sleep(30)  # Проверять каждые 30 секунд
+            await asyncio.sleep(600)  # Проверять каждые 600 секунд
 
     # Запускаем мониторинг в фоновом режиме
     memory_task = asyncio.create_task(monitor_memory())
@@ -150,8 +151,11 @@ logger = setup_logging(
     app,
     syslog_host=SYSLOG_HOST,
     syslog_port=SYSLOG_PORT,
+    graylog_host=GRAYLOG_HOST,
+    graylog_port=GRAYLOG_PORT,
     log_level=LOG_LEVEL,
-    syslog_enabled=True,
+    syslog_enabled=SYSLOG_ENABLED,
+    graylog_enabled=GRAYLOG_ENABLED,
     service_name=SERVICE_NAME
 )
 
