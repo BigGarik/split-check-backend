@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 import firebase_admin
@@ -7,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
+from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette.staticfiles import StaticFiles
 
 from src.api.routes import include_routers
@@ -124,18 +126,24 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
 
+# Отключаем логирование from Sentry
+sentry_logging = LoggingIntegration(
+    level=None,  # Не перехватывать логи
+    event_level=logging.ERROR  # Отправлять как события только ERROR и выше
+)
+
 if ENVIRONMENT == 'prod':
     sentry_sdk.init(
         dsn="https://37e3cff9e212e28d8dfd0c03a6e6501c@o4509195406016512.ingest.de.sentry.io/4509195408244816",
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for tracing.
+        integrations=[sentry_logging],
+        # Выключаем отладочный режим
+        debug=False,
         traces_sample_rate=1.0,
-        # Set profile_session_sample_rate to 1.0 to profile 100%
-        # of profile sessions.
         profile_session_sample_rate=1.0,
-        # Set profile_lifecycle to "trace" to automatically
-        # run the profiler on when there is an active transaction
-        profile_lifecycle="trace"
+        profile_lifecycle="trace",
+        # Отключаем внутреннее логирование сети
+        transport_queue_size=1000,  # Увеличиваем буфер для снижения частоты логирования
+        send_client_reports=False  # Отключаем отправку клиентских отчетов
     )
 
 app = FastAPI(lifespan=lifespan,

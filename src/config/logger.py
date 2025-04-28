@@ -23,7 +23,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self.logger = logger
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        EXCLUDED_PATHS = {"/metrics", "/api/health", "/api/4509195408244816/envelope"}
+        EXCLUDED_PATHS = {"/metrics", "/api/health", "/api/4509195408244816/envelope/"}
 
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
@@ -60,17 +60,17 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def setup_logging(
-    app: Optional[FastAPI] = None,
-    service_name: str = "fastapi-app",
-    log_level: str = "INFO",
-    syslog_enabled: bool = False,
-    syslog_host: str = "localhost",
-    syslog_port: int = 1514,
-    syslog_facility: int = SysLogHandler.LOG_USER,
-    graylog_enabled: bool = False,
-    graylog_host: str = "localhost",
-    graylog_port: int = 12201,
-    add_middleware: bool = True
+        app: Optional[FastAPI] = None,
+        service_name: str = "fastapi-app",
+        log_level: str = "INFO",
+        syslog_enabled: bool = False,
+        syslog_host: str = "localhost",
+        syslog_port: int = 1514,
+        syslog_facility: int = SysLogHandler.LOG_USER,
+        graylog_enabled: bool = False,
+        graylog_host: str = "localhost",
+        graylog_port: int = 12201,
+        add_middleware: bool = True
 ) -> logging.Logger:
     """
     Настраивает централизованное логирование для FastAPI-приложения в формате RFC5424.
@@ -92,10 +92,41 @@ def setup_logging(
         Настроенный логгер.
     """
 
+    # Создаем фильтр для исключения Sentry-логов
+    class SentryFilter(logging.Filter):
+        def filter(self, record):
+            # Проверяем thread_name
+            if hasattr(record, 'threadName') and 'sentry-sdk' in record.threadName:
+                return False
+
+            # Проверяем имя потока, которое может отличаться в зависимости от версии
+            if hasattr(record, 'thread_name') and 'sentry-sdk' in record.thread_name:
+                return False
+
+            # Проверяем сообщение на наличие sentry.io
+            if hasattr(record, 'msg') and isinstance(record.msg, str):
+                if 'sentry.io' in record.msg or '/api/4509195408244816/envelope/' in record.msg:
+                    return False
+
+            # Проверяем форматированное сообщение
+            if hasattr(record, 'message') and isinstance(record.message, str):
+                if 'sentry.io' in record.message or '/api/4509195408244816/envelope/' in record.message:
+                    return False
+
+            # Проверяем источник (module/filename)
+            if hasattr(record, 'module') and 'sentry_sdk' in record.module:
+                return False
+
+            return True
+
     logging.getLogger("tzlocal").setLevel(logging.WARNING)
     logging.getLogger("tzlocal").propagate = False
     logging.getLogger("zoneinfo").setLevel(logging.WARNING)
     logging.getLogger("zoneinfo").propagate = False
+
+    # Специально фильтруем логгер urllib3, который используется Sentry
+    urllib3_logger = logging.getLogger('urllib3.connectionpool')
+    urllib3_logger.addFilter(SentryFilter())
 
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
 
@@ -121,6 +152,8 @@ def setup_logging(
             graylog_port,
             localname=service_name
         )
+        # Добавляем фильтр к graylog_handler
+        graylog_handler.addFilter(SentryFilter())
         root_logger.addHandler(graylog_handler)
 
     # Syslog обработчик
@@ -135,6 +168,8 @@ def setup_logging(
                 facility=syslog_facility
             )
             rfc5424handler.setLevel(logging.DEBUG)
+            # Также добавляем фильтр к syslog_handler
+            rfc5424handler.addFilter(SentryFilter())
             root_logger.addHandler(rfc5424handler)
         except Exception as e:
             print(f"Ошибка настройки обработчика: {e}")
@@ -145,6 +180,7 @@ def setup_logging(
         app.add_middleware(RequestLoggingMiddleware, logger=logger)
 
     return logger
+
 
 def get_context_logger(name: str, **context) -> logging.Logger:
     """
