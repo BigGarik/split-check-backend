@@ -95,6 +95,12 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
             raise Exception("Check not found")
         logger.debug(f"Add item to check: {item_data}")
 
+        logger.debug(f"чек дата: {check.check_data}")
+
+        # Инициализируем items если их нет
+        if "items" not in check.check_data:
+            check.check_data["items"] = []
+
         # Создаем новый item
         new_item = {
             "id": len(check.check_data.get("items", [])) + 1,
@@ -104,10 +110,6 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
             "sum": item_data.sum
         }
         logger.debug(f"New item: {new_item}")
-
-        # Инициализируем items если их нет
-        if "items" not in check.check_data:
-            check.check_data["items"] = []
 
         # Добавляем новый item
         check.check_data["items"].append(new_item)
