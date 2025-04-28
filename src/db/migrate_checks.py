@@ -227,9 +227,18 @@ def migrate_user_selection_data():
                         item_id = item.get('item_id')
                         quantity = item.get('quantity')
 
-                        # Проверяем, что item_id и quantity присутствуют
                         if item_id is not None and quantity is not None:
-                            # Создаем новую запись в таблице SelectedItem
+                            exists = db.query(SelectedItem).filter_by(
+                                user_selection_user_id=user_selection.user_id,
+                                user_selection_check_uuid=user_selection.check_uuid,
+                                item_id=item_id
+                            ).first()
+
+                            if exists:
+                                print(
+                                    f"Запись уже существует: user_id={user_selection.user_id}, check_uuid={user_selection.check_uuid}, item_id={item_id}")
+                                continue  # Пропустить создание
+
                             selected_item = SelectedItem(
                                 user_selection_user_id=user_selection.user_id,
                                 user_selection_check_uuid=user_selection.check_uuid,
