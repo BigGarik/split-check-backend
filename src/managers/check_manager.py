@@ -375,6 +375,8 @@ class CheckManager:
                     f"from check {check_uuid} without author rights"
                 )
                 return False
+            # Получаем участников и пользователей, связанных с чеком до удаления. что-бы отправить удаленному тоже
+            users = await get_users_by_check_uuid(self.session, check_uuid)
             # Удаляем ассоциацию пользователя с чеком
             await delete_association_by_check_uuid(self.session, check_uuid, user_id_for_delete)
 
@@ -387,8 +389,6 @@ class CheckManager:
                 message_type=Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
                 status="success"
             )
-            # Получаем участников и пользователей, связанных с чеком
-            users = await get_users_by_check_uuid(self.session, check_uuid)
 
             all_user_ids = {user.id for user in users}
 
