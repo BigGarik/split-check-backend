@@ -10,7 +10,7 @@ from src.models import StatusEnum
 
 async def send_check_data_task(user_id: int,
                                check_uuid: str,
-                               check_manager: CheckManager = Depends(get_check_manager)):
+                               check_manager: CheckManager):
     await check_manager.send_check_data(user_id, check_uuid)
 
 

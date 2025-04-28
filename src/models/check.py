@@ -1,12 +1,33 @@
 import enum
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from sqlalchemy import ForeignKey, UniqueConstraint, Enum, event
+from sqlalchemy import ForeignKey, UniqueConstraint, Enum, event, String, Float, Integer, ForeignKeyConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base
 from src.models.associations import user_check_association
+
+
+class CheckItem(Base):
+    __tablename__ = "check_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    check_uuid: Mapped[str] = mapped_column(ForeignKey("checks.uuid", ondelete="CASCADE"), nullable=False)
+    item_id: Mapped[int] = mapped_column(nullable=False)  # Порядковый номер товара
+    name: Mapped[str] = mapped_column(nullable=False)     # Наименование товара
+    quantity: Mapped[int] = mapped_column(nullable=False)  # Количество
+    sum: Mapped[float] = mapped_column(nullable=False)      # Общая сумма за товар
+
+    # Связь с чеком
+    check: Mapped["Check"] = relationship(back_populates="items")
+
+    __table_args__ = (
+        UniqueConstraint('check_uuid', 'item_id', name='uq_check_item'),
+    )
+
+    def __repr__(self) -> str:
+        return f"CheckItem(id={self.id}, check_uuid={self.check_uuid}, name={self.name})"
 
 
 class StatusEnum(enum.Enum):
@@ -18,7 +39,36 @@ class Check(Base):
     __tablename__ = "checks"
     uuid: Mapped[str] = mapped_column(primary_key=True)
     name: Mapped[str]
+
+    restaurant: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    table_number: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    order_number: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    date: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Формат "ДД.ММ.ГГГГ", можно заменить на Date
+    time: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Формат "ЧЧ:ММ", можно заменить на Time
+    waiter: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    subtotal: Mapped[float] = mapped_column(Float, nullable=True)  # Промежуточный итог
+    total: Mapped[float] = mapped_column(Float, nullable=True)  # Итоговая сумма
+    currency: Mapped[Optional[str]] = mapped_column(String(3),
+                                                    nullable=True)  # Валюта в формате ISO 4217, например "USD"
+
+    # Сервисный сбор
+    service_charge_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    service_charge_percentage: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    service_charge_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # НДС
+    vat_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Ставка НДС
+    vat_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # Сумма НДС
+
+    # Скидка
+    discount_percentage: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    discount_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     check_data: Mapped[Dict[str, Any]] = mapped_column(JSONB)
+    error_comment: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     status: Mapped[StatusEnum] = mapped_column(Enum(StatusEnum), default=StatusEnum.OPEN)
     author_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
@@ -39,6 +89,10 @@ class Check(Base):
         cascade="all, delete"
     )
     user_selections: Mapped[List["UserSelection"]] = relationship(
+        back_populates="check",
+        cascade="all, delete-orphan"
+    )
+    items: Mapped[List["CheckItem"]] = relationship(
         back_populates="check",
         cascade="all, delete-orphan"
     )
@@ -64,6 +118,7 @@ def generate_name(mapper, connection, target):
 
 class UserSelection(Base):
     __tablename__ = "user_selections"
+
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True
@@ -81,6 +136,11 @@ class UserSelection(Base):
     # Relationships
     user: Mapped["User"] = relationship(back_populates="user_selections")
     check: Mapped[Check] = relationship(back_populates="user_selections")
+    selected_items: Mapped[List["SelectedItem"]] = relationship(
+        "SelectedItem",
+        back_populates="user_selection",
+        cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -92,3 +152,40 @@ class UserSelection(Base):
 
     def __repr__(self) -> str:
         return f"UserSelection(user_id={self.user_id}, check_uuid={self.check_uuid})"
+
+
+class SelectedItem(Base):
+    __tablename__ = "selected_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_selection_user_id: Mapped[int] = mapped_column()
+    user_selection_check_uuid: Mapped[str] = mapped_column()
+    item_id: Mapped[int] = mapped_column()
+    quantity: Mapped[int] = mapped_column()
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ['user_selection_user_id', 'user_selection_check_uuid'],
+            ['user_selections.user_id', 'user_selections.check_uuid'],
+            ondelete="CASCADE"
+        ),
+        ForeignKeyConstraint(
+            ['user_selection_check_uuid', 'item_id'],
+            ['check_items.check_uuid', 'check_items.item_id']
+        ),
+        UniqueConstraint(
+            'user_selection_user_id',
+            'user_selection_check_uuid',
+            'item_id',
+            name='uq_selected_item'
+        ),
+    )
+
+    user_selection: Mapped["UserSelection"] = relationship(
+        "UserSelection",
+        back_populates="selected_items"
+    )
+    check_item: Mapped["CheckItem"] = relationship(
+        "CheckItem",
+        primaryjoin="and_(SelectedItem.user_selection_check_uuid == CheckItem.check_uuid, SelectedItem.item_id == CheckItem.item_id)"
+    )

@@ -1,14 +1,19 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 import firebase_admin
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
+from sentry_sdk.integrations.logging import LoggingIntegration
+from starlette.staticfiles import StaticFiles
 
 from src.api.routes import include_routers
-from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME
+from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME, UPLOAD_DIRECTORY, ENVIRONMENT, \
+    GRAYLOG_HOST, GRAYLOG_PORT, SYSLOG_ENABLED, GRAYLOG_ENABLED
 from src.config.logger import setup_logging
 from src.db.base import Base
 from src.db.session import sync_engine
@@ -95,7 +100,7 @@ async def lifespan(app: FastAPI):
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
 
-            if memory_mb > 500:  # Порог, например 500 МБ
+            if memory_mb > 1500:  # Порог, например 500 МБ
                 logger.warning(f"Высокое потребление памяти: {memory_mb:.2f} МБ")
 
                 # Опционально: вывод информации о типах объектов
@@ -104,7 +109,7 @@ async def lifespan(app: FastAPI):
                 top_types = obj_counts.most_common(10)
                 logger.warning(f"Топ объектов в памяти: {top_types}")
 
-            await asyncio.sleep(30)  # Проверять каждые 30 секунд
+            await asyncio.sleep(600)  # Проверять каждые 600 секунд
 
     # Запускаем мониторинг в фоновом режиме
     memory_task = asyncio.create_task(monitor_memory())
@@ -125,6 +130,26 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
 
+# Отключаем логирование from Sentry
+sentry_logging = LoggingIntegration(
+    level=None,  # Не перехватывать логи
+    event_level=logging.ERROR  # Отправлять как события только ERROR и выше
+)
+
+if ENVIRONMENT == 'prod':
+    sentry_sdk.init(
+        dsn="https://37e3cff9e212e28d8dfd0c03a6e6501c@o4509195406016512.ingest.de.sentry.io/4509195408244816",
+        integrations=[sentry_logging],
+        # Выключаем отладочный режим
+        debug=False,
+        traces_sample_rate=1.0,
+        profile_session_sample_rate=1.0,
+        profile_lifecycle="trace",
+        # Отключаем внутреннее логирование сети
+        transport_queue_size=1000,  # Увеличиваем буфер для снижения частоты логирования
+        send_client_reports=False  # Отключаем отправку клиентских отчетов
+    )
+
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
               docs_url="/docs" if ENABLE_DOCS else None,
@@ -138,8 +163,11 @@ logger = setup_logging(
     app,
     syslog_host=SYSLOG_HOST,
     syslog_port=SYSLOG_PORT,
+    graylog_host=GRAYLOG_HOST,
+    graylog_port=GRAYLOG_PORT,
     log_level=LOG_LEVEL,
-    syslog_enabled=True,
+    syslog_enabled=SYSLOG_ENABLED,
+    graylog_enabled=GRAYLOG_ENABLED,
     service_name=SERVICE_NAME
 )
 
@@ -157,7 +185,7 @@ app.add_middleware(
     allow_headers=["*"],
 
 )
-
+app.mount("/images", StaticFiles(directory=UPLOAD_DIRECTORY), name="images")
 
 # Подключаем маршруты
 include_routers(app)

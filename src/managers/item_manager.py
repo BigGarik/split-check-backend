@@ -5,10 +5,10 @@ from typing import Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.type_events import Events
+from src.repositories.check import get_check_data_from_database
 from src.repositories.item import (
     add_item_to_check,
-    remove_item_from_check,
-    edit_item_in_check, update_item_quantity
+    edit_item_in_check, update_item_quantity, remove_item_from_check
 )
 from src.repositories.user import get_users_by_check_uuid
 from src.schemas import AddItemRequest, EditItemRequest
@@ -34,6 +34,8 @@ class ItemService:
             # Преобразуем данные запроса в объект Pydantic
             item_request = AddItemRequest(**item_data)
             new_item = await add_item_to_check(self.session, check_uuid, item_request)
+
+            await get_check_data_from_database(self.session, check_uuid)
 
             # Формируем сообщение для отправки
             msg_for_all = create_event_message(
@@ -67,6 +69,8 @@ class ItemService:
         try:
             await remove_item_from_check(self.session, check_uuid, item_id)
 
+            await get_check_data_from_database(self.session, check_uuid)
+
             msg_for_all = create_event_message(
                 message_type=Events.ITEM_REMOVE_EVENT,
                 payload={"uuid": check_uuid, "itemId": item_id}
@@ -98,6 +102,7 @@ class ItemService:
         try:
             item_request = EditItemRequest(**item_data)
             updated_data = await edit_item_in_check(self.session, check_uuid, item_request)
+            await get_check_data_from_database(self.session, check_uuid)
 
             msg_for_all = create_event_message(
                 message_type=Events.ITEM_EDIT_EVENT,
@@ -132,6 +137,9 @@ class ItemService:
             quantity = item_data["quantity"]
 
             await update_item_quantity(self.session, check_uuid, item_id, quantity)
+
+            await get_check_data_from_database(self.session, check_uuid)
+
             users = await get_users_by_check_uuid(self.session, check_uuid)
 
             msg_for_all = create_event_message(
