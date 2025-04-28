@@ -116,9 +116,11 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
 
         if redis_data:
             selection_data = json.loads(redis_data)
+            logger.debug(f"selection_data from redis: {selection_data}")
         else:
             # Получаем UserSelection и связанные SelectedItem
             user_selection = await get_user_selection_by_user(session, user.id, check_uuid)
+            logger.debug(f"user_selection: {user_selection}")
             if user_selection:
                 # Формируем selection_data из отношения selected_items
                 selection_data = {
@@ -127,6 +129,7 @@ async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: st
                         for item in user_selection.selected_items
                     ]
                 }
+                logger.debug(f"selection_data from DB: {selection_data}")
                 # Сохраняем в Redis для последующих запросов
                 await redis_client.set(redis_key, json.dumps(selection_data), expire=REDIS_EXPIRATION)
 
