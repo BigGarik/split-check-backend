@@ -49,4 +49,3 @@ rfc5424-logging-handler
 sentry-sdk[flask]
 
 aiohttp
-opencv-python
