@@ -114,24 +114,24 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: A
         # Добавляем новый item
         check.check_data["items"].append(new_item)
 
-        # Добавляем/обновляем дополнительные поля если их нет
-        if "date" not in check.check_data:
-            from datetime import datetime
-            current_time = datetime.now()
-            check.check_data["date"] = current_time.strftime("%d.%m.%Y")
-            check.check_data["time"] = current_time.strftime("%H:%M")
-
-        # Убеждаемся, что все необходимые поля присутствуют
-        default_fields = {
-            "waiter": "",
-            "restaurant": "",
-            "order_number": "",
-            "table_number": ""
-        }
-
-        for field, default_value in default_fields.items():
-            if field not in check.check_data:
-                check.check_data[field] = default_value
+        # # Добавляем/обновляем дополнительные поля если их нет
+        # if "date" not in check.check_data:
+        #     from datetime import datetime
+        #     current_time = datetime.now()
+        #     check.check_data["date"] = current_time.strftime("%d.%m.%Y")
+        #     check.check_data["time"] = current_time.strftime("%H:%M")
+        #
+        # # Убеждаемся, что все необходимые поля присутствуют
+        # default_fields = {
+        #     "waiter": "",
+        #     "restaurant": "",
+        #     "order_number": "",
+        #     "table_number": ""
+        # }
+        #
+        # for field, default_value in default_fields.items():
+        #     if field not in check.check_data:
+        #         check.check_data[field] = default_value
 
         # Пересчитываем все поля
         check.check_data = recalculate_check_totals(check.check_data)
