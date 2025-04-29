@@ -36,12 +36,12 @@ async def get_current_user(
 
         # Приоритет 1: OAuth2 токен из схемы OAuth2PasswordBearer
         if oauth2_token:
-            logger.debug(f"oauth2_token: {oauth2_token}")
+            logger.debug(f"Приоритет 1. oauth2_token: {oauth2_token}")
             email, _ = await verify_token(ACCESS_SECRET_KEY, token=oauth2_token)
 
         # Приоритет 2: Bearer токен из заголовка HTTP
         elif http_auth:
-            logger.debug(f"http_auth: {http_auth}")
+            logger.debug(f"Приоритет 2. http_auth: {http_auth}")
             firebase_token = http_auth.credentials
             claims = await get_token_from_redis(firebase_token)
             logger.debug(f"claims_from_redis: {claims}")
@@ -55,24 +55,24 @@ async def get_current_user(
         # Приоритет 3: Токен из обычного заголовка Authorization (для обратной совместимости)
         else:
             auth_header = request.headers.get('Authorization')
+
             if auth_header:
+                logger.debug(f"Приоритет 3. auth_header: {auth_header}")
                 if auth_header.startswith('Bearer '):
                     firebase_token = auth_header.replace('Bearer ', '')
                 else:
                     firebase_token = auth_header
                 logger.debug(f"firebase_token: {firebase_token}")
                 claims = await get_token_from_redis(firebase_token)
+                logger.debug(f"claims_from_redis: {claims}")
 
                 if not claims:
                     claims = get_firebase_user(firebase_token)
+                    logger.debug(f"claims_from_firebase: {claims}")
                     await add_token_to_redis(firebase_token, claims)
 
                 email = claims.get('email')
             else:
-                # Для доступа к документации Swagger без авторизации
-                # Это позволит отображать документацию, но защищенные эндпоинты всё равно потребуют токен
-                if request.url.path in ['/docs', '/redoc', '/openapi.json']:
-                    return None
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Не предоставлен токен авторизации",
@@ -81,7 +81,7 @@ async def get_current_user(
 
         # Если мы дошли до этой точки, у нас должен быть email
         user = await get_user_by_email(email)
-        if not user and not (request.url.path in ['/docs', '/redoc', '/openapi.json']):
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Пользователь не найден"
