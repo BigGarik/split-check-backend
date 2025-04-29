@@ -87,6 +87,7 @@ async def get_check_data_from_database(session: AsyncSession, check_uuid: str) -
                     "id": item.item_id,
                     "name": item.name,
                     "quantity": item.quantity,
+                    "price": float(item.sum) / item.quantity,
                     "sum": float(item.sum)
                 }
                 for item in items
@@ -212,7 +213,7 @@ async def add_check_to_database(
         check_uuid: str,
         user_id: int,
         check_data: dict
-) -> None:
+) -> dict:
     """
         Создает новый чек в базе данных, заполняет все поля, добавляет позиции чека,
         устанавливает связь с пользователем.
@@ -268,7 +269,6 @@ async def add_check_to_database(
         # Скидка
         discount = check_data.get("discount")
         if discount is not None:
-            new_check.discount_name = discount.get("name")
             new_check.discount_percentage = to_float(discount.get("percentage"))
             new_check.discount_amount = to_float(discount.get("amount"))
 
@@ -320,7 +320,16 @@ async def add_check_to_database(
 
         # Сохраняем изменения в базе данных
         await session.commit()
+
         logger.debug(f"Check {check_uuid} added to database for user {user_id} as author with items.")
+
+        # Получаем данные чека в формате JSON
+        check_dict = await get_check_data_from_database(session, check_uuid)
+
+        logger.debug(f"Check {check_uuid} details: {check_dict}")
+
+        return check_dict
+
     except SQLAlchemyError as e:
         await session.rollback()
         logger.error(f"Database error in add_check_to_database: {e}")

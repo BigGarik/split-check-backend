@@ -20,7 +20,7 @@ async def handle_recognize_image_task(session: AsyncSession, task_data: dict):
         user_id=task_data["user_id"],
         file_location_directory=task_data["file_location_directory"],
         file_name=task_data["file_name"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 

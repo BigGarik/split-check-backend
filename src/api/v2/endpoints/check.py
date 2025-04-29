@@ -148,11 +148,13 @@ async def upload_image(
         if result.get("status") == "error":
             raise HTTPException(status_code=500, detail=result.get("result"))
 
-        check_data = calculate_price(result.get("result"))
+        # check_data = calculate_price(result.get("result"))
+        check_data = result.get("result")
 
-        await add_check_to_database(session, check_uuid, user.id, check_data)
+        check_data = await add_check_to_database(session, check_uuid, user.id, check_data)
 
         redis_key = f"check_uuid:{check_uuid}"
+
         await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
 
         msg = create_event_message(
@@ -167,7 +169,7 @@ async def upload_image(
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"uuid": check_uuid}
+            content=check_data
         )
 
     except Exception as e:

@@ -4,8 +4,13 @@ import os
 from fastapi import Depends
 import logging
 
-from src.config import ENVIRONMENT
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.config import ENVIRONMENT, REDIS_EXPIRATION
 from src.config.type_events import Events
+from src.redis import redis_client
+from src.repositories.check import add_check_to_database
+from src.utils.notifications import create_event_message
 from src.utils.system import get_memory_usage
 from src.websockets.manager import ws_manager
 from src.managers.check_manager import CheckManager, get_check_manager
@@ -46,7 +51,7 @@ async def recognize_image_task(
         user_id: int,
         file_location_directory: str,
         file_name: str,
-        check_manager: CheckManager = Depends(get_check_manager)
+        session: AsyncSession
 ):
     """ Обработка изображения: классификация и распознавание. """
 
@@ -129,12 +134,27 @@ async def recognize_image_task(
                     },
                     "total": 88500
                 }
+            # recognized_json = calculate_price(recognized_json)
+            #
+            # logger.debug(f"Recognition completed for check_uuid {check_uuid}")
+            #
+            # await check_manager.add_check(user_id, check_uuid, recognized_json)
 
-            recognized_json = calculate_price(recognized_json)
+            check_data = await add_check_to_database(session, check_uuid, user_id, recognized_json)
 
-            logger.debug(f"Recognition completed for check_uuid {check_uuid}")
+            redis_key = f"check_uuid:{check_uuid}"
 
-            await check_manager.add_check(user_id, check_uuid, recognized_json)
+            await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
+
+            msg = create_event_message(
+                message_type=Events.IMAGE_RECOGNITION_EVENT,
+                payload={"uuid": check_uuid}
+            )
+
+            await ws_manager.send_personal_message(
+                message=json.dumps(msg),
+                user_id=user_id
+            )
 
         else:
             error_msg = {

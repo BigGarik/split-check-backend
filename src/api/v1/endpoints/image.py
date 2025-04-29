@@ -1,3 +1,4 @@
+# src/api/v1/endpoints/image.py
 import logging
 
 from fastapi import APIRouter, UploadFile, File, Depends, Request
