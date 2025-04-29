@@ -1,8 +1,6 @@
 import json
-import os
-
-from fastapi import Depends
 import logging
+import os
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,13 +8,11 @@ from src.config import ENVIRONMENT, REDIS_EXPIRATION
 from src.config.type_events import Events
 from src.redis import redis_client
 from src.repositories.check import add_check_to_database
+from src.services.ai.api_anthropic import recognize_check_by_anthropic
+from src.services.classifier.classifier_image import classifier_image
 from src.utils.notifications import create_event_message
 from src.utils.system import get_memory_usage
 from src.websockets.manager import ws_manager
-from src.managers.check_manager import CheckManager, get_check_manager
-from src.services.ai.api_anthropic import recognize_check_by_anthropic
-from src.services.classifier.classifier_image import classifier_image
-
 
 logger = logging.getLogger(__name__)
 

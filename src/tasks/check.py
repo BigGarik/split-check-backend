@@ -1,17 +1,55 @@
+import json
+import logging
 import uuid
-from datetime import date
 from typing import Optional
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config.type_events import Events
 from src.managers.check_manager import CheckManager, get_check_manager
-from src.models import StatusEnum
+from src.redis import redis_client
+from src.repositories.check import get_check_data_from_database
+from src.repositories.user_selection import get_user_selection_by_check_uuid
+from src.utils.notifications import create_event_message
+from src.websockets.manager import ws_manager
+
+logger = logging.getLogger(__name__)
 
 
 async def send_check_data_task(user_id: int,
                                check_uuid: str,
-                               check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.send_check_data(user_id, check_uuid)
+                               session: AsyncSession):
+    redis_key = f"check_uuid:{check_uuid}"
+    logger.debug(f"redis_key: {redis_key}")
+
+    # Попытка получить данные из Redis
+    check_data = await redis_client.get(redis_key)
+
+    if check_data:
+        logger.debug(f"check_data from redis: {check_data}")
+        if isinstance(check_data, (str, bytes, bytearray)):
+            check_data = json.loads(check_data)
+    else:
+        check_data = await get_check_data_from_database(session, check_uuid)
+        logger.debug(f"check_data from DB: {check_data}")
+    participants, user_selections, _ = await get_user_selection_by_check_uuid(session, check_uuid)
+
+    logger.debug(f"participants: {json.loads(participants)}")
+    logger.debug(f"user_selections: {json.loads(user_selections)}")
+
+    check_data["participants"] = json.loads(participants)
+    check_data["user_selections"] = json.loads(user_selections)
+
+    msg = create_event_message(
+        message_type=Events.BILL_DETAIL_EVENT,
+        payload=check_data
+    )
+
+    await ws_manager.send_personal_message(
+        message=json.dumps(msg),
+        user_id=user_id
+    )
 
 
 async def send_all_checks_task(user_id: int,

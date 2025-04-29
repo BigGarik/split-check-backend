@@ -51,7 +51,7 @@ async def handle_send_check_data_task(session: AsyncSession, task_data: dict):
     await send_check_data_task(
         user_id=task_data["user_id"],
         check_uuid=task_data["check_uuid"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 
