@@ -162,51 +162,51 @@ class CheckManager:
                 except Exception as e:
                     logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
-    async def send_check_data(self, user_id: int, check_uuid: str) -> None:
-        check_data = await self.get_check_data_by_uuid(check_uuid)
-        participants, user_selections, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
+    # async def send_check_data(self, user_id: int, check_uuid: str) -> None:
+    #     check_data = await self.get_check_data_by_uuid(check_uuid)
+    #     participants, user_selections, _ = await get_user_selection_by_check_uuid(self.session, check_uuid)
+    #
+    #     check_data["participants"] = json.loads(participants)
+    #     check_data["user_selections"] = json.loads(user_selections)
+    #     check = await get_check_by_uuid(self.session, check_uuid)
+    #     check_data["name"] = check.name
+    #     check_data["date"] = check.created_at.strftime("%d.%m.%Y")
+    #     check_data["uuid"] = check_uuid
+    #     check_data["author_id"] = check.author_id
+    #     check_data["status"] = check.status.value
+    #     msg = create_event_message(Events.BILL_DETAIL_EVENT, check_data)
+    #
+    #     await self._send_ws_message(user_id, msg)
 
-        check_data["participants"] = json.loads(participants)
-        check_data["user_selections"] = json.loads(user_selections)
-        check = await get_check_by_uuid(self.session, check_uuid)
-        check_data["name"] = check.name
-        check_data["date"] = check.created_at.strftime("%d.%m.%Y")
-        check_data["uuid"] = check_uuid
-        check_data["author_id"] = check.author_id
-        check_data["status"] = check.status.value
-        msg = create_event_message(Events.BILL_DETAIL_EVENT, check_data)
-
-        await self._send_ws_message(user_id, msg)
-
-    async def send_all_checks(self, user_id: int,
-                              page: int,
-                              page_size: int,
-                              check_name: Optional[str] = None,
-                              check_status: Optional[str] = None,
-                              start_date: Optional[str] = None,
-                              end_date: Optional[str] = None) -> None:
-        checks_data = await get_all_checks(self.session,
-                                           user_id=user_id,
-                                           page=page,
-                                           page_size=page_size,
-                                           check_name=check_name,
-                                           check_status=check_status,
-                                           start_date=start_date,
-                                           end_date=end_date)
-        msg = create_event_message(
-            message_type=Events.ALL_BILL_EVENT,
-            payload={
-                "checks": checks_data["items"],
-                "pagination": {
-                    "total": checks_data["total"],
-                    "page": checks_data["page"],
-                    "pageSize": checks_data["page_size"],
-                    "totalPages": checks_data["total_pages"]
-                }
-            }
-        )
-        logger.debug(f"Страница все чеки: {msg}")
-        await self._send_ws_message(user_id, msg)
+    # async def send_all_checks(self, user_id: int,
+    #                           page: int,
+    #                           page_size: int,
+    #                           check_name: Optional[str] = None,
+    #                           check_status: Optional[str] = None,
+    #                           start_date: Optional[str] = None,
+    #                           end_date: Optional[str] = None) -> None:
+    #     checks_data = await get_all_checks(self.session,
+    #                                        user_id=user_id,
+    #                                        page=page,
+    #                                        page_size=page_size,
+    #                                        check_name=check_name,
+    #                                        check_status=check_status,
+    #                                        start_date=start_date,
+    #                                        end_date=end_date)
+    #     msg = create_event_message(
+    #         message_type=Events.ALL_BILL_EVENT,
+    #         payload={
+    #             "checks": checks_data["items"],
+    #             "pagination": {
+    #                 "total": checks_data["total"],
+    #                 "page": checks_data["page"],
+    #                 "pageSize": checks_data["page_size"],
+    #                 "totalPages": checks_data["total_pages"]
+    #             }
+    #         }
+    #     )
+    #     logger.debug(f"Страница все чеки: {msg}")
+    #     await self._send_ws_message(user_id, msg)
 
     async def send_main_page_checks(self, user_id: int) -> None:
         checks_data = await get_main_page_checks(self.session, user_id)

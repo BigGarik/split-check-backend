@@ -34,7 +34,7 @@ async def handle_send_all_checks_task(session: AsyncSession, task_data: dict):
         check_status=task_data.get('check_status'),
         start_date=task_data.get('start_date'),
         end_date=task_data.get('end_date'),
-        check_manager=CheckManager(session)
+        session=session
     )
 
 
@@ -42,7 +42,7 @@ async def handle_send_all_checks_task(session: AsyncSession, task_data: dict):
 async def handle_send_main_page_checks_task(session: AsyncSession, task_data: dict):
     await send_main_page_checks_task(
         user_id=task_data["user_id"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config.type_events import Events
 from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
-from src.repositories.check import get_check_data_from_database
+from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.utils.notifications import create_event_message
 from src.websockets.manager import ws_manager
@@ -53,27 +53,58 @@ async def send_check_data_task(user_id: int,
 
 
 async def send_all_checks_task(user_id: int,
-                               page: int,
-                               page_size: int,
-                               check_name: Optional[str] = None,
-                               check_status: Optional[str] = None,
-                               start_date: Optional[str] = None,
-                               end_date: Optional[str] = None,
-                               check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.send_all_checks(
-                                        user_id=user_id,
-                                        page=page,
-                                        page_size=page_size,
-                                        check_name=check_name,
-                                        check_status=check_status,
-                                        start_date=start_date,
-                                        end_date=end_date
-                                        )
+                                   page: int,
+                                   page_size: int,
+                                    session: AsyncSession,
+                                   check_name: Optional[str] = None,
+                                   check_status: Optional[str] = None,
+                                   start_date: Optional[str] = None,
+                                   end_date: Optional[str] = None):
+    checks_data = await get_all_checks(session,
+                                       user_id=user_id,
+                                       page=page,
+                                       page_size=page_size,
+                                       check_name=check_name,
+                                       check_status=check_status,
+                                       start_date=start_date,
+                                       end_date=end_date)
+    msg = create_event_message(
+        message_type=Events.ALL_BILL_EVENT,
+        payload={
+            "checks": checks_data["items"],
+            "pagination": {
+                "total": checks_data["total"],
+                "page": checks_data["page"],
+                "pageSize": checks_data["page_size"],
+                "totalPages": checks_data["total_pages"]
+            }
+        }
+    )
+    logger.debug(f"Страница все чеки: {msg}")
+
+    await ws_manager.send_personal_message(
+        message=json.dumps(msg),
+        user_id=user_id
+    )
 
 
-async def send_main_page_checks_task(user_id: int,
-                                     check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.send_main_page_checks(user_id)
+async def send_main_page_checks_task(user_id: int, session: AsyncSession):
+
+    checks_data = await get_main_page_checks(session, user_id)
+
+    msg = create_event_message(
+        message_type=Events.MAIN_PAGE_EVENT,
+        payload={
+            "checks": checks_data["items"],
+            "total_open": checks_data["total_open"],
+            "total_closed": checks_data["total_closed"],
+        }
+    )
+    logger.debug(f"Главная страница: {msg}")
+    await ws_manager.send_personal_message(
+        message=json.dumps(msg),
+        user_id=user_id
+    )
 
 
 async def add_empty_check_task(user_id: int,
