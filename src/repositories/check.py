@@ -13,9 +13,10 @@ from starlette.exceptions import HTTPException
 from src.config import REDIS_EXPIRATION
 from src.models import Check, user_check_association, User, UserSelection
 from src.redis import redis_client
+from src.repositories.item import get_items_by_check_uuid, add_item_to_check
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.schemas import CheckListResponse
-from src.utils.db import with_db_session
+from src.utils.check import to_float
 
 logger = logging.getLogger(__name__)
 
@@ -26,56 +27,88 @@ async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[
     return result.scalar_one_or_none()
 
 
-# @with_db_session()
-# async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str) -> Dict[str, Any]:
-#     """
-#     Получение данных чека по UUID с использованием кэширования в Redis.
-#
-#     Args:
-#         session: AsyncSession - сессия базы данных
-#         check_uuid: str - UUID чека
-#
-#     Returns:
-#         Dict[str, Any]: Данные чека
-#
-#     Raises:
-#         HTTPException: Если чек не найден
-#         Exception: При ошибках доступа к БД или Redis
-#     """
-#     redis_key = f"check_uuid:{check_uuid}"
-#
-#     try:
-#         # Попытка получить данные из Redis
-#         cached_data = await redis_client.get(redis_key)
-#         if cached_data:
-#             check_data = json.loads(cached_data)
-#             logger.debug(f"Получены данные чека из Redis: {check_uuid}")
-#             return check_data
-#
-#         # Поиск в базе данных, если нет в Redis
-#         stmt = select(Check).filter_by(uuid=check_uuid)
-#         result = await session.execute(stmt)
-#         check = result.scalar_one_or_none()
-#
-#         if not check:
-#             logger.warning(f"Чек не найден: {check_uuid}")
-#             raise HTTPException(status_code=404, detail="Check not found")
-#
-#         # Кэширование в Redis
-#         await redis_client.set(
-#             redis_key,
-#             json.dumps(check.check_data),
-#             expire=settings.redis_expiration
-#         )
-#
-#         logger.debug(f"Данные чека получены из БД: {check_uuid}")
-#         return check.check_data
-#
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Ошибка при получении данных чека {check_uuid}: {str(e)}")
-#         raise HTTPException(status_code=500, detail="Internal server error")
+async def get_check_data_from_database(session: AsyncSession, check_uuid: str) -> dict:
+    """
+    Получение данных чека из базы данных в формате check_data.
+
+    Args:
+        session: AsyncSession - сессия базы данных
+        check_uuid: str - UUID чека
+
+    Returns:
+        dict: Данные чека в формате JSON, включая все поля и позиции
+
+    Raises:
+        Exception: Если чек не найден
+    """
+    try:
+        check = await get_check_by_uuid(session, check_uuid)
+        if not check:
+            raise Exception(f"Check with UUID {check_uuid} not found")
+
+        # Получаем все позиции чека
+        items = await get_items_by_check_uuid(session, check_uuid)
+
+        # Формируем check_data
+        check_data = {
+            "uuid": check.uuid,
+            "name": check.name,
+            "date": check.created_at.strftime("%d.%m.%Y"),
+            "restaurant": check.restaurant,
+            # "address": check.address,
+            # "phone": check.phone,
+            # "table_number": check.table_number,
+            # "order_number": check.order_number,
+            # "date": check.date,
+            # "time": check.time,
+            # "waiter": check.waiter,
+            "subtotal": float(check.subtotal) if check.subtotal is not None else 0.0,
+            "total": float(check.total) if check.total is not None else 0.0,
+            "currency": check.currency,
+            "author_id": check.author_id,
+            "status": check.status.value,
+            "error_comment": check.error_comment,
+            "service_charge": None if check.service_charge_name is None and check.service_charge_amount is None else {
+                "name": check.service_charge_name,
+                "percentage": float(
+                    check.service_charge_percentage) if check.service_charge_percentage is not None else None,
+                "amount": float(check.service_charge_amount) if check.service_charge_amount is not None else None
+            },
+            "vat": None if check.vat_rate is None and check.vat_amount is None else {
+                "rate": float(check.vat_rate) if check.vat_rate is not None else None,
+                "amount": float(check.vat_amount) if check.vat_amount is not None else None
+            },
+            "discount": None if check.discount_percentage is None and check.discount_amount is None else {
+                "percentage": float(check.discount_percentage) if check.discount_percentage is not None else None,
+                "amount": float(check.discount_amount) if check.discount_amount is not None else None
+            },
+            "items": [
+                {
+                    "id": item.item_id,
+                    "name": item.name,
+                    "quantity": item.quantity,
+                    "sum": float(item.sum)
+                }
+                for item in items
+            ]
+        }
+
+        logger.debug(f"Подготовлены check_data для чека {check_uuid}")
+
+        redis_key = f"check_uuid:{check_uuid}"
+
+        # Кэширование в Redis
+        await redis_client.set(
+            redis_key,
+            json.dumps(check_data),
+            expire=REDIS_EXPIRATION
+        )
+
+        return check_data
+
+    except Exception as e:
+        logger.error(f"Error retrieving check_data for check {check_uuid}: {e}")
+        raise
 
 
 async def update_check_data_to_database(session: AsyncSession, check_uuid: str, check_data: dict):
@@ -181,32 +214,72 @@ async def add_check_to_database(
         check_data: dict
 ) -> None:
     """
-    Создает новый чек в базе данных и устанавливает связь с пользователем.
+        Создает новый чек в базе данных, заполняет все поля, добавляет позиции чека,
+        устанавливает связь с пользователем.
 
-    Функция выполняет следующие операции:
-    1. Создает новую запись в таблице checks
-    2. Устанавливает пользователя как автора чека
-    3. Создает связь между пользователем и чеком в таблице ассоциаций
+        Функция выполняет следующие операции:
+        1. Создает новую запись в таблице checks с заполнением всех полей из check_data
+        2. Добавляет позиции чека из check_data["items"] в таблицу check_items через add_item_to_check
+        3. Устанавливает пользователя как автора чека
+        4. Создает связь между пользователем и чеком в таблице ассоциаций
 
-    Args:
-        session (AsyncSession): Асинхронная сессия SQLAlchemy для работы с БД
-        check_uuid (str): Уникальный идентификатор создаваемого чека
-        user_id (int): ID пользователя, который создает чек
-        check_data (dict): Данные чека для сохранения в формате JSON
+        Args:
+            session (AsyncSession): Асинхронная сессия SQLAlchemy для работы с БД
+            check_uuid (str): Уникальный идентификатор создаваемого чека
+            user_id (int): ID пользователя, который создает чек
+            check_data (dict): Данные чека для сохранения в формате JSON
 
-    Raises:
-        SQLAlchemyError: При ошибках работы с базой данных
-        Exception: При любых других непредвиденных ошибках
-    """
+        Raises:
+            SQLAlchemyError: При ошибках работы с базой данных
+            Exception: При любых других непредвиденных ошибок
+        """
     try:
-        # Создаем новый чек с указанием автора
+        # Создаем новый чек с указанием автора и заполнением всех полей
         new_check = Check(
             uuid=check_uuid,
             check_data=check_data,
-            author_id=user_id
+            author_id=user_id,
+            restaurant=check_data.get("restaurant"),
+            address=check_data.get("address"),
+            phone=check_data.get("phone"),
+            table_number=check_data.get("table_number"),
+            order_number=check_data.get("order_number"),
+            date=check_data.get("date"),
+            time=check_data.get("time"),
+            waiter=check_data.get("waiter"),
+            subtotal=to_float(check_data.get("subtotal"), 0),
+            total=to_float(check_data.get("total"), 0),
+            currency=check_data.get("currency")
         )
+
+        # Сервисный сбор
+        service_charge = check_data.get("service_charge")
+        if service_charge is not None:
+            new_check.service_charge_name = service_charge.get("name")
+            new_check.service_charge_percentage = to_float(service_charge.get("percentage"))
+            new_check.service_charge_amount = to_float(service_charge.get("amount"))
+
+        # НДС
+        vat = check_data.get("vat")
+        if vat is not None:
+            new_check.vat_rate = to_float(vat.get("rate"))
+            new_check.vat_amount = to_float(vat.get("amount"))
+
+        # Скидка
+        discount = check_data.get("discount")
+        if discount is not None:
+            new_check.discount_name = discount.get("name")
+            new_check.discount_percentage = to_float(discount.get("percentage"))
+            new_check.discount_amount = to_float(discount.get("amount"))
+
         session.add(new_check)
         await session.flush()
+
+        # Добавляем позиции чека из check_data["items"] через add_item_to_check
+        items_added = []
+        for item in check_data.get("items", []):
+            item_response = await add_item_to_check(session, check_uuid, item)
+            items_added.append(item_response)
 
         # Создаем связь между пользователем и чеком
         stmt = insert(user_check_association).values(
@@ -215,9 +288,39 @@ async def add_check_to_database(
         )
         await session.execute(stmt)
 
+        # Валидация данных
+        error_comments = []
+
+        # 1. Проверяем сумму всех позиций против subtotal
+        items_total = sum(item["sum"] for item in items_added)
+        subtotal = to_float(check_data.get("subtotal"), 0)
+        if abs(items_total - subtotal) > 0.01:  # Допускаем погрешность 0.01 из-за float
+            error_comments.append(
+                f"Сумма всех позиций ({items_total}) не совпадает с subtotal ({subtotal})"
+            )
+
+        # 2. Проверяем total = subtotal + service_charge_amount + vat_amount - discount_amount
+        service_charge_amount = to_float(service_charge.get("amount") if service_charge else 0, 0)
+        vat_amount = to_float(vat.get("amount") if vat else 0, 0)
+        discount_amount = to_float(discount.get("amount") if discount else 0, 0)
+        expected_total = subtotal + service_charge_amount + vat_amount - discount_amount
+        total = to_float(check_data.get("total"), 0)
+
+        if abs(expected_total - total) > 0.01:  # Допускаем погрешность 0.01 из-за float
+            error_comments.append(
+                f"Total ({total}) does not match calculated total ({expected_total}) "
+                f"(subtotal: {subtotal}, service_charge: {service_charge_amount}, "
+                f"vat: {vat_amount}, discount: {discount_amount})"
+            )
+
+        # Если есть ошибки, записываем их в error_comment
+        if error_comments:
+            new_check.error_comment = "; ".join(error_comments)
+            logger.warning(f"Validation issues for check {check_uuid}: {new_check.error_comment}")
+
         # Сохраняем изменения в базе данных
         await session.commit()
-        logger.debug(f"Check {check_uuid} added to database for user {user_id} as author.")
+        logger.debug(f"Check {check_uuid} added to database for user {user_id} as author with items.")
     except SQLAlchemyError as e:
         await session.rollback()
         logger.error(f"Database error in add_check_to_database: {e}")

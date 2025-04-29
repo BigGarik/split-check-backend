@@ -39,7 +39,8 @@ async def lifespan(app: FastAPI):
     if not hasattr(multiprocessing, 'get_start_method') or multiprocessing.get_start_method() != 'spawn':
         multiprocessing.set_start_method('spawn', force=True)
 
-    classifier = init_classifier()
+    if ENVIRONMENT == 'prod':
+        classifier = init_classifier()
 
     # Подключаемся к Redis
     await redis_client.connect()
@@ -119,8 +120,9 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         logger.info("QueueProcessor cancelled")
 
-    if classifier:
-        classifier.cleanup()
+    if ENVIRONMENT == 'prod':
+        if classifier:
+            classifier.cleanup()
 
     await redis_client.disconnect()
 

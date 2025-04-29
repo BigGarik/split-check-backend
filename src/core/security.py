@@ -71,8 +71,10 @@ async def verify_token(secret_key: str, token: str = Depends(oauth2_scheme)):
         user_id: int = payload.get("user_id")
         expires = payload.get("exp")
         if expires < datetime.now().timestamp():
+            logger.debug("token expires")
             raise credentials_exception
         if email is None:
+            logger.debug("not email")
             raise credentials_exception
         return email, user_id
     except JWTError:

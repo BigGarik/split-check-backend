@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from typing import Dict, Any
 
 from fastapi import HTTPException
@@ -8,13 +9,50 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from src.config import REDIS_EXPIRATION
-from src.models import Check
+from src.models import Check, CheckItem
 from src.redis import redis_client
 from src.repositories.user_selection import delite_item_from_user_selections
 from src.schemas import AddItemRequest, EditItemRequest
-from src.utils.check import recalculate_check_totals
+from src.utils.check import recalculate_check_totals, to_int, to_float
 
 logger = logging.getLogger(__name__)
+
+
+async def get_items_by_check_uuid(session: AsyncSession, check_uuid: str) -> list[CheckItem]:
+    """
+    Получение всех позиций чека по его UUID.
+
+    Args:
+        session: AsyncSession - сессия базы данных
+        check_uuid: str - UUID чека
+
+    Returns:
+        list[CheckItem]: Список объектов CheckItem с атрибутами id, name, quantity, sum
+
+    Raises:
+        Exception: Если чек не найден или произошла ошибка при запросе
+    """
+    try:
+        # Получаем все позиции чека
+        stmt = select(CheckItem).where(CheckItem.check_uuid == check_uuid)
+        result = await session.execute(stmt)
+        items = result.scalars().all()
+
+        # Если позиций нет, проверяем существование чека
+        if not items:
+            stmt_check = select(Check).where(Check.uuid == check_uuid)
+            result_check = await session.execute(stmt_check)
+            check = result_check.scalars().first()
+            if not check:
+                raise Exception(f"Check with UUID {check_uuid} not found")
+
+        logger.debug(f"Retrieved {len(items)} items for check {check_uuid}")
+
+        return list(items)  # Возвращаем список объектов CheckItem
+
+    except Exception as e:
+        logger.error(f"Error retrieving items for check {check_uuid}: {e}")
+        raise
 
 
 async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id: int) -> dict:
@@ -88,68 +126,60 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
 async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: AddItemRequest) -> dict:
     """Добавление элемента в чек и возврат обновленного объекта Check"""
     try:
+        # Проверяем существование чека
         stmt = select(Check).where(Check.uuid == check_uuid)
         result = await session.execute(stmt)
         check = result.scalars().first()
         if not check:
-            raise Exception("Check not found")
-        logger.debug(f"Add item to check: {item_data}")
+            raise Exception(f"Check with UUID {check_uuid} not found")
 
-        # Создаем новый item
-        new_item = {
-            "id": len(check.check_data.get("items", [])) + 1,
-            "name": item_data.name,
-            "quantity": item_data.quantity,
-            "price": item_data.sum / item_data.quantity,
-            "sum": item_data.sum
+        logger.debug(f"Adding item to check {check_uuid}: {item_data}")
+
+        # Извлекаем данные элемента
+        item_id = to_int(item_data.get("id"))
+        name = item_data.get("name")
+        float_quantity = to_float(item_data.get("quantity"))
+        if float_quantity.is_integer():
+            quantity = int(float_quantity)
+        else:
+            name = f"{name} {float_quantity}"
+            # Округляем в большую сторону
+            quantity = math.ceil(float_quantity)
+        sum_value = to_float(item_data.get("sum"))
+
+        if item_id is None or quantity is None or sum_value is None or not name:
+            raise ValueError(f"Invalid item data for check {check_uuid}: {item_data}")
+
+        # Создаем новый элемент чека
+        new_item = CheckItem(
+            check_uuid=check_uuid,
+            item_id=item_id,
+            name=name,
+            quantity=quantity,
+            sum=sum_value
+        )
+        session.add(new_item)
+        await session.flush()
+
+        # Пересчитываем subtotal и total в объекте Check
+        # await recalculate_check_totals(session, check_uuid)
+
+        logger.debug(f"Item added to check {check_uuid}: {item_data}")
+
+        # Возвращаем данные добавленного элемента
+        item_response = {
+            "id": new_item.item_id,
+            "name": new_item.name,
+            "quantity": new_item.quantity,
+            "sum": new_item.sum
         }
-        logger.debug(f"New item: {new_item}")
 
-        # Инициализируем items если их нет
-        if "items" not in check.check_data:
-            check.check_data["items"] = []
-
-        # Добавляем новый item
-        check.check_data["items"].append(new_item)
-
-        # Добавляем/обновляем дополнительные поля если их нет
-        if "date" not in check.check_data:
-            from datetime import datetime
-            current_time = datetime.now()
-            check.check_data["date"] = current_time.strftime("%d.%m.%Y")
-            check.check_data["time"] = current_time.strftime("%H:%M")
-
-        # Убеждаемся, что все необходимые поля присутствуют
-        default_fields = {
-            "waiter": "",
-            "restaurant": "",
-            "order_number": "",
-            "table_number": ""
-        }
-
-        for field, default_value in default_fields.items():
-            if field not in check.check_data:
-                check.check_data[field] = default_value
-
-        # Пересчитываем все поля
-        check.check_data = recalculate_check_totals(check.check_data)
-
-        # Помечаем check_data как измененное
-        flag_modified(check, "check_data")
         await session.commit()
-        await session.refresh(check)
+        return item_response
 
-        # Кладем новые данные чека в Redis
-        redis_key = f"check_uuid:{check_uuid}"
-        check_data = check.check_data
-        logger.debug(f"Данные чека найдены в базе данных для UUID: {check_uuid}")
-
-        # Кэшируем данные чека в Redis для будущих обращений
-        await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
-
-        return new_item
     except Exception as e:
-        logger.error(f"Error adding item to check: {e}")
+        await session.rollback()
+        logger.error(f"Error adding item to check {check_uuid}: {e}")
         raise
 
 
