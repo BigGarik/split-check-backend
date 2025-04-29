@@ -28,16 +28,20 @@ async def get_current_user(
     Dependency для проверки и получения текущего пользователя через Firebase или OAuth2.
     """
     try:
+        logger.debug(f"oauth2_token: {oauth2_token}")
+        logger.debug(f"http_auth: {http_auth}")
         # Определяем токен из разных источников
         firebase_token = None
         token = None
 
         # Приоритет 1: OAuth2 токен из схемы OAuth2PasswordBearer
         if oauth2_token:
+            logger.debug(f"oauth2_token: {oauth2_token}")
             email, _ = await verify_token(ACCESS_SECRET_KEY, token=oauth2_token)
 
         # Приоритет 2: Bearer токен из заголовка HTTP
         elif http_auth:
+            logger.debug(f"http_auth: {http_auth}")
             firebase_token = http_auth.credentials
             claims = await get_token_from_redis(firebase_token)
             logger.debug(f"claims_from_redis: {claims}")
@@ -56,7 +60,7 @@ async def get_current_user(
                     firebase_token = auth_header.replace('Bearer ', '')
                 else:
                     firebase_token = auth_header
-
+                logger.debug(f"firebase_token: {firebase_token}")
                 claims = await get_token_from_redis(firebase_token)
 
                 if not claims:
