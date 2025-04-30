@@ -112,7 +112,7 @@ async def handle_join_check_task(session: AsyncSession, task_data: dict):
     await join_check_task(
         user_id=task_data["user_id"],
         check_uuid=task_data["check_uuid"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 

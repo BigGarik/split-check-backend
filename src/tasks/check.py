@@ -12,8 +12,9 @@ from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
 from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks, \
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database
-from src.repositories.user import get_users_by_check_uuid
+from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid
+from src.services.user import join_user_to_check
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
@@ -184,10 +185,43 @@ async def edit_check_status_task(user_id: int, check_uuid: str, check_status: st
                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
 
-async def join_check_task(user_id: int,
-                          check_uuid: str,
-                          check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.join_check(user_id, check_uuid)
+# refac
+async def join_check_task(user_id: int, check_uuid: str, session: AsyncSession):
+    try:
+        await join_user_to_check(user_id, check_uuid)
+        joined_user = await get_user_by_id(session, user_id)
+        users = await get_users_by_check_uuid(session, check_uuid)
+
+        msg_for_author = create_event_status_message(
+            message_type=Events.JOIN_BILL_EVENT_STATUS,
+            status="success"
+        )
+
+        msg_for_all = create_event_message(
+            message_type=Events.USER_JOIN_EVENT,
+            payload={"user_id": joined_user.id,
+                     "nickname": joined_user.profile.nickname,
+                     "avatar_url": joined_user.profile.avatar_url,
+                     },
+        )
+
+        all_user_ids = {user.id for user in users}
+        logger.debug(f"Все пользователи для отправки: {all_user_ids}")
+
+        # Отправка сообщений всем пользователям
+        for uid in all_user_ids:
+            msg = msg_for_author if uid == user_id else msg_for_all
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg),
+                    user_id=user_id
+                )
+            except Exception as e:
+                logger.error(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Ошибка присоединения к чеку {check_uuid}: {str(e)}")
+
 
 
 async def delete_check_task(user_id: int,
