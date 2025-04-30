@@ -17,9 +17,9 @@ from src.websockets.manager import ws_manager
 logger = logging.getLogger(__name__)
 
 
-async def send_check_data_task(user_id: int,
-                               check_uuid: str,
-                               session: AsyncSession):
+# refac
+async def send_check_data_task(user_id: int, check_uuid: str, session: AsyncSession):
+
     redis_key = f"check_uuid:{check_uuid}"
     logger.debug(f"redis_key: {redis_key}")
 
@@ -52,14 +52,8 @@ async def send_check_data_task(user_id: int,
     )
 
 
-async def send_all_checks_task(user_id: int,
-                                   page: int,
-                                   page_size: int,
-                                    session: AsyncSession,
-                                   check_name: Optional[str] = None,
-                                   check_status: Optional[str] = None,
-                                   start_date: Optional[str] = None,
-                                   end_date: Optional[str] = None):
+# refac
+async def send_all_checks_task(user_id: int, page: int, page_size: int, session: AsyncSession, check_name: Optional[str] = None, check_status: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
     checks_data = await get_all_checks(session,
                                        user_id=user_id,
                                        page=page,
@@ -88,6 +82,7 @@ async def send_all_checks_task(user_id: int,
     )
 
 
+# refac
 async def send_main_page_checks_task(user_id: int, session: AsyncSession):
 
     checks_data = await get_main_page_checks(session, user_id)

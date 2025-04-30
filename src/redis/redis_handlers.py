@@ -61,7 +61,7 @@ async def handle_user_selection_task(session: AsyncSession, task_data: dict):
         user_id=task_data["user_id"],
         check_uuid=task_data["check_uuid"],
         selection_data=task_data["selection_data"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 
