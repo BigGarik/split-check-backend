@@ -146,6 +146,13 @@ def setup_logging(
     console_handler.stream.reconfigure(encoding="utf-8")
     root_logger.addHandler(console_handler)
 
+    class UvicornAccessFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return "/metrics" not in record.getMessage()
+
+    uvicorn_access_logger = logging.getLogger("uvicorn.access")
+    uvicorn_access_logger.addFilter(UvicornAccessFilter())
+
     if graylog_enabled:
         graylog_handler = graypy.GELFUDPHandler(
             graylog_host,
