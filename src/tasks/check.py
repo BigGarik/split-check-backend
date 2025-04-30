@@ -3,12 +3,9 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config import REDIS_EXPIRATION
 from src.config.type_events import Events
-from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
 from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks, \
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \

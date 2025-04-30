@@ -13,10 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 # refac
-async def user_selection_task(user_id: int,
-                              check_uuid: str,
-                              selection_data: dict,
-                              session: AsyncSession):
+async def user_selection_task(user_id: int, check_uuid: str, selection_data: dict,  session: AsyncSession):
     """
     Обновляет выбор пользователя и отправляет обновленную информацию всем связанным пользователям.
 

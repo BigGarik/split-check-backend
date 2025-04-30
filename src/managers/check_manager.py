@@ -2,17 +2,10 @@ import json
 import logging
 from typing import Dict, Any
 
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.type_events import Events
 from src.managers.item_manager import ItemService
-from src.repositories.check import (
-    delete_association_by_check_uuid,
-    is_check_author
-)
-from src.repositories.user import get_users_by_check_uuid
-from src.utils.notifications import create_event_message, create_event_status_message
+from src.utils.notifications import create_event_status_message
 from src.websockets.manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -24,8 +17,8 @@ class CheckManager:
         self.item_service = ItemService(session)
 
     # Используем метод из ItemService
-    async def add_item(self, user_id: int, check_uuid: str, item_data: dict):
-        await self.item_service.add_item(user_id, check_uuid, item_data)
+    # async def add_item(self, user_id: int, check_uuid: str, item_data: dict):
+    #     await self.item_service.add_item(user_id, check_uuid, item_data)
 
     async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
         await self.item_service.delete_item(user_id, check_uuid, item_id)
@@ -33,8 +26,8 @@ class CheckManager:
     async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
         await self.item_service.edit_item(user_id, check_uuid, item_data)
 
-    async def split_item(self, user_id: int, check_uuid: str, item_data: dict):
-        await self.item_service.split_item(user_id, check_uuid, item_data)
+    # async def split_item(self, user_id: int, check_uuid: str, item_data: dict):
+    #     await self.item_service.split_item(user_id, check_uuid, item_data)
 
     @staticmethod
     async def _send_ws_message(user_id: int, message: Dict[str, Any]) -> None:
@@ -339,67 +332,67 @@ class CheckManager:
     #             e
     #         )
 
-    async def user_delete_from_check(self, # session: AsyncSession,
-                                     check_uuid: str,
-                                     user_id_for_delete: int,
-                                     current_user_id: int)-> bool:
-        """
-        Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
-
-        Args:
-            check_uuid (str): UUID чека
-            user_id_for_delete (int): ID пользователя, которого нужно удалить из чека
-            current_user_id (int): ID текущего пользователя (автора)
-
-        Returns:
-            bool: True если удаление успешно, False если текущий пользователь не автор
-
-        Raises:
-            SQLAlchemyError: При ошибках работы с базой данных
-        """
-        try:
-            # Проверяем права автора
-            if not await is_check_author(self.session, current_user_id, check_uuid):
-                logger.warning(
-                    f"User {current_user_id} attempted to delete user {user_id_for_delete} "
-                    f"from check {check_uuid} without author rights"
-                )
-                return False
-            # Получаем участников и пользователей, связанных с чеком до удаления. что-бы отправить удаленному тоже
-            users = await get_users_by_check_uuid(self.session, check_uuid)
-            # Удаляем ассоциацию пользователя с чеком
-            await delete_association_by_check_uuid(self.session, check_uuid, user_id_for_delete)
-
-            msg_for_all = create_event_message(
-                message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
-                payload={"uuid": check_uuid, "user_id_for_delete ": user_id_for_delete}
-            )
-
-            msg_for_author = create_event_status_message(
-                message_type=Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
-                status="success"
-            )
-
-            all_user_ids = {user.id for user in users}
-
-            # Отправка сообщений всем пользователям
-            for uid in all_user_ids:
-                msg = msg_for_author if uid == current_user_id else msg_for_all
-                try:
-                    await self._send_ws_message(uid, msg)
-                except Exception as e:
-                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}", extra={"current_user_id": current_user_id})
-
-            logger.debug(
-                f"User {user_id_for_delete} was removed from check {check_uuid} "
-                f"by author {current_user_id}", extra={"current_user_id": current_user_id}
-            )
-            return True
-
-        except SQLAlchemyError as e:
-            await self.session.rollback()
-            logger.error(f"Database error while deleting user from check: {e}", extra={"current_user_id": current_user_id})
-            raise
+    # async def user_delete_from_check(self, # session: AsyncSession,
+    #                                  check_uuid: str,
+    #                                  user_id_for_delete: int,
+    #                                  current_user_id: int)-> bool:
+    #     """
+    #     Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
+    #
+    #     Args:
+    #         check_uuid (str): UUID чека
+    #         user_id_for_delete (int): ID пользователя, которого нужно удалить из чека
+    #         current_user_id (int): ID текущего пользователя (автора)
+    #
+    #     Returns:
+    #         bool: True если удаление успешно, False если текущий пользователь не автор
+    #
+    #     Raises:
+    #         SQLAlchemyError: При ошибках работы с базой данных
+    #     """
+    #     try:
+    #         # Проверяем права автора
+    #         if not await is_check_author(self.session, current_user_id, check_uuid):
+    #             logger.warning(
+    #                 f"User {current_user_id} attempted to delete user {user_id_for_delete} "
+    #                 f"from check {check_uuid} without author rights"
+    #             )
+    #             return False
+    #         # Получаем участников и пользователей, связанных с чеком до удаления. что-бы отправить удаленному тоже
+    #         users = await get_users_by_check_uuid(self.session, check_uuid)
+    #         # Удаляем ассоциацию пользователя с чеком
+    #         await delete_association_by_check_uuid(self.session, check_uuid, user_id_for_delete)
+    #
+    #         msg_for_all = create_event_message(
+    #             message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
+    #             payload={"uuid": check_uuid, "user_id_for_delete ": user_id_for_delete}
+    #         )
+    #
+    #         msg_for_author = create_event_status_message(
+    #             message_type=Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
+    #             status="success"
+    #         )
+    #
+    #         all_user_ids = {user.id for user in users}
+    #
+    #         # Отправка сообщений всем пользователям
+    #         for uid in all_user_ids:
+    #             msg = msg_for_author if uid == current_user_id else msg_for_all
+    #             try:
+    #                 await self._send_ws_message(uid, msg)
+    #             except Exception as e:
+    #                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}", extra={"current_user_id": current_user_id})
+    #
+    #         logger.debug(
+    #             f"User {user_id_for_delete} was removed from check {check_uuid} "
+    #             f"by author {current_user_id}", extra={"current_user_id": current_user_id}
+    #         )
+    #         return True
+    #
+    #     except SQLAlchemyError as e:
+    #         await self.session.rollback()
+    #         logger.error(f"Database error while deleting user from check: {e}", extra={"current_user_id": current_user_id})
+    #         raise
 
 
 async def get_check_manager(session: AsyncSession) -> CheckManager:

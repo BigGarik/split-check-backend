@@ -24,6 +24,7 @@ async def handle_recognize_image_task(session: AsyncSession, task_data: dict):
     )
 
 
+# refac
 @with_db_session()
 async def handle_send_all_checks_task(session: AsyncSession, task_data: dict):
     await send_all_checks_task(
@@ -38,6 +39,7 @@ async def handle_send_all_checks_task(session: AsyncSession, task_data: dict):
     )
 
 
+# refac
 @with_db_session()
 async def handle_send_main_page_checks_task(session: AsyncSession, task_data: dict):
     await send_main_page_checks_task(
@@ -46,6 +48,7 @@ async def handle_send_main_page_checks_task(session: AsyncSession, task_data: di
     )
 
 
+# refac
 @with_db_session()
 async def handle_send_check_data_task(session: AsyncSession, task_data: dict):
     await send_check_data_task(
@@ -55,6 +58,7 @@ async def handle_send_check_data_task(session: AsyncSession, task_data: dict):
     )
 
 
+# refac
 @with_db_session()
 async def handle_user_selection_task(session: AsyncSession, task_data: dict):
     await user_selection_task(
@@ -65,16 +69,7 @@ async def handle_user_selection_task(session: AsyncSession, task_data: dict):
     )
 
 
-@with_db_session()
-async def handle_split_item_task(session: AsyncSession, task_data: dict):
-    await split_item_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        item_data=task_data["item_data"],
-        check_manager=CheckManager(session)
-    )
-
-
+# refac
 @with_db_session()
 async def handle_delete_check_task(session: AsyncSession, task_data: dict):
     await delete_check_task(
@@ -84,12 +79,96 @@ async def handle_delete_check_task(session: AsyncSession, task_data: dict):
     )
 
 
+# refac
 @with_db_session()
 async def handle_user_delete_from_check_task(session: AsyncSession, task_data: dict):
     await user_delete_from_check_task(
         check_uuid=task_data["check_uuid"],
         user_id_for_delete=task_data["user_id_for_delete"],
         current_user_id=task_data["current_user_id"],
+        session=session
+    )
+
+
+# refac
+@with_db_session()
+async def handle_join_check_task(session: AsyncSession, task_data: dict):
+    await join_check_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        session=session
+    )
+
+
+# refac
+@with_db_session()
+async def handle_add_empty_check_task(session: AsyncSession, task_data: dict):
+    await add_empty_check_task(
+        user_id=task_data["user_id"],
+        session=session
+    )
+
+
+# refac
+@with_db_session()
+async def handle_edit_check_name_task(session: AsyncSession, task_data: dict):
+    await edit_check_name_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        check_name=task_data["check_name"],
+        session=session
+    )
+
+
+# refac
+@with_db_session()
+async def handle_edit_check_status_task(session: AsyncSession, task_data: dict):
+    await edit_check_status_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        check_status=task_data["check_status"],
+        session=session
+    )
+
+
+# refac
+@with_db_session()
+async def handle_split_item_task(session: AsyncSession, task_data: dict):
+    await split_item_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        item_data=task_data["item_data"],
+        session=session
+    )
+
+
+@with_db_session()
+async def handle_delete_item_task(session: AsyncSession, task_data: dict):
+    await delete_item_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        item_id=task_data["item_id"],
+        session=session
+    )
+
+
+# refac
+@with_db_session()
+async def handle_add_item_task(session: AsyncSession, task_data: dict):
+    await add_item_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        item_data=task_data["item_data"],
+        session=session
+    )
+
+
+@with_db_session()
+async def handle_edit_item_task(session: AsyncSession, task_data: dict):
+    await edit_item_task(
+        user_id=task_data["user_id"],
+        check_uuid=task_data["check_uuid"],
+        item_data=task_data["item_data"],
         session=session
     )
 
@@ -104,73 +183,6 @@ async def handle_update_user_profile_task(task_data: dict):
     await update_user_profile_task(
         user_id=task_data["user_id"],
         profile_data=task_data["profile_data"]
-    )
-
-
-@with_db_session()
-async def handle_join_check_task(session: AsyncSession, task_data: dict):
-    await join_check_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        session=session
-    )
-
-
-@with_db_session()
-async def handle_add_empty_check_task(session: AsyncSession, task_data: dict):
-    await add_empty_check_task(
-        user_id=task_data["user_id"],
-        session=session
-    )
-
-
-@with_db_session()
-async def handle_add_item_task(session: AsyncSession, task_data: dict):
-    await add_item_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        item_data=task_data["item_data"],
-        check_manager=CheckManager(session)
-    )
-
-
-@with_db_session()
-async def handle_edit_check_name_task(session: AsyncSession, task_data: dict):
-    await edit_check_name_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        check_name=task_data["check_name"],
-        session=session
-    )
-
-
-@with_db_session()
-async def handle_edit_check_status_task(session: AsyncSession, task_data: dict):
-    await edit_check_status_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        check_status=task_data["check_status"],
-        session=session
-    )
-
-
-@with_db_session()
-async def handle_delete_item_task(session: AsyncSession, task_data: dict):
-    await delete_item_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        item_id=task_data["item_id"],
-        check_manager=CheckManager(session)
-    )
-
-
-@with_db_session()
-async def handle_edit_item_task(session: AsyncSession, task_data: dict):
-    await edit_item_task(
-        user_id=task_data["user_id"],
-        check_uuid=task_data["check_uuid"],
-        item_data=task_data["item_data"],
-        check_manager=CheckManager(session)
     )
 
 
