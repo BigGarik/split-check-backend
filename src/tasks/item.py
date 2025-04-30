@@ -111,6 +111,7 @@ async def delete_item_task(user_id: int,  check_uuid: str, item_id: int, session
         )
 
 
+# refac
 async def edit_item_task(user_id: int, check_uuid: str, item_data: dict, session: AsyncSession):
     try:
         updated_data = await edit_item_in_check(session, check_uuid, item_data)

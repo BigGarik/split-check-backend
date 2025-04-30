@@ -1,18 +1,12 @@
-import json
 import logging
 import math
 from typing import Dict, Any
 
-from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
-from src.config import REDIS_EXPIRATION
 from src.models import Check, CheckItem
-from src.redis import redis_client
 from src.repositories.user_selection import delete_item_from_user_selections
-from src.schemas import EditItemRequest
 from src.utils.check import recalculate_check_totals, to_int, to_float
 
 logger = logging.getLogger(__name__)
@@ -55,6 +49,7 @@ async def get_items_by_check_uuid(session: AsyncSession, check_uuid: str) -> lis
         raise
 
 
+# refac
 async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id: int) -> dict:
     """
     Удаление элемента из чека по его id

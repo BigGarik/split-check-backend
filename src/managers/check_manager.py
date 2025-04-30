@@ -1,20 +1,16 @@
-import json
-import logging
-from typing import Dict, Any
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.managers.item_manager import ItemService
-from src.utils.notifications import create_event_status_message
-from src.websockets.manager import ws_manager
-
-logger = logging.getLogger(__name__)
-
-
-class CheckManager:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-        self.item_service = ItemService(session)
+# import logging
+#
+# from sqlalchemy.ext.asyncio import AsyncSession
+#
+# from src.managers.item_manager import ItemService
+#
+# logger = logging.getLogger(__name__)
+#
+#
+# class CheckManager:
+#     def __init__(self, session: AsyncSession):
+#         self.session = session
+#         self.item_service = ItemService(session)
 
     # Используем метод из ItemService
     # async def add_item(self, user_id: int, check_uuid: str, item_data: dict):
@@ -23,27 +19,27 @@ class CheckManager:
     # async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
     #     await self.item_service.delete_item(user_id, check_uuid, item_id)
 
-    async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
-        await self.item_service.edit_item(user_id, check_uuid, item_data)
+    # async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
+    #     await self.item_service.edit_item(user_id, check_uuid, item_data)
 
     # async def split_item(self, user_id: int, check_uuid: str, item_data: dict):
     #     await self.item_service.split_item(user_id, check_uuid, item_data)
 
-    @staticmethod
-    async def _send_ws_message(user_id: int, message: Dict[str, Any]) -> None:
-        await ws_manager.send_personal_message(
-            message=json.dumps(message),
-            user_id=user_id
-        )
-
-    async def _handle_error(self, user_id: int, event_type: str, error: Exception) -> None:
-        logger.error(f"Error in {event_type}: {str(error)}", extra={"current_user_id": user_id})
-        error_message = create_event_status_message(
-            message_type=event_type,
-            status="error",
-            message=str(error)
-        )
-        await self._send_ws_message(user_id, error_message)
+    # @staticmethod
+    # async def _send_ws_message(user_id: int, message: Dict[str, Any]) -> None:
+    #     await ws_manager.send_personal_message(
+    #         message=json.dumps(message),
+    #         user_id=user_id
+    #     )
+    #
+    # async def _handle_error(self, user_id: int, event_type: str, error: Exception) -> None:
+    #     logger.error(f"Error in {event_type}: {str(error)}", extra={"current_user_id": user_id})
+    #     error_message = create_event_status_message(
+    #         message_type=event_type,
+    #         status="error",
+    #         message=str(error)
+    #     )
+    #     await self._send_ws_message(user_id, error_message)
 
     # async def add_check(self, user_id: int, check_uuid: str, check_data: dict) -> None:
     #
@@ -394,6 +390,6 @@ class CheckManager:
     #         logger.error(f"Database error while deleting user from check: {e}", extra={"current_user_id": current_user_id})
     #         raise
 
-
-async def get_check_manager(session: AsyncSession) -> CheckManager:
-    return CheckManager(session)
+#
+# async def get_check_manager(session: AsyncSession) -> CheckManager:
+#     return CheckManager(session)

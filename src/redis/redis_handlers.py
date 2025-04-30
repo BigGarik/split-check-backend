@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.managers.check_manager import CheckManager
 from src.redis.queue_processor import get_queue_processor
 from src.tasks import add_item_task, add_empty_check_task, delete_item_task, edit_item_task, join_check_task, \
     delete_check_task, split_item_task, send_check_data_task, send_all_checks_task, send_main_page_checks_task, \
@@ -142,6 +141,7 @@ async def handle_split_item_task(session: AsyncSession, task_data: dict):
     )
 
 
+# refac
 @with_db_session()
 async def handle_delete_item_task(session: AsyncSession, task_data: dict):
     await delete_item_task(
@@ -163,6 +163,7 @@ async def handle_add_item_task(session: AsyncSession, task_data: dict):
     )
 
 
+# refac
 @with_db_session()
 async def handle_edit_item_task(session: AsyncSession, task_data: dict):
     await edit_item_task(

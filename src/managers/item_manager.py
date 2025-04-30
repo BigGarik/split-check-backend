@@ -1,32 +1,24 @@
-import json
-import logging
-from typing import Dict, Any
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.config.type_events import Events
-from src.repositories.item import (
-    remove_item_from_check,
-    edit_item_in_check
-)
-from src.repositories.user import get_users_by_check_uuid
-from src.schemas import EditItemRequest
-from src.utils.notifications import create_event_message, create_event_status_message
-from src.websockets.manager import ws_manager
-
-logger = logging.getLogger(__name__)
-
-
-class ItemService:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    @staticmethod
-    async def _send_ws_message(user_id: int, message: Dict[str, Any]) -> None:
-        await ws_manager.send_personal_message(
-            message=json.dumps(message),
-            user_id=user_id
-        )
+# import json
+# import logging
+# from typing import Dict, Any
+#
+# from sqlalchemy.ext.asyncio import AsyncSession
+#
+# from src.websockets.manager import ws_manager
+#
+# logger = logging.getLogger(__name__)
+#
+#
+# class ItemService:
+#     def __init__(self, session: AsyncSession):
+#         self.session = session
+#
+#     @staticmethod
+#     async def _send_ws_message(user_id: int, message: Dict[str, Any]) -> None:
+#         await ws_manager.send_personal_message(
+#             message=json.dumps(message),
+#             user_id=user_id
+#         )
 
     # async def add_item(self, user_id: int, check_uuid: str, item_data: dict):
     #     try:
@@ -93,37 +85,37 @@ class ItemService:
     #         await self._send_ws_message(user_id, error_message)
     #         raise e
 
-    async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
-        try:
-            item_request = EditItemRequest(**item_data)
-            updated_data = await edit_item_in_check(self.session, check_uuid, item_request)
-
-            msg_for_all = create_event_message(
-                message_type=Events.ITEM_EDIT_EVENT,
-                payload={"uuid": check_uuid, "new_check_data": updated_data}
-            )
-            msg_for_author = create_event_status_message(
-                message_type=Events.ITEM_EDIT_EVENT_STATUS,
-                status="success",
-                message="Item successfully edited in check"
-            )
-
-            users = await get_users_by_check_uuid(self.session, check_uuid)
-            for user in users:
-                if user.id == user_id:
-                    await self._send_ws_message(user_id, msg_for_all)
-                else:
-                    await self._send_ws_message(user.id, msg_for_all)
-
-        except Exception as e:
-            logger.error(f"Error editing item in check: {str(e)}", extra={"current_user_id": user_id})
-            error_message = create_event_status_message(
-                message_type=Events.ITEM_EDIT_EVENT_STATUS,
-                status="error",
-                message=str(e)
-            )
-            await self._send_ws_message(user_id, error_message)
-            raise e
+    # async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
+    #     try:
+    #         item_request = EditItemRequest(**item_data)
+    #         updated_data = await edit_item_in_check(self.session, check_uuid, item_request)
+    #
+    #         msg_for_all = create_event_message(
+    #             message_type=Events.ITEM_EDIT_EVENT,
+    #             payload={"uuid": check_uuid, "new_check_data": updated_data}
+    #         )
+    #         msg_for_author = create_event_status_message(
+    #             message_type=Events.ITEM_EDIT_EVENT_STATUS,
+    #             status="success",
+    #             message="Item successfully edited in check"
+    #         )
+    #
+    #         users = await get_users_by_check_uuid(self.session, check_uuid)
+    #         for user in users:
+    #             if user.id == user_id:
+    #                 await self._send_ws_message(user_id, msg_for_all)
+    #             else:
+    #                 await self._send_ws_message(user.id, msg_for_all)
+    #
+    #     except Exception as e:
+    #         logger.error(f"Error editing item in check: {str(e)}", extra={"current_user_id": user_id})
+    #         error_message = create_event_status_message(
+    #             message_type=Events.ITEM_EDIT_EVENT_STATUS,
+    #             status="error",
+    #             message=str(e)
+    #         )
+    #         await self._send_ws_message(user_id, error_message)
+    #         raise e
 
     # async def split_item(self, user_id: int, check_uuid: str, item_data: dict):
     #     try:
