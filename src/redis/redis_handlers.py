@@ -140,7 +140,7 @@ async def handle_edit_check_name_task(session: AsyncSession, task_data: dict):
         user_id=task_data["user_id"],
         check_uuid=task_data["check_uuid"],
         check_name=task_data["check_name"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 

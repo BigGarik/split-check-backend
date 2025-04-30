@@ -112,30 +112,30 @@ class CheckManager:
         await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
         return check_data
 
-    async def edit_check_name(self, user_id: int, check_uuid: str, check_name: str):
-        new_name_status = await edit_check_name_to_database(self.session, user_id, check_uuid, check_name)
-        users = await get_users_by_check_uuid(self.session, check_uuid)
-        if new_name_status == "Check name updated successfully.":
-            msg_for_author = create_event_status_message(
-                message_type=Events.CHECK_NAME_EVENT_STATUS,
-                status="success"
-            )
-
-            msg_for_all = create_event_message(
-                message_type=Events.CHECK_NAME_EVENT,
-                payload={"check_name": check_name},
-            )
-
-            all_user_ids = {user.id for user in users}
-            logger.debug(f"Все пользователи для отправки: {all_user_ids}")
-
-            # Отправка сообщений всем пользователям
-            for uid in all_user_ids:
-                msg = msg_for_author if uid == user_id else msg_for_all
-                try:
-                    await self._send_ws_message(uid, msg)
-                except Exception as e:
-                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+    # async def edit_check_name(self, user_id: int, check_uuid: str, check_name: str):
+    #     new_name_status = await edit_check_name_to_database(self.session, user_id, check_uuid, check_name)
+    #     users = await get_users_by_check_uuid(self.session, check_uuid)
+    #     if new_name_status == "Check name updated successfully.":
+    #         msg_for_author = create_event_status_message(
+    #             message_type=Events.CHECK_NAME_EVENT_STATUS,
+    #             status="success"
+    #         )
+    #
+    #         msg_for_all = create_event_message(
+    #             message_type=Events.CHECK_NAME_EVENT,
+    #             payload={"check_name": check_name},
+    #         )
+    #
+    #         all_user_ids = {user.id for user in users}
+    #         logger.debug(f"Все пользователи для отправки: {all_user_ids}")
+    #
+    #         # Отправка сообщений всем пользователям
+    #         for uid in all_user_ids:
+    #             msg = msg_for_author if uid == user_id else msg_for_all
+    #             try:
+    #                 await self._send_ws_message(uid, msg)
+    #             except Exception as e:
+    #                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
     async def edit_check_status(self, user_id: int, check_uuid: str, check_status: str):
         status = await edit_check_status_to_database(self.session, user_id, check_uuid, check_status)

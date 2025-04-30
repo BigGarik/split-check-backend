@@ -54,6 +54,7 @@ async def get_check_data_from_database(session: AsyncSession, check_uuid: str) -
             "uuid": check.uuid,
             "name": check.name,
             "date": check.created_at.strftime("%d.%m.%Y"),
+            "time": check.created_at.strftime("%H:%M"),
             "restaurant": check.restaurant,
             # "address": check.address,
             # "phone": check.phone,
@@ -160,6 +161,10 @@ async def edit_check_name_to_database(session: AsyncSession, user_id: int, check
             return "Check not found."
 
         await session.commit()
+
+        # Получаем данные чека что бы закешировать их
+        await get_check_data_from_database(session, check_uuid)
+
         return "Check name updated successfully."
 
     except NoResultFound:
@@ -208,12 +213,7 @@ async def edit_check_status_to_database(session: AsyncSession, user_id: int, che
     return "Check status updated successfully."
 
 
-async def add_check_to_database(
-        session: AsyncSession,
-        check_uuid: str,
-        user_id: int,
-        check_data: Optional[dict] = None
-) -> dict:
+async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id: int, check_data: Optional[dict] = None) -> dict:
     """
         Создает новый чек в базе данных, заполняет все поля, добавляет позиции чека,
         устанавливает связь с пользователем.
@@ -235,23 +235,7 @@ async def add_check_to_database(
             Exception: При любых других непредвиденных ошибок
         """
     if check_data is None:
-        check_data = {
-            "restaurant": None,
-            "address": None,
-            "phone": None,
-            "table_number": None,
-            "order_number": None,
-            "date": datetime.now().strftime("%d.%m.%Y"),
-            "time": datetime.now().strftime("%H:%M"),
-            "waiter": None,
-            "subtotal": 0.0,
-            "total": 0.0,
-            "currency": None,
-            "items": [],
-            "service_charge": None,
-            "vat": None,
-            "discount": None
-        }
+        check_data = {}
 
     try:
         # Создаем новый чек с указанием автора и заполнением всех полей
@@ -259,17 +243,17 @@ async def add_check_to_database(
             uuid=check_uuid,
             check_data=check_data,
             author_id=user_id,
-            restaurant=check_data.get("restaurant"),
-            address=check_data.get("address"),
-            phone=check_data.get("phone"),
-            table_number=check_data.get("table_number"),
-            order_number=check_data.get("order_number"),
-            date=check_data.get("date"),
-            time=check_data.get("time"),
-            waiter=check_data.get("waiter"),
+            restaurant=check_data.get("restaurant") or None,
+            address=check_data.get("address") or None,
+            phone=check_data.get("phone") or None,
+            table_number=check_data.get("table_number") or None,
+            order_number=check_data.get("order_number") or None,
+            date=check_data.get("date") or datetime.now().strftime("%d.%m.%Y"),
+            time=check_data.get("time") or datetime.now().strftime("%H:%M"),
+            waiter=check_data.get("waiter") or None,
             subtotal=to_float(check_data.get("subtotal"), 0.0),
             total=to_float(check_data.get("total"), 0.0),
-            currency=check_data.get("currency")
+            currency=check_data.get("currency") or None
         )
 
         # Сервисный сбор
@@ -342,7 +326,7 @@ async def add_check_to_database(
 
         logger.debug(f"Check {check_uuid} added to database for user {user_id} as author with items.")
 
-        # Получаем данные чека в формате JSON
+        # Получаем данные чека в формате JSON. функция кеширует данные в редис
         check_dict = await get_check_data_from_database(session, check_uuid)
 
         logger.debug(f"Check {check_uuid} details: {check_dict}")
