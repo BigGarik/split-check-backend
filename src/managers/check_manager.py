@@ -20,8 +20,8 @@ class CheckManager:
     # async def add_item(self, user_id: int, check_uuid: str, item_data: dict):
     #     await self.item_service.add_item(user_id, check_uuid, item_data)
 
-    async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
-        await self.item_service.delete_item(user_id, check_uuid, item_id)
+    # async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
+    #     await self.item_service.delete_item(user_id, check_uuid, item_id)
 
     async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
         await self.item_service.edit_item(user_id, check_uuid, item_data)

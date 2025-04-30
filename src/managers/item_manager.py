@@ -62,36 +62,36 @@ class ItemService:
     #         await self._send_ws_message(user_id, error_message)
     #         raise e
 
-    async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
-        try:
-            await remove_item_from_check(self.session, check_uuid, item_id)
-
-            msg_for_all = create_event_message(
-                message_type=Events.ITEM_REMOVE_EVENT,
-                payload={"uuid": check_uuid, "itemId": item_id}
-            )
-            msg_for_author = create_event_status_message(
-                message_type=Events.ITEM_REMOVE_EVENT_STATUS,
-                status="success",
-                message="Item successfully removed from check"
-            )
-
-            users = await get_users_by_check_uuid(self.session, check_uuid)
-            for user in users:
-                if user.id == user_id:
-                    await self._send_ws_message(user_id, msg_for_all)
-                else:
-                    await self._send_ws_message(user.id, msg_for_all)
-
-        except Exception as e:
-            logger.error(f"Error removing item from check: {str(e)}", extra={"current_user_id": user_id})
-            error_message = create_event_status_message(
-                message_type=Events.ITEM_REMOVE_EVENT_STATUS,
-                status="error",
-                message=str(e)
-            )
-            await self._send_ws_message(user_id, error_message)
-            raise e
+    # async def delete_item(self, user_id: int, check_uuid: str, item_id: int):
+    #     try:
+    #         await remove_item_from_check(self.session, check_uuid, item_id)
+    #
+    #         msg_for_all = create_event_message(
+    #             message_type=Events.ITEM_REMOVE_EVENT,
+    #             payload={"uuid": check_uuid, "itemId": item_id}
+    #         )
+    #         msg_for_author = create_event_status_message(
+    #             message_type=Events.ITEM_REMOVE_EVENT_STATUS,
+    #             status="success",
+    #             message="Item successfully removed from check"
+    #         )
+    #
+    #         users = await get_users_by_check_uuid(self.session, check_uuid)
+    #         for user in users:
+    #             if user.id == user_id:
+    #                 await self._send_ws_message(user_id, msg_for_all)
+    #             else:
+    #                 await self._send_ws_message(user.id, msg_for_all)
+    #
+    #     except Exception as e:
+    #         logger.error(f"Error removing item from check: {str(e)}", extra={"current_user_id": user_id})
+    #         error_message = create_event_status_message(
+    #             message_type=Events.ITEM_REMOVE_EVENT_STATUS,
+    #             status="error",
+    #             message=str(e)
+    #         )
+    #         await self._send_ws_message(user_id, error_message)
+    #         raise e
 
     async def edit_item(self, user_id: int, check_uuid: str, item_data: dict):
         try:
