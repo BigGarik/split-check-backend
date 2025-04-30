@@ -1,4 +1,5 @@
 class Events:
+
     BILL_DETAIL_EVENT = 'billDetailEvent'
     ALL_BILL_EVENT = 'allBillEvent'
     MAIN_PAGE_EVENT = 'mainPageEvent'
@@ -6,6 +7,7 @@ class Events:
     USER_JOIN_EVENT = 'userJoinEvent'
     JOIN_BILL_EVENT_STATUS = 'joinBillEventStatus'
 
+    CHECK_DELETE_EVENT = 'checkDeleteEvent'
     CHECK_DELETE_EVENT_STATUS = 'checkDeleteEventStatus'
     USER_DELETE_FROM_CHECK_EVENT = 'userDeleteFromCheckEvent'
     USER_DELETE_FROM_CHECK_EVENT_STATUS = 'userDeleteFromCheckEventStatus'
@@ -41,6 +43,7 @@ EVENT_DESCRIPTIONS = {
     Events.CHECK_ADD_EVENT: "Добавление нового чека",
     Events.JOIN_BILL_EVENT_STATUS: "Статус присоединения пользователя к чеку",
     Events.USER_JOIN_EVENT: "Данное пользователя присоединившегося к чеку",
+    Events.CHECK_DELETE_EVENT: "Чек удален из базы",
     Events.CHECK_DELETE_EVENT_STATUS: "Статус удаления чека",
     Events.USER_DELETE_FROM_CHECK_EVENT: "Удаление пользователя из чека",
     Events.USER_DELETE_FROM_CHECK_EVENT_STATUS: "Статус удаления пользователя из чека",

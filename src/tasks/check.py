@@ -11,7 +11,8 @@ from src.config.type_events import Events
 from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
 from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks, \
-    add_check_to_database, edit_check_name_to_database, edit_check_status_to_database
+    add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \
+    is_check_author
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.services.user import join_user_to_check
@@ -136,7 +137,7 @@ async def edit_check_name_task(user_id: int, check_uuid: str, check_name: str, s
 
         msg_for_all = create_event_message(
             message_type=Events.CHECK_NAME_EVENT,
-            payload={"check_name": check_name},
+            payload={"check_uuid": check_uuid, "check_name": check_name},
         )
         all_user_ids = {user.id for user in users}
         logger.debug(f"Все пользователи для отправки: {all_user_ids}")
@@ -167,7 +168,7 @@ async def edit_check_status_task(user_id: int, check_uuid: str, check_status: st
 
         msg_for_all = create_event_message(
             message_type=Events.CHECK_STATUS_EVENT,
-            payload={"check_status": check_status},
+            payload={"check_uuid": check_uuid, "check_status": check_status},
         )
 
         all_user_ids = {user.id for user in users}
@@ -220,18 +221,127 @@ async def join_check_task(user_id: int, check_uuid: str, session: AsyncSession):
                 logger.error(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
     except Exception as e:
-        logger.error(f"Ошибка присоединения к чеку {check_uuid}: {str(e)}")
+        logger.error(f"Error in {Events.USER_JOIN_EVENT}: {str(e)}", extra={"current_user_id": user_id})
+
+        error_message = create_event_status_message(
+            message_type=Events.USER_JOIN_EVENT,
+            status="error",
+            message=str(e)
+        )
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=user_id
+        )
 
 
+# refac
+async def delete_check_task(user_id: int, check_uuid: str, session: AsyncSession):
+    try:
+        users = await get_users_by_check_uuid(session, check_uuid)
+        await delete_association_by_check_uuid(session, check_uuid, user_id)
 
-async def delete_check_task(user_id: int,
-                            check_uuid: str,
-                            check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.delete_check(user_id, check_uuid)
+        msg_for_author = create_event_status_message(
+            message_type=Events.CHECK_DELETE_EVENT_STATUS,
+            status="success"
+        )
+
+        msg_for_all = create_event_message(
+            message_type=Events.CHECK_DELETE_EVENT,
+            payload={"check_uuid": check_uuid},
+        )
+
+        all_user_ids = {user.id for user in users}
+        # Отправка сообщений всем пользователям
+        for uid in all_user_ids:
+            msg = msg_for_author if uid == user_id else msg_for_all
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg),
+                    user_id=user_id
+                )
+            except Exception as e:
+                logger.error(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}", extra={"current_user_id": user_id})
+    except Exception as e:
+        logger.error(f"Error in {Events.CHECK_DELETE_EVENT}: {str(e)}", extra={"current_user_id": user_id})
+
+        error_message = create_event_status_message(
+            message_type=Events.CHECK_DELETE_EVENT,
+            status="error",
+            message=str(e)
+        )
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=user_id
+        )
 
 
-async def user_delete_from_check_task(check_uuid: str,
-                                      user_id_for_delete: int,
-                                      current_user_id: int,
-                                      check_manager: CheckManager = Depends(get_check_manager)):
-    await check_manager.user_delete_from_check(check_uuid, user_id_for_delete, current_user_id)
+# refac
+async def user_delete_from_check_task(check_uuid: str, user_id_for_delete: int, current_user_id: int, session: AsyncSession):
+    """
+    Удаляет ассоциацию пользователя с чеком. Только автор чека может выполнить это действие.
+
+    Args:
+        check_uuid (str): UUID чека
+        user_id_for_delete (int): ID пользователя, которого нужно удалить из чека
+        current_user_id (int): ID текущего пользователя (автора)
+        session:
+
+    Returns:
+        bool: True если удаление успешно, False если текущий пользователь не автор
+
+    Raises:
+        SQLAlchemyError: При ошибках работы с базой данных
+    """
+    try:
+        # Проверяем права автора
+        if not await is_check_author(session, current_user_id, check_uuid):
+            logger.warning(
+                f"User {current_user_id} attempted to delete user {user_id_for_delete} "
+                f"from check {check_uuid} without author rights"
+            )
+        # Получаем участников и пользователей, связанных с чеком до удаления. что-бы отправить удаленному тоже
+        users = await get_users_by_check_uuid(session, check_uuid)
+        # Удаляем ассоциацию пользователя с чеком
+        await delete_association_by_check_uuid(session, check_uuid, user_id_for_delete)
+
+        msg_for_all = create_event_message(
+            message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
+            payload={"uuid": check_uuid, "user_id_for_delete ": user_id_for_delete}
+        )
+
+        msg_for_author = create_event_status_message(
+            message_type=Events.USER_DELETE_FROM_CHECK_EVENT_STATUS,
+            status="success"
+        )
+
+        all_user_ids = {user.id for user in users}
+
+        # Отправка сообщений всем пользователям
+        for uid in all_user_ids:
+            msg = msg_for_author if uid == current_user_id else msg_for_all
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg),
+                    user_id=uid
+                )
+            except Exception as e:
+                logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}",
+                               extra={"current_user_id": current_user_id})
+
+        logger.debug(
+            f"User {user_id_for_delete} was removed from check {check_uuid} "
+            f"by author {current_user_id}", extra={"current_user_id": current_user_id}
+        )
+
+    except Exception as e:
+        logger.error(f"Error in {Events.USER_DELETE_FROM_CHECK_EVENT}: {str(e)}", extra={"current_user_id": current_user_id})
+
+        error_message = create_event_status_message(
+            message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
+            status="error",
+            message=str(e)
+        )
+        await ws_manager.send_personal_message(
+            message=json.dumps(error_message),
+            user_id=current_user_id
+        )

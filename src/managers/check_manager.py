@@ -1,27 +1,17 @@
 import json
 import logging
-from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.exceptions import HTTPException
 
-from src.config import REDIS_EXPIRATION
 from src.config.type_events import Events
 from src.managers.item_manager import ItemService
-from src.redis import redis_client
 from src.repositories.check import (
-    get_all_checks,
-    add_check_to_database,
     delete_association_by_check_uuid,
-    get_check_by_uuid,
-    update_check_data_to_database, get_main_page_checks, is_check_author, edit_check_name_to_database,
-    edit_check_status_to_database
+    is_check_author
 )
-from src.repositories.user import get_users_by_check_uuid, get_user_by_id
-from src.repositories.user_selection import get_user_selection_by_check_uuid, add_or_update_user_selection
-from src.services.user import join_user_to_check
+from src.repositories.user import get_users_by_check_uuid
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
@@ -283,16 +273,16 @@ class CheckManager:
     #     except Exception as e:
     #         await self._handle_error(user_id, Events.JOIN_BILL_EVENT_STATUS, e)
 
-    async def delete_check(self, user_id: int, check_uuid: str) -> None:
-        try:
-            await delete_association_by_check_uuid(self.session, check_uuid, user_id)
-            status_message = create_event_status_message(
-                message_type=Events.CHECK_DELETE_EVENT_STATUS,
-                status="success"
-            )
-            await self._send_ws_message(user_id, status_message)
-        except Exception as e:
-            await self._handle_error(user_id, Events.CHECK_DELETE_EVENT_STATUS, e)
+    # async def delete_check(self, user_id: int, check_uuid: str) -> None:
+    #     try:
+    #         await delete_association_by_check_uuid(self.session, check_uuid, user_id)
+    #         status_message = create_event_status_message(
+    #             message_type=Events.CHECK_DELETE_EVENT_STATUS,
+    #             status="success"
+    #         )
+    #         await self._send_ws_message(user_id, status_message)
+    #     except Exception as e:
+    #         await self._handle_error(user_id, Events.CHECK_DELETE_EVENT_STATUS, e)
 
     # async def handle_user_selection(self, user_id: int, check_uuid: str, selection_data: dict) -> None:
     #     """
