@@ -212,7 +212,7 @@ async def add_check_to_database(
         session: AsyncSession,
         check_uuid: str,
         user_id: int,
-        check_data: dict
+        check_data: Optional[dict] = None
 ) -> dict:
     """
         Создает новый чек в базе данных, заполняет все поля, добавляет позиции чека,
@@ -234,6 +234,25 @@ async def add_check_to_database(
             SQLAlchemyError: При ошибках работы с базой данных
             Exception: При любых других непредвиденных ошибок
         """
+    if check_data is None:
+        check_data = {
+            "restaurant": None,
+            "address": None,
+            "phone": None,
+            "table_number": None,
+            "order_number": None,
+            "date": datetime.now().strftime("%d.%m.%Y"),
+            "time": datetime.now().strftime("%H:%M"),
+            "waiter": None,
+            "subtotal": 0.0,
+            "total": 0.0,
+            "currency": None,
+            "items": [],
+            "service_charge": None,
+            "vat": None,
+            "discount": None
+        }
+
     try:
         # Создаем новый чек с указанием автора и заполнением всех полей
         new_check = Check(
@@ -248,8 +267,8 @@ async def add_check_to_database(
             date=check_data.get("date"),
             time=check_data.get("time"),
             waiter=check_data.get("waiter"),
-            subtotal=to_float(check_data.get("subtotal"), 0),
-            total=to_float(check_data.get("total"), 0),
+            subtotal=to_float(check_data.get("subtotal"), 0.0),
+            total=to_float(check_data.get("total"), 0.0),
             currency=check_data.get("currency")
         )
 

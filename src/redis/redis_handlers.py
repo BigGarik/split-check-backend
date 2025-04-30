@@ -120,7 +120,7 @@ async def handle_join_check_task(session: AsyncSession, task_data: dict):
 async def handle_add_empty_check_task(session: AsyncSession, task_data: dict):
     await add_empty_check_task(
         user_id=task_data["user_id"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 

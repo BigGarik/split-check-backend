@@ -6,10 +6,12 @@ from typing import Optional
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import REDIS_EXPIRATION
 from src.config.type_events import Events
 from src.managers.check_manager import CheckManager, get_check_manager
 from src.redis import redis_client
-from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks
+from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks, \
+    add_check_to_database
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.utils.notifications import create_event_message
 from src.websockets.manager import ws_manager
@@ -102,10 +104,26 @@ async def send_main_page_checks_task(user_id: int, session: AsyncSession):
     )
 
 
-async def add_empty_check_task(user_id: int,
-                               check_manager: CheckManager = Depends(get_check_manager)):
+# refac
+async def add_empty_check_task(user_id: int, session: AsyncSession):
     check_uuid = str(uuid.uuid4())
-    await check_manager.create_empty(user_id, check_uuid)
+
+    check_data = await add_check_to_database(session, check_uuid, user_id)
+    # Кэширование в Redis
+    await redis_client.set(
+        f"check_uuid:{check_uuid}",
+        json.dumps(check_data),
+        expire=REDIS_EXPIRATION
+    )
+
+    msg = create_event_message(
+        message_type=Events.CHECK_ADD_EVENT,
+        payload={"uuid": check_uuid}
+    )
+    await ws_manager.send_personal_message(
+        message=json.dumps(msg),
+        user_id=user_id
+    )
 
 
 async def edit_check_name_task(user_id: int,

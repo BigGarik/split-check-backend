@@ -221,34 +221,34 @@ class CheckManager:
         logger.debug(msg)
         await self._send_ws_message(user_id, msg)
 
-    async def create_empty(self, user_id: int, check_uuid: str) -> None:
-        check_data = {
-            "restaurant": "",
-            "table_number": "",
-            "order_number": "",
-            "date": datetime.now().strftime("%d.%m.%Y"),
-            "time": datetime.now().strftime("%H:%M"),
-            "waiter": "",
-            "items": [],
-            "subtotal": 0,
-            "service_charge": {"name": "", "amount": 0},
-            "vat": {"rate": 0, "amount": 0},
-            "total": 0
-        }
-        await add_check_to_database(self.session, check_uuid, user_id, check_data)
-
-        # Кэширование в Redis
-        await redis_client.set(
-            f"check_uuid:{check_uuid}",
-            json.dumps(check_data),
-            expire=REDIS_EXPIRATION
-        )
-
-        msg = create_event_message(
-            message_type=Events.CHECK_ADD_EVENT,
-            payload={"uuid": check_uuid}
-        )
-        await self._send_ws_message(user_id, msg)
+    # async def create_empty(self, user_id: int, check_uuid: str) -> None:
+    #     check_data = {
+    #         "restaurant": "",
+    #         "table_number": "",
+    #         "order_number": "",
+    #         "date": datetime.now().strftime("%d.%m.%Y"),
+    #         "time": datetime.now().strftime("%H:%M"),
+    #         "waiter": "",
+    #         "items": [],
+    #         "subtotal": 0,
+    #         "service_charge": {"name": "", "amount": 0},
+    #         "vat": {"rate": 0, "amount": 0},
+    #         "total": 0
+    #     }
+    #     await add_check_to_database(self.session, check_uuid, user_id, check_data)
+    #
+    #     # Кэширование в Redis
+    #     await redis_client.set(
+    #         f"check_uuid:{check_uuid}",
+    #         json.dumps(check_data),
+    #         expire=REDIS_EXPIRATION
+    #     )
+    #
+    #     msg = create_event_message(
+    #         message_type=Events.CHECK_ADD_EVENT,
+    #         payload={"uuid": check_uuid}
+    #     )
+    #     await self._send_ws_message(user_id, msg)
 
     async def join_check(self, user_id: int, check_uuid: str) -> None:
         try:
