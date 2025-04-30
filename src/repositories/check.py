@@ -210,6 +210,10 @@ async def edit_check_status_to_database(session: AsyncSession, user_id: int, che
         return "Check not found."
 
     await session.commit()
+
+    # Получаем данные чека что бы закешировать их
+    await get_check_data_from_database(session, check_uuid)
+
     return "Check status updated successfully."
 
 

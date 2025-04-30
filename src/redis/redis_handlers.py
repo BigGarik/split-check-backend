@@ -150,7 +150,7 @@ async def handle_edit_check_status_task(session: AsyncSession, task_data: dict):
         user_id=task_data["user_id"],
         check_uuid=task_data["check_uuid"],
         check_status=task_data["check_status"],
-        check_manager=CheckManager(session)
+        session=session
     )
 
 

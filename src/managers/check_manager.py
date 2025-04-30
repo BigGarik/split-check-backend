@@ -62,55 +62,55 @@ class CheckManager:
         )
         await self._send_ws_message(user_id, error_message)
 
-    async def add_check(self, user_id: int, check_uuid: str, check_data: dict) -> None:
+    # async def add_check(self, user_id: int, check_uuid: str, check_data: dict) -> None:
+    #
+    #     await add_check_to_database(self.session, check_uuid, user_id, check_data)
+    #
+    #     # Сохранение результатов в Redis
+    #     redis_key = f"check_uuid:{check_uuid}"
+    #     await redis_client.set(redis_key,
+    #                            json.dumps(check_data),
+    #                            expire=REDIS_EXPIRATION)
+    #
+    #     msg = create_event_message(
+    #         message_type=Events.IMAGE_RECOGNITION_EVENT,
+    #         payload={"uuid": check_uuid}
+    #     )
+    #     await self._send_ws_message(user_id, msg)
 
-        await add_check_to_database(self.session, check_uuid, user_id, check_data)
+    # async def get_check_data_by_uuid(self, check_uuid: str) -> Dict[str, Any]:
+    #     redis_key = f"check_uuid:{check_uuid}"
+    #
+    #     # Попытка получить данные из Redis
+    #     cached_data = await redis_client.get(redis_key)
+    #     if cached_data:
+    #         logger.debug(f"Получены данные чека из Redis: {check_uuid}")
+    #         return json.loads(cached_data)
+    #
+    #     # Если нет в Redis, ищем в базе данных
+    #     check = await get_check_by_uuid(self.session, check_uuid)
+    #     if not check:
+    #         logger.warning(f"Чек не найден: {check_uuid}")
+    #         raise HTTPException(status_code=404, detail="Check not found")
+    #
+    #     # Кэширование в Redis
+    #     await redis_client.set(
+    #         redis_key,
+    #         json.dumps(check.check_data),
+    #         expire=REDIS_EXPIRATION
+    #     )
+    #
+    #     logger.debug(f"Данные чека получены из БД: {check_uuid}")
+    #     return check.check_data
 
-        # Сохранение результатов в Redis
-        redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key,
-                               json.dumps(check_data),
-                               expire=REDIS_EXPIRATION)
-
-        msg = create_event_message(
-            message_type=Events.IMAGE_RECOGNITION_EVENT,
-            payload={"uuid": check_uuid}
-        )
-        await self._send_ws_message(user_id, msg)
-
-    async def get_check_data_by_uuid(self, check_uuid: str) -> Dict[str, Any]:
-        redis_key = f"check_uuid:{check_uuid}"
-
-        # Попытка получить данные из Redis
-        cached_data = await redis_client.get(redis_key)
-        if cached_data:
-            logger.debug(f"Получены данные чека из Redis: {check_uuid}")
-            return json.loads(cached_data)
-
-        # Если нет в Redis, ищем в базе данных
-        check = await get_check_by_uuid(self.session, check_uuid)
-        if not check:
-            logger.warning(f"Чек не найден: {check_uuid}")
-            raise HTTPException(status_code=404, detail="Check not found")
-
-        # Кэширование в Redis
-        await redis_client.set(
-            redis_key,
-            json.dumps(check.check_data),
-            expire=REDIS_EXPIRATION
-        )
-
-        logger.debug(f"Данные чека получены из БД: {check_uuid}")
-        return check.check_data
-
-    async def update_check_data(self, check_uuid: str, check_data: dict) -> dict:
-
-        await update_check_data_to_database(self.session, check_uuid, check_data)
-
-        # Обновляем кэш Redis
-        redis_key = f"check_uuid:{check_uuid}"
-        await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
-        return check_data
+    # async def update_check_data(self, check_uuid: str, check_data: dict) -> dict:
+    #
+    #     await update_check_data_to_database(self.session, check_uuid, check_data)
+    #
+    #     # Обновляем кэш Redis
+    #     redis_key = f"check_uuid:{check_uuid}"
+    #     await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
+    #     return check_data
 
     # async def edit_check_name(self, user_id: int, check_uuid: str, check_name: str):
     #     new_name_status = await edit_check_name_to_database(self.session, user_id, check_uuid, check_name)
@@ -137,30 +137,30 @@ class CheckManager:
     #             except Exception as e:
     #                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
-    async def edit_check_status(self, user_id: int, check_uuid: str, check_status: str):
-        status = await edit_check_status_to_database(self.session, user_id, check_uuid, check_status)
-        users = await get_users_by_check_uuid(self.session, check_uuid)
-        if status == "Check status updated successfully.":
-            msg_for_author = create_event_status_message(
-                message_type=Events.CHECK_STATUS_EVENT_STATUS,
-                status="success"
-            )
-
-            msg_for_all = create_event_message(
-                message_type=Events.CHECK_STATUS_EVENT,
-                payload={"check_status": check_status},
-            )
-
-            all_user_ids = {user.id for user in users}
-            logger.debug(f"Все пользователи для отправки: {all_user_ids}")
-
-            # Отправка сообщений всем пользователям
-            for uid in all_user_ids:
-                msg = msg_for_author if uid == user_id else msg_for_all
-                try:
-                    await self._send_ws_message(uid, msg)
-                except Exception as e:
-                    logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+    # async def edit_check_status(self, user_id: int, check_uuid: str, check_status: str):
+    #     status = await edit_check_status_to_database(self.session, user_id, check_uuid, check_status)
+    #     users = await get_users_by_check_uuid(self.session, check_uuid)
+    #     if status == "Check status updated successfully.":
+    #         msg_for_author = create_event_status_message(
+    #             message_type=Events.CHECK_STATUS_EVENT_STATUS,
+    #             status="success"
+    #         )
+    #
+    #         msg_for_all = create_event_message(
+    #             message_type=Events.CHECK_STATUS_EVENT,
+    #             payload={"check_status": check_status},
+    #         )
+    #
+    #         all_user_ids = {user.id for user in users}
+    #         logger.debug(f"Все пользователи для отправки: {all_user_ids}")
+    #
+    #         # Отправка сообщений всем пользователям
+    #         for uid in all_user_ids:
+    #             msg = msg_for_author if uid == user_id else msg_for_all
+    #             try:
+    #                 await self._send_ws_message(uid, msg)
+    #             except Exception as e:
+    #                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
 
     # async def send_check_data(self, user_id: int, check_uuid: str) -> None:
     #     check_data = await self.get_check_data_by_uuid(check_uuid)
@@ -208,18 +208,18 @@ class CheckManager:
     #     logger.debug(f"Страница все чеки: {msg}")
     #     await self._send_ws_message(user_id, msg)
 
-    async def send_main_page_checks(self, user_id: int) -> None:
-        checks_data = await get_main_page_checks(self.session, user_id)
-        msg = create_event_message(
-            message_type=Events.MAIN_PAGE_EVENT,
-            payload={
-                "checks": checks_data["items"],
-                "total_open": checks_data["total_open"],
-                "total_closed": checks_data["total_closed"],
-            }
-        )
-        logger.debug(msg)
-        await self._send_ws_message(user_id, msg)
+    # async def send_main_page_checks(self, user_id: int) -> None:
+    #     checks_data = await get_main_page_checks(self.session, user_id)
+    #     msg = create_event_message(
+    #         message_type=Events.MAIN_PAGE_EVENT,
+    #         payload={
+    #             "checks": checks_data["items"],
+    #             "total_open": checks_data["total_open"],
+    #             "total_closed": checks_data["total_closed"],
+    #         }
+    #     )
+    #     logger.debug(msg)
+    #     await self._send_ws_message(user_id, msg)
 
     # async def create_empty(self, user_id: int, check_uuid: str) -> None:
     #     check_data = {
