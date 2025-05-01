@@ -79,6 +79,7 @@ ENABLE_DOCS = os.getenv("ENABLE_DOCS", True)
 
 ALLOWED_IPS = json.loads(os.getenv("ALLOWED_IPS", '["127.0.0.1"]'))
 
+OPEN_EXCHANGE_RATES_API_KEY = os.getenv("OPEN_EXCHANGE_RATES_API_KEY")
 
 # from typing import ClassVar, List
 #

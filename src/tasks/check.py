@@ -13,6 +13,7 @@ from src.repositories.check import get_check_data_from_database, get_all_checks,
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.services.user import join_user_to_check
+from src.utils.exchange import get_exchange_rate, round_half_up
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
@@ -342,3 +343,76 @@ async def user_delete_from_check_task(check_uuid: str, user_id_for_delete: int, 
             message=json.dumps(error_message),
             user_id=current_user_id
         )
+
+
+async def convert_check_currency_task(check_uuid: str, target_currency: str, user_id: int, session: AsyncSession) -> None:
+    """
+    Конвертирует данные чека из его валюты в целевую валюту.
+
+    Args:
+        check_uuid: str - UUID чека
+        target_currency: str - Целевая валюта (например, "USD", "EUR")
+        user_id: int - ИД пользователя
+        session: AsyncSession
+    Raises:
+        Exception: Если чек не найден или произошла ошибка при конвертации
+    """
+    try:
+        # Получаем данные чека из базы
+        check_data = await get_check_data_from_database(session, check_uuid)
+
+        # Валюта чека
+        check_currency = check_data["currency"]
+
+        # Получаем курс обмена
+        exchange_rate = await get_exchange_rate(check_currency, target_currency)
+        if exchange_rate is None:
+            raise Exception(f"Не удалось получить курс обмена между {check_currency} и {target_currency}")
+
+        # Создаем копию данных чека для изменений
+        converted_check_data = check_data.copy()
+
+        # Конвертируем основные суммы
+        converted_check_data["subtotal"] = round_half_up(converted_check_data["subtotal"] / exchange_rate)
+        converted_check_data["total"] = round_half_up(converted_check_data["total"] / exchange_rate)
+
+        # Конвертируем дополнительные суммы (service_charge, vat, discount), если они есть
+        if converted_check_data["service_charge"]:
+            converted_check_data["service_charge"]["amount"] = round_half_up(
+                converted_check_data["service_charge"]["amount"] / exchange_rate
+                if converted_check_data["service_charge"]["amount"] is not None else None
+            )
+
+        if converted_check_data["vat"]:
+            converted_check_data["vat"]["amount"] = round_half_up(
+                converted_check_data["vat"]["amount"] / exchange_rate
+                if converted_check_data["vat"]["amount"] is not None else None
+            )
+
+        if converted_check_data["discount"]:
+            converted_check_data["discount"]["amount"] = round_half_up(
+                converted_check_data["discount"]["amount"] / exchange_rate
+                if converted_check_data["discount"]["amount"] is not None else None
+            )
+
+        # Конвертируем суммы для каждой позиции в чеке
+        for item in converted_check_data["items"]:
+
+            item["sum"] = round_half_up(item["sum"] / exchange_rate)
+            item["price"] = round_half_up(item["sum"] / item["quantity"])
+
+        # Обновляем валюту чека
+        converted_check_data["currency"] = target_currency
+
+        logger.debug(f"converted_check_data :{converted_check_data}")
+
+        msg = create_event_message(Events.CHECK_CONVERT_CURRENCY_EVENT, converted_check_data)
+
+        await ws_manager.send_personal_message(
+            message=json.dumps(msg),
+            user_id=user_id
+        )
+
+    except Exception as e:
+        logger.error(f"Error while converting check currency: {e}")
+        raise
