@@ -25,50 +25,54 @@ async def get_current_user(
         http_auth: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer)
 ):
     """
-    Dependency для проверки и получения текущего пользователя через Firebase или OAuth2.
+    Dependency для проверки и получения текущего пользователя.
+    Теперь поддерживает:
+    - Куки (access_token)
+    - OAuth2
+    - Bearer токен
+    - Firebase токен
     """
     try:
         logger.debug(f"oauth2_token: {oauth2_token}")
         logger.debug(f"http_auth: {http_auth}")
-        # Определяем токен из разных источников
-        firebase_token = None
-        token = None
 
-        # Приоритет 1: OAuth2 токен из схемы OAuth2PasswordBearer
-        if oauth2_token:
-            logger.debug(f"Приоритет 1. oauth2_token: {oauth2_token}")
+        firebase_token = None
+        email = None
+
+        # 🥇 Приоритет 0: Кука
+        cookie_token = request.cookies.get('access_token')
+        if cookie_token:
+            logger.debug("Приоритет 0: access_token из куки")
+            email, _ = await verify_token(ACCESS_SECRET_KEY, token=cookie_token)
+
+        # 🥈 Приоритет 1: OAuth2 токен
+        elif oauth2_token:
+            logger.debug("Приоритет 1: OAuth2 токен")
             email, _ = await verify_token(ACCESS_SECRET_KEY, token=oauth2_token)
 
-        # Приоритет 2: Bearer токен из заголовка HTTP
+        # 🥉 Приоритет 2: Firebase токен из заголовка
         elif http_auth:
-            logger.debug(f"Приоритет 2. http_auth: {http_auth}")
+            logger.debug("Приоритет 2: Firebase токен")
             firebase_token = http_auth.credentials
             claims = await get_token_from_redis(firebase_token)
-            logger.debug(f"claims_from_redis: {claims}")
             if not claims:
                 claims = get_firebase_user(firebase_token)
-                logger.debug(f"claims_from_firebase: {claims}")
                 await add_token_to_redis(firebase_token, claims)
-
             email = claims.get('email')
 
-        # Приоритет 3: Токен из обычного заголовка Authorization (для обратной совместимости)
+        # 🟡 Приоритет 3: Authorization header вручную
         else:
             auth_header = request.headers.get('Authorization')
-
             if auth_header:
-                logger.debug(f"Приоритет 3. auth_header: {auth_header}")
+                logger.debug("Приоритет 3: Authorization header")
                 if auth_header.startswith('Bearer '):
                     firebase_token = auth_header.replace('Bearer ', '')
                 else:
                     firebase_token = auth_header
-                logger.debug(f"firebase_token: {firebase_token}")
-                claims = await get_token_from_redis(firebase_token)
-                logger.debug(f"claims_from_redis: {claims}")
 
+                claims = await get_token_from_redis(firebase_token)
                 if not claims:
                     claims = get_firebase_user(firebase_token)
-                    logger.debug(f"claims_from_firebase: {claims}")
                     await add_token_to_redis(firebase_token, claims)
 
                 email = claims.get('email')
@@ -79,7 +83,7 @@ async def get_current_user(
                     headers={"WWW-Authenticate": "Bearer"}
                 )
 
-        # Если мы дошли до этой точки, у нас должен быть email
+        # 🔐 Ищем пользователя по email
         user = await get_user_by_email(email)
         if not user:
             raise HTTPException(
@@ -89,13 +93,12 @@ async def get_current_user(
 
         return user
 
+    # 👇 Оставляем твои исключения без изменений
     except HTTPException as he:
-        # Для доступа к документации без авторизации
         if request.url.path in ['/docs', '/redoc', '/openapi.json']:
             return None
         raise he
     except JWTError:
-        # Для доступа к документации без авторизации
         if request.url.path in ['/docs', '/redoc', '/openapi.json']:
             return None
         raise HTTPException(
@@ -104,7 +107,6 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
     except Exception as e:
-        # Для доступа к документации без авторизации
         if request.url.path in ['/docs', '/redoc', '/openapi.json']:
             return None
         logger.exception(e)
@@ -113,6 +115,7 @@ async def get_current_user(
             detail="Не удалось проверить учетные данные",
             headers={"WWW-Authenticate": "Bearer"}
         )
+
 
 
 async def get_current_user_for_websocket(websocket: WebSocket):

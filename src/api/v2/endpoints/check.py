@@ -20,7 +20,7 @@ from src.config.type_events import Events
 from src.models import User, StatusEnum
 from src.redis import redis_client
 from src.redis.queue_processor import get_queue_processor
-from src.repositories.check import get_main_page_checks, get_all_checks, get_check_data, add_check_to_database
+from src.repositories.check import get_main_page_checks, get_all_checks_for_user, get_check_data, add_check_to_database
 from src.tasks import calculate_price
 from src.utils.db import get_session
 from src.utils.notifications import create_event_message
@@ -48,14 +48,9 @@ async def get_all_check(
                         user: User = Depends(get_current_user),
                         session: AsyncSession = Depends(get_session)):
     try:
-        checks_data = await get_all_checks(session,
-                                           user_id=user.id,
-                                           page=page,
-                                           page_size=page_size,
-                                           check_name=check_name,
-                                           check_status=check_status,
-                                           start_date=start_date,
-                                           end_date=end_date)
+        checks_data = await get_all_checks_for_user(session, user_id=user.id, page=page, page_size=page_size,
+                                                    check_name=check_name, check_status=check_status,
+                                                    start_date=start_date, end_date=end_date)
 
         payload = {
             "checks": checks_data["items"],

@@ -39,7 +39,7 @@ class StatusEnum(enum.Enum):
 class Check(Base):
     __tablename__ = "checks"
     uuid: Mapped[str] = mapped_column(primary_key=True)
-    name: Mapped[str]
+    name: Mapped[str] = mapped_column(String, nullable=True)
 
     restaurant: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -102,19 +102,19 @@ class Check(Base):
         return f"Check(uuid={self.uuid})"
 
 
-@event.listens_for(Check, 'before_insert')
-def generate_name(mapper, connection, target):
-    # Генерируем имя по шаблону "check_created_at_первая часть uuid до тире"
-    if target.created_at is None:
-        target.created_at = datetime.now()
-    created_at_str = target.created_at.strftime('%Y%m%d')
-    uuid_part = target.uuid.split('-')[0]
-    # Получаем имя ресторана из check_data, если оно существует.
-    restaurant_name = target.check_data.get('restaurant', '')
-    if restaurant_name:  # Если имя ресторана не пустое
-        target.name = f"{restaurant_name}_{created_at_str}_{uuid_part}"
-    else:
-        target.name = f"check_{created_at_str}_{uuid_part}"
+# @event.listens_for(Check, 'before_insert')
+# def generate_name(mapper, connection, target):
+#     # Генерируем имя по шаблону "check_created_at_первая часть uuid до тире"
+#     if target.created_at is None:
+#         target.created_at = datetime.now()
+#     created_at_str = target.created_at.strftime('%Y%m%d')
+#     uuid_part = target.uuid.split('-')[0]
+#     # Получаем имя ресторана из check_data, если оно существует.
+#     restaurant_name = target.check_data.get('restaurant', '')
+#     if restaurant_name:  # Если имя ресторана не пустое
+#         target.name = f"{restaurant_name}_{created_at_str}_{uuid_part}"
+#     else:
+#         target.name = f"check_{created_at_str}_{uuid_part}"
 
 
 class UserSelection(Base):

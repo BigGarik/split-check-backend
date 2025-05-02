@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.type_events import Events
 from src.redis import redis_client
-from src.repositories.check import get_check_data_from_database, get_all_checks, get_main_page_checks, \
+from src.repositories.check import get_check_data_from_database, get_all_checks_for_user, get_main_page_checks, \
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \
     is_check_author
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
@@ -57,14 +57,9 @@ async def send_check_data_task(user_id: int, check_uuid: str, session: AsyncSess
 
 # refac
 async def send_all_checks_task(user_id: int, page: int, page_size: int, session: AsyncSession, check_name: Optional[str] = None, check_status: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
-    checks_data = await get_all_checks(session,
-                                       user_id=user_id,
-                                       page=page,
-                                       page_size=page_size,
-                                       check_name=check_name,
-                                       check_status=check_status,
-                                       start_date=start_date,
-                                       end_date=end_date)
+    checks_data = await get_all_checks_for_user(session, user_id=user_id, page=page, page_size=page_size,
+                                                check_name=check_name, check_status=check_status, start_date=start_date,
+                                                end_date=end_date)
     msg = create_event_message(
         message_type=Events.ALL_BILL_EVENT,
         payload={

@@ -11,7 +11,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
 from src.config import REDIS_EXPIRATION
-from src.models import Check, user_check_association, User, UserSelection
+from src.models import Check, user_check_association, User, UserSelection, StatusEnum
 from src.redis import redis_client
 from src.repositories.item import get_items_by_check_uuid, add_item_to_check
 from src.repositories.user_selection import get_user_selection_by_check_uuid
@@ -245,6 +245,7 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
         # Создаем новый чек с указанием автора и заполнением всех полей
         new_check = Check(
             uuid=check_uuid,
+            name=check_data.get("restaurant") or "check",
             check_data=check_data,
             author_id=user_id,
             restaurant=check_data.get("restaurant") or None,
@@ -390,7 +391,7 @@ def format_datetime(dt: datetime) -> str:
     return dt.isoformat() if dt else None
 
 
-async def get_all_checks(session: AsyncSession,
+async def get_all_checks_for_user(session: AsyncSession,
                          user_id: int,
                          page: int,
                          page_size: int,
@@ -666,3 +667,83 @@ async def get_check_data(session: AsyncSession, user_id: int, check_uuid: str) -
     except Exception as e:
         logger.error(f"Ошибка при получении данных чека: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+async def get_all_checks_for_admin(
+    session: AsyncSession,
+    user_id: Optional[int] = None,
+    email: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 10,
+    check_name: Optional[str] = None,
+    check_status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    restaurant: Optional[str] = None,
+    author_id: Optional[int] = None,
+    currency: Optional[str] = None
+) -> dict:
+    offset = (page - 1) * page_size
+    filters = []
+
+    if check_name:
+        filters.append(Check.name.ilike(f"%{check_name}%"))
+
+    if check_status:
+        try:
+            filters.append(Check.status == StatusEnum(check_status))
+        except ValueError:
+            pass
+
+    if start_date:
+        filters.append(Check.date >= start_date)
+
+    if end_date:
+        filters.append(Check.date <= end_date)
+
+    if restaurant:
+        filters.append(Check.restaurant.ilike(f"%{restaurant}%"))
+
+    if author_id:
+        filters.append(Check.author_id == author_id)
+
+    if currency:
+        filters.append(Check.currency == currency.upper())
+
+    stmt = select(Check).options(selectinload(Check.author))
+
+    if user_id:
+        stmt = stmt.join(Check.users).where(User.id == user_id)
+
+    if email:
+        stmt = stmt.join(Check.author).where(User.email.ilike(f"%{email}%"))
+
+    if filters:
+        stmt = stmt.where(and_(*filters))
+
+    stmt = stmt.order_by(Check.created_at.desc()).offset(offset).limit(page_size)
+
+    result = await session.execute(stmt)
+    checks = result.scalars().all()
+
+    # Считаем total отдельно с учётом тех же фильтров
+    count_stmt = select(func.count(Check.uuid))
+
+    if user_id:
+        count_stmt = count_stmt.join(Check.users).where(User.id == user_id)
+
+    if email:
+        count_stmt = count_stmt.join(Check.author).where(User.email.ilike(f"%{email}%"))
+
+    if filters:
+        count_stmt = count_stmt.where(and_(*filters))
+
+    total_result = await session.execute(count_stmt)
+    total_count = total_result.scalar_one()
+    total_pages = (total_count + page_size - 1) // page_size
+
+    return {
+        "checks": checks,
+        "page": page,
+        "total_pages": total_pages,
+    }

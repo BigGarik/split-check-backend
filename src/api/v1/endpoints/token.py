@@ -5,7 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from starlette.requests import Request
 
-from src.config import REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY
+from src.config import REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, \
+    REFRESH_TOKEN_EXPIRE_MINUTES
 from src.core.security import verify_token
 from src.services.auth import authenticate_user, generate_tokens
 from src.schemas import RefreshTokenRequest, TokenResponse
@@ -45,9 +46,29 @@ async def login_for_access_token(request: Request,
         key="refresh_token",
         value=tokens["refresh_token"],
         httponly=True,
-        secure=True,  # для HTTPS
+        secure=False,  # для HTTPS
         samesite="strict",
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS
+        max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60
+    )
+
+    # Также сохраним access_token в куки
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+
+    response.set_cookie(
+        key="is_authenticated",
+        value="true",
+        path="/",
+        httponly=False,  # Доступно для JavaScript
+        secure=False,
+        samesite="strict",
+        max_age = ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
     return tokens
@@ -61,7 +82,7 @@ async def login_for_access_token(request: Request,
         401: {"description": "Invalid refresh token"}
     }
 )
-async def refresh_access_token(request: RefreshTokenRequest) -> Dict[str, str]:
+async def refresh_access_token(request: RefreshTokenRequest, response: Response) -> Dict[str, str]:
     """Refresh access token using either cookie or request body."""
     token = request.refresh_token
 
@@ -78,6 +99,35 @@ async def refresh_access_token(request: RefreshTokenRequest) -> Dict[str, str]:
         )
         tokens = await generate_tokens(email, user_id)
 
+        # Обновляем куки с новыми токенами
+        response.set_cookie(
+            key="refresh_token",
+            value=tokens["refresh_token"],
+            httponly=True,
+            secure=False,
+            samesite="strict",
+            max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60
+        )
+
+        response.set_cookie(
+            key="access_token",
+            value=tokens["access_token"],
+            httponly=True,
+            secure=False,
+            samesite="strict",
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        )
+
+        response.set_cookie(
+            key="is_authenticated",
+            value="true",
+            path="/",
+            httponly=False,  # Доступно для JavaScript
+            secure=False,
+            samesite="strict",
+            max_age = ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        )
+
         return tokens
     except JWTError:
         raise HTTPException(
@@ -88,10 +138,21 @@ async def refresh_access_token(request: RefreshTokenRequest) -> Dict[str, str]:
 
 @router.post("/logout")
 async def logout(response: Response):
-    """Clear refresh token cookie."""
+    """Clear all token cookies."""
     response.delete_cookie(
         key="refresh_token",
-        secure=True,
+        secure=False,
         httponly=True
     )
+    response.delete_cookie(
+        key="access_token",
+        secure=False,
+        httponly=True
+    )
+    response.delete_cookie(
+        key="is_authenticated",
+        httponly=False,  # Доступно для JavaScript
+        secure=False,
+    )
+
     return {"message": "Successfully logged out"}
