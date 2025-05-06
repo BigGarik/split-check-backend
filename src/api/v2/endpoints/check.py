@@ -8,7 +8,7 @@ from typing import Optional
 from uuid import UUID
 
 import aiofiles
-from fastapi import APIRouter, UploadFile, File, Depends, Request, Query, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, Request, Query, HTTPException, Body, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
@@ -20,8 +20,12 @@ from src.config.type_events import Events
 from src.models import User, StatusEnum
 from src.redis import redis_client
 from src.redis.queue_processor import get_queue_processor
-from src.repositories.check import get_main_page_checks, get_all_checks_for_user, get_check_data, add_check_to_database
-from src.tasks import calculate_price
+from src.repositories.check import get_all_checks_for_user, get_check_data, add_check_to_database, \
+    edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, is_check_author
+from src.repositories.user import get_users_by_check_uuid, get_user_by_id
+from src.repositories.user_selection import add_or_update_user_selection
+from src.schemas import CheckSelectionRequest
+from src.services.user import join_user_to_check
 from src.utils.db import get_session
 from src.utils.notifications import create_event_message
 from src.websockets.manager import ws_manager
@@ -64,16 +68,16 @@ async def get_all_check(
         logger.debug(f"Отправлены данные всех чеков для пользователя ИД {user.id}: {payload}")
         return payload
     except Exception as e:
-        logger.error(f"Ошибка при отправке всех чеков: {str(e)}")
+        logger.error(f"Ошибка при отправке всех чеков: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Ошибка при получении данных: {str(e)}"
+            detail="Внутренняя ошибка сервера"
         )
 
 
-@router.get("/{uuid}", summary="Получить чек по UUID", response_model=None)
+@router.get("/{uuid}", summary="Получить чек по UUID", response_model=dict)
 async def get_check(
-                    uuid: UUID,
+                    uuid: UUID = Path(..., description="UUID чека"),
                     user: User = Depends(get_current_user),
                     session: AsyncSession = Depends(get_session)
                     ):
@@ -84,11 +88,41 @@ async def get_check(
         return check_data
 
     except Exception as e:
-        logger.error(f"Ошибка при отправке чека: {str(e)}")
+        logger.error(f"Ошибка при отправке чека: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Ошибка при получении данных: {str(e)}"
+            detail="Внутренняя ошибка сервера"
         )
+
+
+@router.post("/add", summary="Добавление пустого чека", response_model=dict, status_code=200)
+async def add_empty_check(
+        request: Request,
+        user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_session)
+):
+    """
+    Создает пустой чек и сохраняет его в базу данных.
+
+    - **user**: Текущий авторизованный пользователь (получен через Depends).
+    - **session**: Асинхронная сессия SQLAlchemy.
+
+    Returns:
+        dict: UUID созданного чека.
+    """
+    check_uuid = str(uuid.uuid4())
+
+    try:
+        await add_check_to_database(session, check_uuid, user.id)
+        logger.debug(f"Пользователь {user.id} добавил чек {check_uuid}")
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении чека: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось создать чек"
+        )
+
+    return {"uuid": check_uuid}
 
 
 @router.post("/upload",
@@ -172,8 +206,382 @@ async def upload_image(
         raise HTTPException(status_code=500, detail="Ошибка загрузки изображения")
 
 
+@router.post("/{uuid}/select", summary="Выбор пользователя")
+async def user_selection(request: Request,
+                         selection: CheckSelectionRequest,
+                         uuid: UUID = Path(..., description="UUID чека"),
+                         user: User = Depends(get_current_user),
+                         session: AsyncSession = Depends(get_session)
+                         ):
+    check_uuid = str(uuid)
+    selection_data = selection.model_dump()
+    try:
+        # Обновляем или добавляем выбор пользователя
+        await add_or_update_user_selection(session, user_id=user.id, check_uuid=check_uuid,
+                                           selection_data=selection_data)
+
+        # Получаем участников и пользователей, связанных с чеком
+        users = await get_users_by_check_uuid(session, check_uuid)
+
+        selections = {
+            "user_id": user.id,
+            "selected_items": selection_data['selected_items']
+        }
+
+        logger.debug(f"selection_data: {selections}")
+
+        all_user_ids = {user.id for user in users}
+
+        # Формируем сообщения
+        msg_for_all = create_event_message(
+            message_type=Events.CHECK_SELECTION_EVENT,
+            payload={"uuid": check_uuid, "participants": [selections]},
+        )
+
+        # Отправка сообщений всем пользователям
+        for uid in all_user_ids:
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg_for_all),
+                    user_id=uid)
+            except Exception as e:
+                logger.error(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"uuid": check_uuid, "participants": [selections]}
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при выполнении задачи выбора пользователя: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Внутренняя ошибка сервера"
+        )
+
+
+@router.put("/{uuid}/name",
+            summary="Изменение названия чека",
+            status_code=200,
+            response_model=dict)
+async def edit_check_name(
+        request: Request,
+        uuid: UUID = Path(..., description="UUID чека"),
+        check_name: str = Body(..., embed=True, min_length=1, max_length=100, description="Новое имя чека"),
+        user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_session)
+):
+    """
+    Обновляет название чека и уведомляет всех участников.
+
+    - **uuid**: Идентификатор чека
+    - **check_name**: Новое название
+    """
+    check_uuid = str(uuid)
+
+    try:
+        success = await edit_check_name_to_database(session, user.id, check_uuid, check_name)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Чек не найден или не удалось обновить название."
+            )
+
+        users = await get_users_by_check_uuid(session, check_uuid)
+
+        msg = create_event_message(
+            message_type=Events.CHECK_NAME_EVENT,
+            payload={"check_uuid": check_uuid, "check_name": check_name}
+        )
+        all_user_ids = {u.id for u in users}
+
+        for uid in all_user_ids:
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg),
+                    user_id=uid
+                )
+            except Exception as e:
+                logger.warning(f"Ошибка отправки WebSocket сообщения пользователю {uid}: {e}")
+
+        logger.info(f"Пользователь {user.id} обновил название чека {check_uuid} на '{check_name}'")
+        return {"check_uuid": check_uuid, "check_name": check_name}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Ошибка при изменении названия чека: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка сервера при изменении названия чека."
+        )
+
+
+@router.put("/{uuid}/status",
+                summary="Изменение статуса чека",
+                description="Эндпоинт для изменения статуса чека. Допустимые значения: 'OPEN', 'CLOSE'.",
+                response_description="Подтверждение отправки через WebSocket",
+                response_model=dict,
+                status_code=status.HTTP_200_OK)
+async def edit_check_status(
+        request: Request,
+        uuid: UUID = Path(..., description="UUID чека"),
+        check_status: StatusEnum = Body(..., embed=True, description="Новый статус чека: 'OPEN' или 'CLOSE'"),
+        user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_session)
+):
+    """
+    Обновляет статус чека и уведомляет участников через WebSocket.
+    """
+    check_uuid = str(uuid)
+    check_status = check_status.value
+
+    try:
+        success = await edit_check_status_to_database(session, user.id, check_uuid, check_status)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Чек не найден или вы не авторизованы для изменения."
+            )
+
+        users = await get_users_by_check_uuid(session, check_uuid)
+        all_user_ids = {u.id for u in users}
+
+        msg = create_event_message(
+            message_type=Events.CHECK_STATUS_EVENT,
+            payload={"check_uuid": check_uuid, "check_status": check_status}
+        )
+
+        logger.debug(f"Подготовка отправки статуса {check_status} для чека {check_uuid} пользователям: {all_user_ids}")
+
+        for uid in all_user_ids:
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg),
+                    user_id=uid
+                )
+            except Exception as e:
+                logger.warning(f"Ошибка WebSocket отправки пользователю {uid}: {e}")
+
+        logger.info(f"Пользователь {user.id} установил статус '{check_status}' для чека {check_uuid}")
+        return {"check_uuid": check_uuid, "check_status": check_status}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Серверная ошибка при обновлении статуса чека: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка сервера при обновлении статуса чека."
+        )
+
+
+@router.post(
+    "/{uuid}/join",
+    summary="Присоединение пользователя к чеку",
+    response_description="Информация о присоединившемся пользователе",
+    response_model=dict,
+    status_code=status.HTTP_200_OK
+)
+async def join_check(
+    request: Request,
+    uuid: UUID = Path(..., description="UUID чека, к которому присоединяется пользователь"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Присоединяет пользователя к чеку. Уведомляет всех участников через WebSocket.
+    """
+    check_uuid = str(uuid)
+
+    try:
+        joined = await join_user_to_check(user.id, check_uuid)
+        if not joined:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Пользователь уже присоединён к этому чеку."
+            )
+
+        joined_user = await get_user_by_id(session, user.id)
+        users = await get_users_by_check_uuid(session, check_uuid)
+
+        event_payload = {
+            "user_id": joined_user.id,
+            "nickname": joined_user.profile.nickname,
+            "avatar_url": joined_user.profile.avatar_url,
+        }
+
+        msg_for_all = create_event_message(
+            message_type=Events.USER_JOIN_EVENT,
+            payload=event_payload
+        )
+
+        all_user_ids = {u.id for u in users}
+        logger.debug(f"Пользователь {user.id} присоединился к чеку {check_uuid}. Уведомляем: {all_user_ids}")
+
+        for uid in all_user_ids:
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg_for_all),
+                    user_id=uid
+                )
+            except Exception as e:
+                logger.warning(f"WebSocket ошибка для пользователя {uid}: {e}")
+
+        logger.info(f"Пользователь {user.id} успешно присоединился к чеку {check_uuid}")
+        return event_payload
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Ошибка в {Events.USER_JOIN_EVENT} при присоединении пользователя {user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Серверная ошибка при присоединении к чеку."
+        )
+
+
+@router.delete(
+    "/{uuid}",
+    summary="Удаление чека",
+    response_description="UUID удалённого чека",
+    status_code=status.HTTP_200_OK,
+    response_model=dict
+)
+async def delete_check(
+    request: Request,
+    uuid: UUID = Path(..., description="UUID чека для удаления"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Удаляет чек и уведомляет участников через WebSocket.
+    """
+    check_uuid = str(uuid)
+
+    try:
+        users = await get_users_by_check_uuid(session, check_uuid)
+        if not users:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Чек с UUID {check_uuid} не найден или у вас нет прав."
+            )
+
+        await delete_association_by_check_uuid(session, check_uuid, user.id)
+
+        msg_for_all = create_event_message(
+            message_type=Events.CHECK_DELETE_EVENT,
+            payload={"check_uuid": check_uuid},
+        )
+
+        all_user_ids = {u.id for u in users}
+        logger.debug(f"Чек {check_uuid} удалён пользователем {user.id}. Уведомляем: {all_user_ids}")
+
+        for uid in all_user_ids:
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg_for_all),
+                    user_id=uid
+                )
+            except Exception as e:
+                logger.warning(f"WebSocket ошибка при отправке пользователю {uid}: {e}")
+
+        return {"check_uuid": check_uuid}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Ошибка при удалении чека {check_uuid}", extra={"user_id": user.id})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Серверная ошибка при удалении чека."
+        )
+
+
+@router.delete(
+    "/{uuid}/users/{user_id_for_delete}",
+    summary="Удаление пользователя из чека",
+    description="Удаляет указанного пользователя из чека (только автор может выполнить).",
+    response_description="UUID чека и ID удалённого пользователя",
+    status_code=status.HTTP_200_OK,
+    response_model=dict
+)
+async def user_delete_from_check(
+    request: Request,
+    uuid: UUID = Path(..., description="UUID чека"),
+    user_id_for_delete: int = Path(..., title="ID пользователя для удаления из чека"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Удаляет пользователя из чека. Только автор чека может это сделать.
+    Отправляет уведомления через WebSocket всем участникам.
+
+    - **uuid**: UUID чека.
+    - **user_id_for_delete**: ID пользователя, которого нужно удалить.
+    - **user**: Аутентифицированный пользователь (предположительно автор чека).
+    """
+    check_uuid = str(uuid)
+
+    try:
+        # Проверка авторских прав
+        if not await is_check_author(session, user.id, check_uuid):
+            logger.warning(
+                f"User {user.id} попытался удалить user {user_id_for_delete} из чека {check_uuid} без прав автора.",
+                extra={"initiator": user.id, "target_user": user_id_for_delete, "check_uuid": check_uuid}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Только автор чека может удалять пользователей."
+            )
+
+        # Сохраняем участников до удаления
+        users = await get_users_by_check_uuid(session, check_uuid)
+
+        # Удаление
+        await delete_association_by_check_uuid(session, check_uuid, user_id_for_delete)
+
+        msg_for_all = create_event_message(
+            message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
+            payload={"uuid": check_uuid, "user_id_for_delete": user_id_for_delete}
+        )
+
+        all_user_ids = {u.id for u in users}
+
+        for uid in all_user_ids:
+            try:
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg_for_all),
+                    user_id=uid
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Ошибка WebSocket отправки участнику {uid}: {str(e)}",
+                    extra={"check_uuid": check_uuid, "user_id_for_delete": user_id_for_delete}
+                )
+
+        logger.info(
+            f"Пользователь {user_id_for_delete} удалён из чека {check_uuid} автором {user.id}.",
+            extra={"check_uuid": check_uuid, "initiator": user.id}
+        )
+
+        return {"uuid": check_uuid, "user_id_for_delete": user_id_for_delete}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(
+            f"Непредвиденная ошибка при удалении пользователя {user_id_for_delete} из чека {check_uuid}.",
+            extra={"initiator": user.id, "check_uuid": check_uuid}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Серверная ошибка при удалении пользователя из чека."
+        )
+
+
 @router.get("/{uuid}/images", summary="Получить список ссылок на изображения")
-async def get_images(uuid: UUID, user: User = Depends(get_current_user)):
+async def get_images(uuid: UUID = Path(..., description="UUID чека"), user: User = Depends(get_current_user)):
     """
     Возвращает список URL-ов на изображения из папки UUID.
     """

@@ -45,7 +45,7 @@ async def login_for_access_token(request: Request,
     response.set_cookie(
         key="refresh_token",
         value=tokens["refresh_token"],
-        httponly=True,
+        httponly=False,
         secure=False,  # для HTTPS
         samesite="strict",
         max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60
@@ -55,7 +55,7 @@ async def login_for_access_token(request: Request,
     response.set_cookie(
         key="access_token",
         value=tokens["access_token"],
-        httponly=True,
+        httponly=False,
         secure=False,
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -103,7 +103,7 @@ async def refresh_access_token(request: RefreshTokenRequest, response: Response)
         response.set_cookie(
             key="refresh_token",
             value=tokens["refresh_token"],
-            httponly=True,
+            httponly=False,
             secure=False,
             samesite="strict",
             max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60
@@ -112,7 +112,7 @@ async def refresh_access_token(request: RefreshTokenRequest, response: Response)
         response.set_cookie(
             key="access_token",
             value=tokens["access_token"],
-            httponly=True,
+            httponly=False,
             secure=False,
             samesite="strict",
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -142,12 +142,12 @@ async def logout(response: Response):
     response.delete_cookie(
         key="refresh_token",
         secure=False,
-        httponly=True
+        httponly=False
     )
     response.delete_cookie(
         key="access_token",
         secure=False,
-        httponly=True
+        httponly=False
     )
     response.delete_cookie(
         key="is_authenticated",

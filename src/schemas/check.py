@@ -47,6 +47,18 @@ class EditItemRequest(BaseModel):
         return model
 
 
+class EditItemRequestV2(BaseModel):
+    name: Optional[ItemName] = Field(None, description="Новое название товара")
+    quantity: Optional[PositiveInt] = Field(None, le=1000, description="Новое количество (до 1000)")
+    sum: Optional[Sum] = Field(None, description="Новая цена товара")
+
+    @model_validator(mode='after')
+    def check_at_least_one_field(cls, model):
+        if not any(getattr(model, field) is not None for field in ['name', 'quantity', 'sum']):
+            raise ValueError("Необходимо указать хотя бы одно поле для обновления")
+        return model
+
+
 class DeleteItemRequest(BaseModel):
     id: PositiveInt = Field(description="ID товара")
 

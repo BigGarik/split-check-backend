@@ -142,7 +142,7 @@ async def edit_check_name_task(user_id: int, check_uuid: str, check_name: str, s
             try:
                 await ws_manager.send_personal_message(
                     message=json.dumps(msg),
-                    user_id=user_id
+                    user_id=uid
                 )
             except Exception as e:
                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
@@ -174,7 +174,7 @@ async def edit_check_status_task(user_id: int, check_uuid: str, check_status: st
             try:
                 await ws_manager.send_personal_message(
                     message=json.dumps(msg),
-                    user_id=user_id
+                    user_id=uid
                 )
             except Exception as e:
                 logger.warning(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
@@ -209,7 +209,7 @@ async def join_check_task(user_id: int, check_uuid: str, session: AsyncSession):
             try:
                 await ws_manager.send_personal_message(
                     message=json.dumps(msg),
-                    user_id=user_id
+                    user_id=uid
                 )
             except Exception as e:
                 logger.error(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}")
@@ -251,7 +251,7 @@ async def delete_check_task(user_id: int, check_uuid: str, session: AsyncSession
             try:
                 await ws_manager.send_personal_message(
                     message=json.dumps(msg),
-                    user_id=user_id
+                    user_id=uid
                 )
             except Exception as e:
                 logger.error(f"Ошибка отправки сообщения пользователю {uid}: {str(e)}", extra={"current_user_id": user_id})
@@ -300,7 +300,7 @@ async def user_delete_from_check_task(check_uuid: str, user_id_for_delete: int, 
 
         msg_for_all = create_event_message(
             message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
-            payload={"uuid": check_uuid, "user_id_for_delete ": user_id_for_delete}
+            payload={"uuid": check_uuid, "user_id_for_delete": user_id_for_delete}
         )
 
         msg_for_author = create_event_status_message(

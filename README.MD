@@ -27,7 +27,7 @@ alembic upgrade head
 На проде 
 из директории /app/api
 
-alembic -c src/migrations/alembic.ini revision --autogenerate -m "Name of migration"
+alembic -c src/migrations/alembic.ini revision --autogenerate -m "check name"
 
 после этого проверить что он там наколбасил и только после этого применить миграцию
 
