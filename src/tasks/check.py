@@ -48,6 +48,7 @@ async def send_check_data_task(user_id: int, check_uuid: str, session: AsyncSess
         message_type=Events.BILL_DETAIL_EVENT,
         payload=check_data
     )
+    logger.debug(f"Отправлена check_data {check_data}")
 
     await ws_manager.send_personal_message(
         message=json.dumps(msg),
