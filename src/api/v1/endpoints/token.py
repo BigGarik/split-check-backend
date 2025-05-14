@@ -5,11 +5,11 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from starlette.requests import Request
 
-from src.config import REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, \
+from src.config import REFRESH_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, \
     REFRESH_TOKEN_EXPIRE_MINUTES
 from src.core.security import verify_token
-from src.services.auth import authenticate_user, generate_tokens
 from src.schemas import RefreshTokenRequest, TokenResponse
+from src.services.auth import authenticate_user, generate_tokens
 
 router = APIRouter()
 
@@ -61,16 +61,6 @@ async def login_for_access_token(request: Request,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
-    response.set_cookie(
-        key="is_authenticated",
-        value="true",
-        path="/",
-        httponly=False,  # Доступно для JavaScript
-        secure=False,
-        samesite="strict",
-        max_age = ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
-
     return tokens
 
 
@@ -118,16 +108,6 @@ async def refresh_access_token(request: RefreshTokenRequest, response: Response)
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
 
-        response.set_cookie(
-            key="is_authenticated",
-            value="true",
-            path="/",
-            httponly=False,  # Доступно для JavaScript
-            secure=False,
-            samesite="strict",
-            max_age = ACCESS_TOKEN_EXPIRE_MINUTES * 60
-        )
-
         return tokens
     except JWTError:
         raise HTTPException(
@@ -149,10 +129,10 @@ async def logout(response: Response):
         secure=False,
         httponly=False
     )
-    response.delete_cookie(
-        key="is_authenticated",
-        httponly=False,  # Доступно для JavaScript
-        secure=False,
-    )
 
     return {"message": "Successfully logged out"}
+
+
+@router.get("/ping")
+async def token_ping(token: str = Depends(oauth2_scheme)):
+    return {"status": "ok"}

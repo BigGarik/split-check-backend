@@ -178,3 +178,11 @@ async def reset_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
         )
+
+
+@router.delete("/delete", status_code=status.HTTP_200_OK)
+@with_db_session()
+async def user_delete(
+
+):
+    pass

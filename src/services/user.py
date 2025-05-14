@@ -27,7 +27,7 @@ async def join_user_to_check(session, user_id: int, check_uuid: str) -> dict:
     assoc_result = await session.execute(assoc_stmt)
 
     if assoc_result.first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пользователь уже присоединен")
+        return {"status": "success", "message": "Пользователь успешно присоединен"}
 
     try:
         join_stmt = user_check_association.insert().values(

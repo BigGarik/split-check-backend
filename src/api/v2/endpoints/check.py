@@ -147,21 +147,18 @@ async def upload_image(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session)
 ):
+    check_uuid = str(uuid.uuid4())
+    directory = os.path.join(UPLOAD_DIRECTORY, check_uuid)
+    os.makedirs(directory, exist_ok=True)
+
+    file_path = os.path.join(directory, file.filename)
+
     try:
-        check_uuid = str(uuid.uuid4())
-        directory = os.path.join(UPLOAD_DIRECTORY, check_uuid)
-        os.makedirs(directory, exist_ok=True)
-
-        file_path = os.path.join(directory, file.filename)
-
-        content = await file.read()  # читаем 1 раз
-
-        # Сохраняем файл
         async with aiofiles.open(file_path, "wb") as out_file:
+            content = await file.read()
             await out_file.write(content)
 
         encoded_image = base64.b64encode(content).decode("utf-8")
-
         task_data = {
             "id": check_uuid,
             "type": "image_process",
@@ -169,37 +166,28 @@ async def upload_image(
         }
 
         await queue_processor.push_task(task_data=task_data, queue_name=IMAGE_PROCESSING_QUEUE)
-
         result = await redis_client.wait_for_result(check_uuid, timeout=30)
 
-        if result is None:
+        if not result:
             raise HTTPException(status_code=504, detail="Timeout: обработка заняла слишком много времени")
         if result.get("status") == "error":
             raise HTTPException(status_code=500, detail=result.get("result"))
 
-        # check_data = calculate_price(result.get("result"))
         check_data = result.get("result")
-
         check_data = await add_check_to_database(session, check_uuid, user.id, check_data)
 
-        redis_key = f"check_uuid:{check_uuid}"
-
-        await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
+        await redis_client.set(f"check_uuid:{check_uuid}", json.dumps(check_data), expire=REDIS_EXPIRATION)
 
         msg = create_event_message(
             message_type=Events.IMAGE_RECOGNITION_EVENT,
             payload={"uuid": check_uuid}
         )
-
         await ws_manager.send_personal_message(
             message=json.dumps(msg),
             user_id=user.id
         )
 
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=check_data
-        )
+        return JSONResponse(status_code=status.HTTP_200_OK, content=check_data)
 
     except Exception as e:
         logger.error(f"Ошибка при загрузке изображения: {str(e)}")
@@ -586,13 +574,10 @@ async def get_images(uuid: UUID = Path(..., description="UUID чека"), user: 
     Возвращает список URL-ов на изображения из папки UUID.
     """
     folder_path = os.path.join(UPLOAD_DIRECTORY, str(uuid))
-    if not os.path.exists(folder_path):
+    try:
+        image_files = [f for f in os.scandir(folder_path) if f.is_file() and f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))]
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Папка с изображениями не найдена")
-
-    image_files = [
-        f for f in os.listdir(folder_path)
-        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))
-    ]
 
     if not image_files:
         raise HTTPException(status_code=404, detail="Изображения не найдены")
@@ -601,5 +586,5 @@ async def get_images(uuid: UUID = Path(..., description="UUID чека"), user: 
 
     return {
         "uuid": str(uuid),
-        "images": [base_url + fname for fname in image_files]
+        "images": [base_url + f.name for f in image_files]
     }

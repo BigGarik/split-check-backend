@@ -1,18 +1,22 @@
+import json
+import logging
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status, HTTPException, Query
-from sqlalchemy import select, func
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from src.api.deps import get_current_user
 from src.config import ADMIN_IDS
-from src.models import User, Check
-from src.repositories.check import get_all_checks_for_admin
+from src.models import User
+from src.repositories.check import get_all_checks_for_admin, get_check_data, get_check_data_by_uuid, get_check_by_uuid
+from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.utils.db import get_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates/webui")
@@ -90,6 +94,42 @@ async def checks(request: Request,
             "currency": currency,
         }
     })
+
+
+@router.get("/checks/{uuid}", response_class=HTMLResponse)
+async def check_detail_page(
+    request: Request,
+    uuid: UUID,
+    session: AsyncSession = Depends(get_session)
+):
+    try:
+        check_uuid = str(uuid)
+        check_data = await get_check_data_by_uuid(session, check_uuid)
+
+        logger.debug(f"check_data: {check_data}")
+
+        participants, user_selections, _ = await get_user_selection_by_check_uuid(session, check_uuid)
+
+        check_data["participants"] = json.loads(participants)
+        check_data["user_selections"] = json.loads(user_selections)
+        check = await get_check_by_uuid(session, check_uuid)
+        check_data["name"] = check.name
+        check_data["date"] = check.created_at.strftime("%d.%m.%Y")
+        check_data["uuid"] = check_uuid
+        check_data["author_id"] = check.author_id
+        check_data["status"] = check.status.value
+
+    except Exception as e:
+        logger.error(f"Ошибка при отправке чека: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Внутренняя ошибка сервера"
+        )
+
+    return templates.TemplateResponse(
+        "check_detail.html",
+        {"request": request, "check_data": check_data, "uuid": uuid}
+    )
 
 
 @router.get("/login")
