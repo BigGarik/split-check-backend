@@ -1,7 +1,9 @@
 import logging
+import uuid
+from datetime import datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError, DatabaseError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -113,3 +115,46 @@ async def get_users_by_check_uuid(session, check_uuid: str) -> List[User]:
     )
     result = await session.execute(query)
     return result.scalars().all()
+
+
+async def mark_user_as_deleted(user_id: int, session: AsyncSession) -> None:
+    stmt = (
+        update(User)
+        .where(User.id == user_id)
+        .values(
+            mark_deleted=True,
+            mark_deleted_date=datetime.now()
+        )
+    )
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def user_delete(session: AsyncSession) -> None:
+    cutoff_date = datetime.now() - timedelta(days=30)
+
+    # Выбираем пользователей, помеченных на удаление более 30 дней назад
+    stmt = (
+        select(User)
+        .options(joinedload(User.profile))
+        .where(
+            User.mark_deleted == True,
+            User.mark_deleted_date < cutoff_date,
+            User.deleted == False  # ещё не были физически удалены
+        )
+    )
+    result = await session.execute(stmt)
+    users = result.scalars().all()
+
+    for user in users:
+        # Анонимизируем email
+        masked_email = f"{uuid.uuid4()}@masked_domain.ru"
+        user.email = masked_email
+        user.deleted = True
+
+        # Очистка профиля
+        if user.profile:
+            user.profile.nickname = None
+            user.profile.avatar_url = None
+
+    await session.commit()

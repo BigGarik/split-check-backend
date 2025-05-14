@@ -1,5 +1,7 @@
 from datetime import datetime
 from typing import List
+
+from sqlalchemy import Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base
@@ -11,6 +13,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
     hashed_password: Mapped[str]
+    mark_deleted: Mapped[bool] = mapped_column(default=False)
+    mark_deleted_date: Mapped[datetime | None] = mapped_column(nullable=True)
+    deleted: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
         default=datetime.now,

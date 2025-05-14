@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from typing import Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi import HTTPException
 from fastapi_mail import FastMail
 from jose import jwt
@@ -12,11 +12,13 @@ from starlette import status
 from starlette.responses import Response
 
 from src import schemas
+from src.api.deps import get_current_user
 from src.config import ACCESS_TOKEN_EXPIRE_MINUTES, ACCESS_SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 from src.config.mail import mail_config
 from src.core.exceptions import UserAlreadyExistsError, DatabaseOperationError
 from src.core.security import create_token, async_hash_password
-from src.repositories.user import create_new_user, get_user_by_email
+from src.models import User
+from src.repositories.user import create_new_user, get_user_by_email, mark_user_as_deleted
 from src.schemas import PasswordResetRequest, PasswordReset
 from src.services.auth import send_password_reset_email, generate_tokens
 from src.utils.db import with_db_session, get_async_db
@@ -183,6 +185,8 @@ async def reset_password(
 @router.delete("/delete", status_code=status.HTTP_200_OK)
 @with_db_session()
 async def user_delete(
-
-):
-    pass
+        request: Request,
+        user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_db)):
+    await mark_user_as_deleted(user.id, session)
+    return {"detail": f"User {user.email} marked as deleted"}

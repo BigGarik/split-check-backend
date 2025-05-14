@@ -19,6 +19,7 @@ from src.db.base import Base
 from src.db.session import sync_engine
 from src.redis import redis_client, register_redis_handlers
 from src.services.classifier.classifier_instance import init_classifier
+from src.tasks import user_delete_task
 from src.utils.system import get_memory_usage
 from src.version import APP_VERSION
 
@@ -112,13 +113,31 @@ async def lifespan(app: FastAPI):
     # Запускаем мониторинг в фоновом режиме
     memory_task = asyncio.create_task(monitor_memory())
 
+    async def periodic_user_cleanup():
+        while True:
+            try:
+                await user_delete_task()
+            except Exception as e:
+                logger.exception(f"Ошибка в user_delete_task: {e}")
+            logger.debug("Задача удаления пользователя")
+            await asyncio.sleep(86400)  # 1 сутки
+
+    user_cleanup_task = asyncio.create_task(periodic_user_cleanup())
+
     yield
     queue_task.cancel()
     memory_task.cancel()
+    user_cleanup_task.cancel()
+
     try:
         await queue_task
     except asyncio.CancelledError:
         logger.info("QueueProcessor cancelled")
+
+    try:
+        await user_cleanup_task
+    except asyncio.CancelledError:
+        logger.info("user_delete_task cancelled")
 
     if ENVIRONMENT == 'prod':
         if classifier:

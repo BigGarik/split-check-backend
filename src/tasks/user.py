@@ -1,9 +1,13 @@
 import json
 import logging
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.config.type_events import Events
 from src.repositories.profile import get_user_profile_db, update_user_profile_db, get_user_email
+from src.repositories.user import user_delete
 from src.schemas import UserProfileBase, UserProfileResponse
+from src.utils.db import with_db_session
 from src.websockets.manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -70,3 +74,8 @@ async def update_user_profile_task(user_id: int,
             message=json.dumps(msg, default=str),  # Добавляем default=str для обработки дат
             user_id=user_id
         )
+
+
+@with_db_session()
+async def user_delete_task(session: AsyncSession) -> None:
+    await user_delete(session)
