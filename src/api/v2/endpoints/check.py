@@ -383,12 +383,7 @@ async def join_check(
     check_uuid = str(uuid)
 
     try:
-        joined = await join_user_to_check(user.id, check_uuid)
-        if not joined:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Пользователь уже присоединён к этому чеку."
-            )
+        await join_user_to_check(user.id, check_uuid)
 
         joined_user = await get_user_by_id(session, user.id)
         users = await get_users_by_check_uuid(session, check_uuid)
