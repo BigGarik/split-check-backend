@@ -9,7 +9,7 @@ from src.auth.dependencies import get_firebase_user
 from src.config import ACCESS_SECRET_KEY
 from src.core.security import verify_token
 from src.redis.utils import get_token_from_redis, add_token_to_redis
-from src.repositories.user import get_user_by_email
+from src.repositories.user import get_user_by_email, unmark_user_as_deleted
 import logging
 
 logger = logging.getLogger(__name__)
@@ -90,6 +90,9 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Пользователь не найден"
             )
+
+        if user.is_soft_deleted:
+            await unmark_user_as_deleted(user)
 
         return user
 

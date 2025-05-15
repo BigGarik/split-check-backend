@@ -132,6 +132,40 @@ async def mark_user_as_deleted(session: AsyncSession, user_id: int) -> None:
 
 
 @with_db_session()
+async def unmark_user_as_deleted(session: AsyncSession, user: User) -> None:
+    """
+    Снимает отметку об удалении пользователя
+
+    Args:
+        session: Сессия базы данных
+        user: Пользователь, с которого нужно снять отметку об удалении
+    """
+    try:
+        # Вместо прямого изменения объекта, используем SQL-запрос для обновления
+        stmt = (
+            update(User)
+            .where(User.id == user.id)
+            .values(
+                is_soft_deleted=False,
+                soft_deleted_at=None
+            )
+        )
+        await session.execute(stmt)
+
+        # Обновляем объект user в текущей сессии
+        user.is_soft_deleted = False
+        user.soft_deleted_at = None
+
+        logger.debug(f"email: {user.email} is_soft_deleted: {user.is_soft_deleted}")
+
+        await session.commit()
+    except SQLAlchemyError as e:
+        logger.error(f"Database error : {str(e)}")
+        # Здесь также можно добавить откат транзакции, если его нет в декораторе
+        await session.rollback()
+
+
+@with_db_session()
 async def user_delete(session: AsyncSession) -> None:
     cutoff_date = datetime.now() - timedelta(days=30)
 
