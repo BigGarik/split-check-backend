@@ -76,6 +76,5 @@ async def update_user_profile_task(user_id: int,
         )
 
 
-@with_db_session()
-async def user_delete_task(session: AsyncSession) -> None:
-    await user_delete(session)
+async def user_delete_task() -> None:
+    await user_delete()

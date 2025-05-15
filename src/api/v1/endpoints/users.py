@@ -19,7 +19,7 @@ from src.core.exceptions import UserAlreadyExistsError, DatabaseOperationError
 from src.core.security import create_token, async_hash_password
 from src.models import User
 from src.repositories.user import create_new_user, get_user_by_email, mark_user_as_deleted
-from src.schemas import PasswordResetRequest, PasswordReset
+from src.schemas import PasswordResetRequest, PasswordReset, UserDeleteResponse
 from src.services.auth import send_password_reset_email, generate_tokens
 from src.utils.db import with_db_session, get_async_db
 
@@ -182,11 +182,8 @@ async def reset_password(
         )
 
 
-@router.delete("/delete", status_code=status.HTTP_200_OK)
-@with_db_session()
+@router.delete("/delete", status_code=status.HTTP_200_OK, response_model=None)
 async def user_delete(
-        request: Request,
-        user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_async_db)):
-    await mark_user_as_deleted(user.id, session)
+        user: User = Depends(get_current_user)):
+    await mark_user_as_deleted(user.id)
     return {"detail": f"User {user.email} marked as deleted"}

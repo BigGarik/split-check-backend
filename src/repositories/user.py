@@ -117,19 +117,21 @@ async def get_users_by_check_uuid(session, check_uuid: str) -> List[User]:
     return result.scalars().all()
 
 
-async def mark_user_as_deleted(user_id: int, session: AsyncSession) -> None:
+@with_db_session()
+async def mark_user_as_deleted(session: AsyncSession, user_id: int) -> None:
     stmt = (
         update(User)
         .where(User.id == user_id)
         .values(
-            mark_deleted=True,
-            mark_deleted_date=datetime.now()
+            is_soft_deleted=True,
+            soft_deleted_at=datetime.now()
         )
     )
     await session.execute(stmt)
     await session.commit()
 
 
+@with_db_session()
 async def user_delete(session: AsyncSession) -> None:
     cutoff_date = datetime.now() - timedelta(days=30)
 
@@ -138,9 +140,9 @@ async def user_delete(session: AsyncSession) -> None:
         select(User)
         .options(joinedload(User.profile))
         .where(
-            User.mark_deleted == True,
-            User.mark_deleted_date < cutoff_date,
-            User.deleted == False  # ещё не были физически удалены
+            User.is_soft_deleted == True,
+            User.soft_deleted_at < cutoff_date,
+            User.is_deleted == False  # ещё не были физически удалены
         )
     )
     result = await session.execute(stmt)
@@ -150,7 +152,7 @@ async def user_delete(session: AsyncSession) -> None:
         # Анонимизируем email
         masked_email = f"{uuid.uuid4()}@masked_domain.ru"
         user.email = masked_email
-        user.deleted = True
+        user.is_deleted = True
 
         # Очистка профиля
         if user.profile:

@@ -13,9 +13,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
     hashed_password: Mapped[str]
-    mark_deleted: Mapped[bool] = mapped_column(default=False)
-    mark_deleted_date: Mapped[datetime | None] = mapped_column(nullable=True)
-    deleted: Mapped[bool] = mapped_column(default=False)
+    is_soft_deleted: Mapped[bool] = mapped_column(default=False)
+    soft_deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
         default=datetime.now,

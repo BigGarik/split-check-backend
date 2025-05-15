@@ -56,3 +56,7 @@ class UserProfileResponse(UserProfileBase):
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+
+
+class UserDeleteResponse(BaseModel):
+    detail: str
