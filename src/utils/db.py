@@ -50,6 +50,7 @@ def with_db_session() -> Callable[[Callable[P, T]], Callable[P, T]]:
             async with get_async_db() as session:
                 try:
                     result = await func(session, *args, **kwargs)
+                    await session.commit()
                     return result
                 except SQLAlchemyError as e:
                     await session.rollback()

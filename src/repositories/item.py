@@ -86,15 +86,15 @@ async def remove_item_from_check(session: AsyncSession, check_uuid: str, item_id
         }
 
         await session.delete(item)
-        await session.flush()  # удаляем до перенумерации
-
-        # 2. Перенумерация оставшихся позиций
-        stmt = select(CheckItem).where(CheckItem.check_uuid == check_uuid).order_by(CheckItem.item_id)
-        result = await session.execute(stmt)
-        items = result.scalars().all()
-
-        for new_index, item in enumerate(items, start=1):
-            item.item_id = new_index
+        # await session.flush()  # удаляем до перенумерации
+        #
+        # # 2. Перенумерация оставшихся позиций
+        # stmt = select(CheckItem).where(CheckItem.check_uuid == check_uuid).order_by(CheckItem.item_id)
+        # result = await session.execute(stmt)
+        # items = result.scalars().all()
+        #
+        # for new_index, item in enumerate(items, start=1):
+        #     item.item_id = new_index
 
         await session.commit()
 
@@ -262,6 +262,10 @@ async def update_item_quantity(session: AsyncSession, check_uuid: str, item_id: 
             raise ValueError("Quantity must be > 0")
 
         item.quantity = quantity
+
+        await session.commit()
+
+        await delete_item_from_user_selections(session, check_uuid, item.item_id)
 
     except Exception as e:
         logger.error(f"Ошибка при обновлении количества элемента: {e}")
