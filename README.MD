@@ -24,8 +24,10 @@ alembic revision --autogenerate -m "add user profile table"
 alembic upgrade head
 
 
-На проде 
+На проде активировать окружение
 из директории /app/api
+
+source venv/bin/activate
 
 alembic -c src/migrations/alembic.ini revision --autogenerate -m "check name"
 
