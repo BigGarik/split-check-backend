@@ -11,7 +11,7 @@ from src.repositories.check import get_check_data_from_database, get_all_checks_
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \
     is_check_author
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
-from src.repositories.user_selection import get_user_selection_by_check_uuid
+from src.repositories.user_selection import get_user_selection_by_check_uuid, delete_user_selection_by_user_id
 from src.services.user import join_user_to_check
 from src.utils.exchange import get_exchange_rate, round_half_up
 from src.utils.notifications import create_event_message, create_event_status_message
@@ -295,8 +295,9 @@ async def user_delete_from_check_task(check_uuid: str, user_id_for_delete: int, 
             )
         # Получаем участников и пользователей, связанных с чеком до удаления. что-бы отправить удаленному тоже
         users = await get_users_by_check_uuid(session, check_uuid)
-        # Удаляем ассоциацию пользователя с чеком
+        # Удаляем ассоциацию пользователя с чеком и его селекшены
         await delete_association_by_check_uuid(session, check_uuid, user_id_for_delete)
+        await delete_user_selection_by_user_id(session, user_id_for_delete, check_uuid)
 
         msg_for_all = create_event_message(
             message_type=Events.USER_DELETE_FROM_CHECK_EVENT,

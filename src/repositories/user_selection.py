@@ -1,7 +1,7 @@
 import json
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -62,6 +62,20 @@ async def get_user_selection_by_user(session: AsyncSession, user_id: int, check_
     result = await session.execute(stmt)
     user_selections = result.scalars().first()
     return user_selections
+
+
+async def delete_user_selection_by_user_id(session: AsyncSession, user_id: int, check_uuid: str):
+    try:
+        stmt = (
+            delete(UserSelection)
+            .where(UserSelection.user_id == user_id)
+            .where(UserSelection.check_uuid == check_uuid)
+        )
+        await session.execute(stmt)
+        await session.commit()
+
+    except Exception as e:
+        logger.error(e)
 
 
 async def get_user_selection_by_check_uuid(session: AsyncSession, check_uuid: str):
