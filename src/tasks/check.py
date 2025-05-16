@@ -194,9 +194,9 @@ async def join_check_task(user_id: int, check_uuid: str, session: AsyncSession):
 
         msg_for_all = create_event_message(
             message_type=Events.USER_JOIN_EVENT,
-            payload={"user_id": joined_user.id,
+            payload={"uuid": check_uuid, "user": {"user_id": joined_user.id,
                      "nickname": joined_user.profile.nickname,
-                     "avatar_url": joined_user.profile.avatar_url,
+                     "avatar_url": joined_user.profile.avatar_url}
                      },
         )
 
