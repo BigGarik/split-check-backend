@@ -23,7 +23,7 @@ from src.redis.queue_processor import get_queue_processor
 from src.repositories.check import get_all_checks_for_user, get_check_data, add_check_to_database, \
     edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, is_check_author
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
-from src.repositories.user_selection import add_or_update_user_selection
+from src.repositories.user_selection import add_or_update_user_selection, delete_user_selection_by_user_id
 from src.schemas import CheckSelectionRequest
 from src.services.user import join_user_to_check
 from src.utils.db import get_session
@@ -523,6 +523,7 @@ async def user_delete_from_check(
 
         # Удаление
         await delete_association_by_check_uuid(session, check_uuid, user_id_for_delete)
+        await delete_user_selection_by_user_id(session, user_id_for_delete, check_uuid)
 
         msg_for_all = create_event_message(
             message_type=Events.USER_DELETE_FROM_CHECK_EVENT,
