@@ -1,10 +1,11 @@
 import json
 import logging
-import re
+from typing import Optional, Dict, Any
 
 from anthropic import Anthropic
 
 from src.config import API_KEY, CLAUDE_MODEL_NAME
+from src.utils.image_recognition import is_valid_json_response, extract_json_from_response
 from .message import form_message
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,63 @@ claude_model_name = CLAUDE_MODEL_NAME
 client = Anthropic(api_key=api_key)
 
 
-async def recognize_check_by_anthropic(file_location_directory: str):
+async def send_request_to_anthropic(message: list, max_retries: int = 2) -> Optional[str]:
+    """
+    Отправляет запрос к Anthropic API с повторными попытками.
+
+    Args:
+        message: Подготовленное сообщение для API
+        max_retries: Максимальное количество попыток (по умолчанию 2)
+
+    Returns:
+        Текст ответа или None в случае ошибки
+    """
+    for attempt in range(max_retries):
+        try:
+            response = client.messages.create(
+                model=claude_model_name,
+                max_tokens=2048,
+                messages=message
+            )
+
+            response_text = response.content[0].text
+            logger.info(f"Попытка {attempt + 1}: Получен ответ от API")
+
+            # Проверяем, содержит ли ответ JSON
+            if is_valid_json_response(response_text):
+                return response_text
+            else:
+                logger.warning(f"Попытка {attempt + 1}: Ответ не содержит валидный JSON")
+                if attempt < max_retries - 1:
+                    logger.info(f"Повторная отправка запроса (попытка {attempt + 2})")
+                    continue
+                else:
+                    logger.error("Исчерпаны все попытки получения валидного JSON")
+                    return response_text  # Возвращаем последний ответ даже если он невалидный
+
+        except Exception as e:
+            logger.error(f"Попытка {attempt + 1}: Ошибка при отправке запроса: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Повторная отправка запроса (попытка {attempt + 2})")
+                continue
+            else:
+                logger.error("Исчерпаны все попытки отправки запроса")
+                return None
+
+    return None
+
+
+async def recognize_check_by_anthropic(file_location_directory: str) -> Optional[Dict[Any, Any]]:
+    """
+    Распознаёт чек с помощью Anthropic API.
+
+    Args:
+        file_location_directory: Путь к файлу чека
+
+    Returns:
+        Словарь с данными чека или None в случае ошибки
+    """
+
     prompt = ("""
         Внимательно изучи и распознай чек.
         Важно!!! В ответ пришли только данные в формате json без комментариев со структурой:
@@ -55,40 +112,35 @@ async def recognize_check_by_anthropic(file_location_directory: str):
           "currency": валюта в ISO 4217 (если можно определить) иначе none
         }
     """)
-    message = await form_message(file_location_directory, prompt=prompt)
 
     try:
-        response = client.messages.create(
-            model=claude_model_name,
-            max_tokens=2048,
-            messages=message
-        )
-        logger.info(f"Response: {response.content[0].text}")
-        response_text = response.content[0].text
+        # Формируем сообщение для API
+        message = await form_message(file_location_directory, prompt=prompt)
 
-        # Используем регулярное выражение для поиска блока, начинающегося с фигурной скобки и заканчивающегося на фигурную
-        # Флаг re.DOTALL позволяет точке '.' захватывать символы перевода строки
-        pattern = r'(\{.*\})'
-        match = re.search(pattern, response_text, re.DOTALL)
+        # Отправляем запрос с повторными попытками
+        response_text = await send_request_to_anthropic(message, max_retries=2)
 
-        if match:
-            json_str = match.group(1)  # Извлекаем найденный JSON-блок в виде строки
-            # Парсим JSON-строку в объект Python (например, словарь)
-            data = json.loads(json_str)
-            logger.info(f"Извлечённый и распарсенный JSON: {data}")
-            return data
-        else:
-            logger.error("JSON не найден в строке")
+        if response_text is None:
+            logger.error("Не удалось получить ответ от API")
             return None
 
-    except json.JSONDecodeError as e:
-        # Обработка ошибок, если строка не является корректным JSON
-        logger.error(f"Ошибка при декодировании JSON: {e}")
-    except Exception as e:
-        logger.error(f"Ошибка при декодировании JSON: {e}")
-    finally:
-        del message  # Очистка в любом случае
+        # Извлекаем и парсим JSON из ответа
+        data = extract_json_from_response(response_text)
 
+        if data:
+            logger.info("Чек успешно распознан")
+            return data
+        else:
+            logger.error("Не удалось извлечь данные чека")
+            return None
+
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при распознавании чека: {e}")
+        return None
+    finally:
+        # Очищаем переменные
+        if 'message' in locals():
+            del message
 
 
 def test_claude():
