@@ -7,5 +7,5 @@ user_check_association = Table(
     Base.metadata,
     Column('user_id', ForeignKey('users.id', ondelete="CASCADE"), primary_key=True),
     Column('check_uuid', ForeignKey('checks.uuid', ondelete="CASCADE"), primary_key=True),
-    Column('created_at ', DateTime(timezone=True), server_default=func.now(), nullable=False)
+    Column('created_at', DateTime(timezone=True), server_default=func.now(), nullable=False)
 )

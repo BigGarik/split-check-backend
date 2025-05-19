@@ -426,7 +426,12 @@ async def get_all_checks_for_user(session: AsyncSession,
             }
 
         # Создаём базовый запрос для чеков
-        query = select(Check).join(Check.users).where(User.id == user_id)
+        query = (
+            select(Check, user_check_association.c.created_at.label('association_created_at'))
+            .join(user_check_association, Check.uuid == user_check_association.c.check_uuid)
+            .where(user_check_association.c.user_id == user_id)
+            .order_by(user_check_association.c.created_at.desc())
+        )
 
         # Добавляем фильтры
         if check_name:
@@ -437,9 +442,6 @@ async def get_all_checks_for_user(session: AsyncSession,
             query = query.where(Check.created_at >= datetime.combine(start_date, datetime.min.time()))
         if end_date:
             query = query.where(Check.created_at <= datetime.combine(end_date, datetime.max.time()))
-
-        # Добавляем сортировку по возрастанию даты
-        query = query.order_by(Check.created_at.desc())
 
         # Подсчёт общего количества чеков
         total_checks = await session.scalar(select(func.count()).select_from(query.subquery()))
@@ -530,15 +532,17 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
             .where(and_(User.id == user_id, Check.status == "CLOSE"))
         )
 
-        # Получаем список чеков с пагинацией
-        result = await session.execute(
-            select(Check)
-            .join(Check.users)
-            .where(User.id == user_id)
+        query = (
+            select(Check, user_check_association.c.created_at.label('association_created_at'))
+            .join(user_check_association, Check.uuid == user_check_association.c.check_uuid)
+            .where(user_check_association.c.user_id == user_id)
             .options(selectinload(Check.users))
-            .order_by(Check.created_at.desc())
-            .limit(5)
+            .order_by(user_check_association.c.created_at.desc())
+            .limit(3)
         )
+
+        result = await session.execute(query)
+
         checks = result.scalars().all()
 
         return {
