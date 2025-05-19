@@ -198,7 +198,7 @@ async def delete_item(
 
         msg = create_event_message(
             message_type=Events.ITEM_REMOVE_EVENT,
-            payload={"uuid": check_uuid, "itemId": item_id}
+            payload={"uuid": check_uuid, "item_id": item_id}
         )
 
         for uid in {u.id for u in users}:

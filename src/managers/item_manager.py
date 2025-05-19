@@ -60,7 +60,7 @@
     #
     #         msg_for_all = create_event_message(
     #             message_type=Events.ITEM_REMOVE_EVENT,
-    #             payload={"uuid": check_uuid, "itemId": item_id}
+    #             payload={"uuid": check_uuid, "item_id": item_id}
     #         )
     #         msg_for_author = create_event_status_message(
     #             message_type=Events.ITEM_REMOVE_EVENT_STATUS,
