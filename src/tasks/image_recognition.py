@@ -9,6 +9,7 @@ from src.config.type_events import Events
 from src.redis import redis_client
 from src.repositories.check import add_check_to_database
 from src.services.ai.api_anthropic import recognize_check_by_anthropic
+from src.services.ai.recognized_json import static_recognized_json
 from src.services.classifier.classifier_image import classifier_image
 from src.utils.notifications import create_event_message
 from src.utils.system import get_memory_usage
@@ -62,75 +63,8 @@ async def recognize_image_task(
             if ENVIRONMENT == "prod":
                 recognized_json = await recognize_check_by_anthropic(file_location_directory)
             else:
-                # recognized_json = await recognize_check_by_openai(file_location_directory)
-                recognized_json = {
-                    "restaurant": "Bistro",
-                    "table_number": "1",
-                    "order_number": "998",
-                    "date": "19.11.2024",
-                    "time": "13:26",
-                    "waiter": "Kacca 2",
-                    "items": [
-                        {
-                            "id": 1,
-                            "name": "Бабушкин хлеб",
-                            "quantity": 2,
-                            "sum": 4000
-                        },
-                        {
-                            "id": 2,
-                            "name": "Солянка",
-                            "quantity": 1,
-                            "sum": 16000
-                        },
-                        {
-                            "id": 3,
-                            "name": "Куриный суп с лапшой",
-                            "quantity": 1,
-                            "sum": 16000
-                        },
-                        {
-                            "id": 4,
-                            "name": "Говядина с грибами",
-                            "quantity": 1,
-                            "sum": 21000
-                        },
-                        {
-                            "id": 5,
-                            "name": "Рис отварной",
-                            "quantity": 0.5,
-                            "sum": 3500
-                        },
-                        {
-                            "id": 6,
-                            "name": "Гречка",
-                            "quantity": 0.5,
-                            "sum": 3000
-                        },
-                        {
-                            "id": 7,
-                            "name": "Ёжик из курицы",
-                            "quantity": 1,
-                            "sum": 12000
-                        },
-                        {
-                            "id": 8,
-                            "name": "Сендвич с курицей",
-                            "quantity": 1,
-                            "sum": 13000
-                        }
-                    ],
-                    "subtotal": 88500,
-                    "service_charge": {
-                        "name": "",
-                        "amount": 0
-                    },
-                    "vat": {
-                        "rate": 0,
-                        "amount": 0
-                    },
-                    "total": 88500
-                }
+                # recognized_json = await recognize_check_by_anthropic(file_location_directory)
+                recognized_json = static_recognized_json
 
             if recognized_json:
 
