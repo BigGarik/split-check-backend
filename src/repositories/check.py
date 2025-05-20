@@ -241,6 +241,9 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
     if check_data is None:
         check_data = {}
 
+    currency_raw = check_data.get("currency")
+    currency = currency_raw if currency_raw and len(currency_raw) <= 3 else None
+
     try:
         # Создаем новый чек с указанием автора и заполнением всех полей
         new_check = Check(
@@ -258,7 +261,7 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
             waiter=check_data.get("waiter") or None,
             subtotal=to_float(check_data.get("subtotal"), 0.0),
             total=to_float(check_data.get("total"), 0.0),
-            currency=check_data.get("currency") or None
+            currency=currency
         )
 
         # Сервисный сбор
