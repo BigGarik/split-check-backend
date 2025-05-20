@@ -42,6 +42,8 @@ async def lifespan(app: FastAPI):
 
     if ENVIRONMENT == 'prod':
         classifier = init_classifier()
+    else:
+        classifier = init_classifier()
 
     # Подключаемся к Redis
     await redis_client.connect()

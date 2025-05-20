@@ -22,8 +22,13 @@ BASE_URL = os.getenv("BASE_URL", "https://scannsplit.com")
 
 
 ### api_anthropic.py
-API_KEY = os.getenv("API_KEY")
-CLAUDE_MODEL_NAME = os.getenv("CLAUDE_MODEL_NAME")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+ANTHROPIC_MODEL_NAME = os.getenv("ANTHROPIC_MODEL_NAME")
+
+
+### api_openai.py
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME")
 
 
 ### Database

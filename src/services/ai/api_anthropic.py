@@ -1,19 +1,19 @@
 import json
 import logging
+import time
 from typing import Optional, Dict, Any
 
 from anthropic import Anthropic
 
-from src.config import API_KEY, CLAUDE_MODEL_NAME
+from src.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL_NAME
+from src.services.ai.prompt import prompt
 from src.utils.image_recognition import is_valid_json_response, extract_json_from_response
-from .message import form_message
+from .message import message_for_anthropic
 
 logger = logging.getLogger(__name__)
 
-api_key = API_KEY
-claude_model_name = CLAUDE_MODEL_NAME
 
-client = Anthropic(api_key=api_key)
+client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
 async def send_request_to_anthropic(message: list, max_retries: int = 2) -> Optional[str]:
@@ -29,14 +29,21 @@ async def send_request_to_anthropic(message: list, max_retries: int = 2) -> Opti
     """
     for attempt in range(max_retries):
         try:
+            # Start timer
+            start_time = time.time()
+
             response = client.messages.create(
-                model=claude_model_name,
+                model=ANTHROPIC_MODEL_NAME,
                 max_tokens=2048,
                 messages=message
             )
 
+            # End timer
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+
             response_text = response.content[0].text
-            logger.info(f"Попытка {attempt + 1}: Получен ответ от API")
+            logger.info(f"Попытка {attempt + 1}: Время ответа: {elapsed_time:.2f} секунд. Получен ответ от API: {response_text}")
 
             # Проверяем, содержит ли ответ JSON
             if is_valid_json_response(response_text):
@@ -47,8 +54,8 @@ async def send_request_to_anthropic(message: list, max_retries: int = 2) -> Opti
                     logger.info(f"Повторная отправка запроса (попытка {attempt + 2})")
                     continue
                 else:
-                    logger.error("Исчерпаны все попытки получения валидного JSON")
-                    return response_text  # Возвращаем последний ответ даже если он невалидный
+                    logger.error(f"Исчерпаны все попытки получения валидного JSON. response_text: {response_text}")
+                    return None
 
         except Exception as e:
             logger.error(f"Попытка {attempt + 1}: Ошибка при отправке запроса: {e}")
@@ -72,50 +79,9 @@ async def recognize_check_by_anthropic(file_location_directory: str) -> Optional
     Returns:
         Словарь с данными чека или None в случае ошибки
     """
-
-    prompt = ("""
-        Внимательно изучи и распознай чек.
-        Важно!!! В ответ пришли только данные в формате json без комментариев со структурой:
-        {
-          "restaurant": "Название заведения (если есть)",
-          "address": "Адрес заведения (если есть)",
-          "phone": "Телефон заведения (если есть)",
-          "table_number": "Номер стола (если есть)",
-          "order_number": "Номер заказа (если есть)",
-          "date": "Дата (ДД.ММ.ГГГГ) (если есть)",
-          "time": "Время (ЧЧ:ММ) (если есть)",
-          "waiter": "Имя официанта (если есть)",
-          "items": [
-            {
-              "id": порядковый_номер,
-              "name": "Точное наименование",
-              "quantity": количество,
-              "sum": общая_сумма
-            },
-            // другие позиции
-          ],
-          "subtotal": промежуточный_итог,
-          "service_charge": {
-            "name": "Название сбора",
-            "percentage": процент_сбора,
-            "amount": сумма_сбора
-          },
-          "vat": {
-            "rate": ставка_ндс,
-            "amount": сумма_ндс
-          },
-          "discount": {
-            "percentage": процент_скидки,
-            "amount": сумма_скидки
-          },
-          "total": итоговая_сумма,
-          "currency": валюта в ISO 4217 (если можно определить) иначе none
-        }
-    """)
-
     try:
         # Формируем сообщение для API
-        message = await form_message(file_location_directory, prompt=prompt)
+        message = await message_for_anthropic(file_location_directory, prompt=prompt)
 
         # Отправляем запрос с повторными попытками
         response_text = await send_request_to_anthropic(message, max_retries=2)
@@ -143,29 +109,17 @@ async def recognize_check_by_anthropic(file_location_directory: str) -> Optional
             del message
 
 
-def test_claude():
-
-    message = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "prompt"
-                },
-            ]
-        }
-    ]
-
-    response = client.messages.create(
-        model=claude_model_name,
-        max_tokens=2048,
-        messages=message
-    )
-    # response_data = json.loads(response.content[0].text)
-    return json.loads(response.content[0].text)
-
-
 if __name__ == '__main__':
+    # Start timer
+    start_time = time.time()
 
-    print(recognize_check_by_anthropic("../images/8e3e9dbe-b63f-4956-b73a-ce8ef067e5cc"))
+    completion = recognize_check_by_anthropic("../images/d783c1e1-6802-4a4c-ad82-a0de3907fd9c")
+
+    # End timer
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    # Output result and time taken
+    print("🧠 Recognition Output:")
+    print(completion)
+    print(f"\n⏱️ Time taken for recognition: {elapsed_time:.2f} seconds")

@@ -8,7 +8,7 @@ from src.utils.image_processing import process_image
 logger = logging.getLogger(__name__)
 
 
-async def form_message(file_location_directory: str, prompt: Optional[str] = "") -> List[dict]:
+async def message_for_anthropic(file_location_directory: str, prompt: Optional[str] = "") -> List[dict]:
     # Создаем список задач для параллельной обработки всех изображений
     tasks = [
         process_image(os.path.join(file_location_directory, filename))

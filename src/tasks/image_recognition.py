@@ -62,6 +62,7 @@ async def recognize_image_task(
             if ENVIRONMENT == "prod":
                 recognized_json = await recognize_check_by_anthropic(file_location_directory)
             else:
+                # recognized_json = await recognize_check_by_openai(file_location_directory)
                 recognized_json = {
                     "restaurant": "Bistro",
                     "table_number": "1",
@@ -130,27 +131,34 @@ async def recognize_image_task(
                     },
                     "total": 88500
                 }
-            # recognized_json = calculate_price(recognized_json)
-            #
-            # logger.debug(f"Recognition completed for check_uuid {check_uuid}")
-            #
-            # await check_manager.add_check(user_id, check_uuid, recognized_json)
 
-            check_data = await add_check_to_database(session, check_uuid, user_id, recognized_json)
+            if recognized_json:
 
-            redis_key = f"check_uuid:{check_uuid}"
+                check_data = await add_check_to_database(session, check_uuid, user_id, recognized_json)
 
-            await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
+                redis_key = f"check_uuid:{check_uuid}"
 
-            msg = create_event_message(
-                message_type=Events.IMAGE_RECOGNITION_EVENT,
-                payload={"uuid": check_uuid}
-            )
+                await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
 
-            await ws_manager.send_personal_message(
-                message=json.dumps(msg),
-                user_id=user_id
-            )
+                msg = create_event_message(
+                    message_type=Events.IMAGE_RECOGNITION_EVENT,
+                    payload={"uuid": check_uuid}
+                )
+
+                await ws_manager.send_personal_message(
+                    message=json.dumps(msg),
+                    user_id=user_id
+                )
+            else:
+                error_msg = {
+                    "type": Events.IMAGE_RECOGNITION_EVENT_STATUS,
+                    "status": "error",
+                    "message": "Не удалось распознать изображение."
+                }
+                msg_to_ws = json.dumps(error_msg)
+                await ws_manager.send_personal_message(msg_to_ws, user_id)
+
+                logger.error(f"Не удалось распознать изображение {check_uuid}")
 
         else:
             error_msg = {
@@ -161,7 +169,7 @@ async def recognize_image_task(
             msg_to_ws = json.dumps(error_msg)
             await ws_manager.send_personal_message(msg_to_ws, user_id)
 
-            logger.warning(
+            logger.error(
                 f"Image classification for check_uuid {check_uuid} failed with result: {classification_result}")
     except Exception as e:
 
