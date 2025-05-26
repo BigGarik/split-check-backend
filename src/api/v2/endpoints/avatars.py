@@ -22,7 +22,7 @@ AVATAR_URL_PREFIX = f"{BASE_URL}/images/avatars"
 os.makedirs(AVATAR_DIR, exist_ok=True)
 
 
-@router.post("/upload", summary="Загрузка нескольких аватаров")
+@router.post("/upload", summary="Загрузка нескольких аватаров. Синхронный ответ")
 async def upload_avatars(
     files: List[UploadFile] = File(...),
     # user: User = Depends(get_current_user)
@@ -67,11 +67,11 @@ async def upload_avatars(
         raise HTTPException(status_code=500, detail="Ошибка при загрузке изображений")
 
 
-@router.get("/list", summary="Получение списка изображений")
+@router.get("/list", summary="Получение списка изображений. Синхронный ответ")
 async def get_avatar_list(
     user: User = Depends(get_current_user)
 ):
-    """Возвращает список URL-ов всех изображений."""
+    """Возвращает список URL-ов всех изображений. Синхронный ответ"""
     try:
         files = os.listdir(AVATAR_DIR)
         image_urls = [
@@ -86,12 +86,12 @@ async def get_avatar_list(
         raise HTTPException(status_code=500, detail="Ошибка при получении списка изображений")
 
 
-@router.get("/{filename}", summary="Получение URL изображения по имени файла")
+@router.get("/{filename}", summary="Получение URL изображения по имени файла. Синхронный ответ")
 async def get_avatar(
     filename: str,
     user: User = Depends(get_current_user)
 ):
-    """Проверяет существование файла и возвращает его URL."""
+    """Проверяет существование файла и возвращает его URL. Синхронный ответ."""
     try:
         file_path = os.path.join(AVATAR_DIR, filename)
 

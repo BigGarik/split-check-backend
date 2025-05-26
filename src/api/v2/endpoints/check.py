@@ -41,7 +41,7 @@ router = APIRouter()
 IMAGE_PROCESSING_QUEUE = "image_processing_tasks"
 
 
-@router.get("/", summary="Получить все чеки")
+@router.get("/", summary="Получить все чеки. Синхронный ответ")
 async def get_all_check(
                         check_name: Optional[str] = None,
                         check_status: Optional[StatusEnum] = None,
@@ -75,7 +75,7 @@ async def get_all_check(
         )
 
 
-@router.get("/{uuid}", summary="Получить чек по UUID", response_model=dict)
+@router.get("/{uuid}", summary="Получить чек по UUID. Синхронный ответ", response_model=dict)
 async def get_check(
                     uuid: UUID = Path(..., description="UUID чека"),
                     user: User = Depends(get_current_user),
@@ -95,7 +95,7 @@ async def get_check(
         )
 
 
-@router.post("/add", summary="Добавление пустого чека", response_model=dict, status_code=200)
+@router.post("/add", summary="Добавление пустого чека. Синхронный ответ", response_model=dict, status_code=200)
 async def add_empty_check(
         request: Request,
         user: User = Depends(get_current_user),
@@ -126,7 +126,7 @@ async def add_empty_check(
 
 
 @router.post("/upload",
-             summary="Загрузка изображения",
+             summary="Загрузка изображения. Синхронный ответ",
              description="""
                     Принимает изображение чека, сохраняет его и инициирует фоновую обработку.
                     
@@ -194,7 +194,7 @@ async def upload_image(
         raise HTTPException(status_code=500, detail="Ошибка загрузки изображения")
 
 
-@router.post("/{uuid}/select", summary="Выбор пользователя")
+@router.post("/{uuid}/select", summary="Выбор пользователя. Синхронный ответ")
 async def user_selection(request: Request,
                          selection: CheckSelectionRequest,
                          uuid: UUID = Path(..., description="UUID чека"),
@@ -249,7 +249,7 @@ async def user_selection(request: Request,
 
 
 @router.put("/{uuid}/name",
-            summary="Изменение названия чека",
+            summary="Изменение названия чека. Синхронный ответ",
             status_code=200,
             response_model=dict)
 async def edit_check_name(
@@ -306,9 +306,8 @@ async def edit_check_name(
 
 
 @router.put("/{uuid}/status",
-                summary="Изменение статуса чека",
+                summary="Изменение статуса чека. Синхронный ответ",
                 description="Эндпоинт для изменения статуса чека. Допустимые значения: 'OPEN', 'CLOSE'.",
-                response_description="Подтверждение отправки через WebSocket",
                 response_model=dict,
                 status_code=status.HTTP_200_OK)
 async def edit_check_status(
@@ -366,7 +365,7 @@ async def edit_check_status(
 
 @router.post(
     "/{uuid}/join",
-    summary="Присоединение пользователя к чеку",
+    summary="Присоединение пользователя к чеку. Синхронный ответ",
     response_description="Информация о присоединившемся пользователе",
     response_model=dict,
     status_code=status.HTTP_200_OK
@@ -426,7 +425,7 @@ async def join_check(
 
 @router.delete(
     "/{uuid}",
-    summary="Удаление чека",
+    summary="Удаление чека. Синхронный ответ",
     response_description="UUID удалённого чека",
     status_code=status.HTTP_200_OK,
     response_model=dict
@@ -483,7 +482,7 @@ async def delete_check(
 
 @router.delete(
     "/{uuid}/users/{user_id_for_delete}",
-    summary="Удаление пользователя из чека",
+    summary="Удаление пользователя из чека. Синхронный ответ",
     description="Удаляет указанного пользователя из чека (только автор может выполнить).",
     response_description="UUID чека и ID удалённого пользователя",
     status_code=status.HTTP_200_OK,
@@ -564,7 +563,7 @@ async def user_delete_from_check(
         )
 
 
-@router.get("/{uuid}/images", summary="Получить список ссылок на изображения")
+@router.get("/{uuid}/images", summary="Получить список ссылок на изображения. Синхронный ответ")
 async def get_images(uuid: UUID = Path(..., description="UUID чека"), user: User = Depends(get_current_user)):
     """
     Возвращает список URL-ов на изображения из папки UUID.

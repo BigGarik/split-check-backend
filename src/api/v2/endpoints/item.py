@@ -25,7 +25,7 @@ router = APIRouter()
 
 @router.post(
     "/{uuid}/items/add",
-    summary="Добавление позиции в чек",
+    summary="Добавление позиции в чек. Синхронный ответ",
     description="Добавляет новую позицию в указанный чек. Все участники получают уведомление по WebSocket.",
     response_model=dict,
     response_description="Добавленная позиция и UUID чека",
@@ -96,7 +96,7 @@ async def add_item(
 
 @router.put(
     "/{uuid}/items/{item_id}/split",
-    summary="Разделение позиции в чеке",
+    summary="Разделение позиции в чеке. Синхронный ответ",
     description="Разделяет позицию на указанное количество частей.",
     status_code=status.HTTP_200_OK,
     response_model=dict
@@ -136,7 +136,7 @@ async def split_item(
 
 @router.put(
     "/{uuid}/items/{item_id}/edit",
-    summary="Редактирование позиции",
+    summary="Редактирование позиции. Синхронный ответ",
     description="Изменяет данные позиции и отправляет обновления всем участникам.",
     status_code=status.HTTP_200_OK,
     response_model=dict
@@ -178,7 +178,7 @@ async def edit_item(
 
 @router.delete(
     "/{uuid}/items/{item_id}",
-    summary="Удаление позиции",
+    summary="Удаление позиции. Синхронный ответ",
     description="Удаляет позицию из чека и рассылает событие участникам.",
     status_code=status.HTTP_200_OK,
     response_model=dict

@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get(
     "/profile",
-    summary="Получить профиль пользователя",
+    summary="Получить профиль пользователя. Синхронный ответ",
     description="Возвращает профиль текущего пользователя.",
     response_model=UserProfileBase,
     status_code=status.HTTP_200_OK
@@ -42,7 +42,7 @@ async def get_profile(
 
 @router.put(
     "/profile",
-    summary="Обновить профиль пользователя",
+    summary="Обновить профиль пользователя. Синхронный ответ",
     description="Обновляет профиль текущего пользователя.",
     response_model=UserProfileBase,
     status_code=status.HTTP_200_OK
