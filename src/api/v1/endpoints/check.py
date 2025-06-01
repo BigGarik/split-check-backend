@@ -152,7 +152,7 @@ async def edit_check_status(
     task_data = {
         "type": "edit_check_status_task",
         "user_id": user.id,
-        "check_uuid": uuid,
+        "check_uuid": str(uuid),
         "check_status": check_status.value
     }
     await queue_processor.push_task(task_data)
