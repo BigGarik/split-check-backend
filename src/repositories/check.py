@@ -670,7 +670,9 @@ async def get_check_data(session: AsyncSession, user_id: int, check_uuid: str) -
         check_data["status"] = check.status.value
 
         return check_data
-
+    except HTTPException:
+        # Явно пробрасываем 404, чтобы не перехватить ниже
+        raise
     except Exception as e:
         logger.error(f"Ошибка при получении данных чека: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

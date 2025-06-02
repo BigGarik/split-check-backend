@@ -9,6 +9,7 @@ from uuid import UUID
 
 import aiofiles
 from fastapi import APIRouter, UploadFile, File, Depends, Request, Query, HTTPException, Body, Path
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
@@ -87,8 +88,14 @@ async def get_check(
         logger.debug(f"Отправлены данные чека для пользователя ИД {user.id}: {check_data}")
         return check_data
 
+    except HTTPException as e:
+        # Пробрасываем заранее созданные HTTP-исключения (например, 404)
+        raise e
+    except SQLAlchemyError as db_error:
+        logger.error(f"Ошибка базы данных: {db_error}")
+        raise HTTPException(status_code=500, detail="Ошибка базы данных")
     except Exception as e:
-        logger.error(f"Ошибка при отправке чека: {e}")
+        logger.error(f"Непредвиденная ошибка при отправке чека: {e}")
         raise HTTPException(
             status_code=500,
             detail="Внутренняя ошибка сервера"
