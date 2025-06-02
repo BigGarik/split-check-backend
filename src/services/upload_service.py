@@ -11,9 +11,8 @@ from src.config import UPLOAD_DIRECTORY
 logger = logging.getLogger(__name__)
 
 
-async def prepare_image_upload(user_id: int, file: UploadFile) -> dict:
+async def prepare_image_upload(user_id: int, file: UploadFile, check_uuid: str) -> dict:
     """Подготовка данных для задачи загрузки и обработки изображения."""
-    check_uuid = str(uuid.uuid4())
     directory = os.path.join(UPLOAD_DIRECTORY, check_uuid)
     os.makedirs(directory, exist_ok=True)
 
