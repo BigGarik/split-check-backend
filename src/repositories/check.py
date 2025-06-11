@@ -449,6 +449,19 @@ async def get_all_checks_for_user(session: AsyncSession,
         # Подсчёт общего количества чеков
         total_checks = await session.scalar(select(func.count()).select_from(query.subquery()))
 
+        # Подсчёт количества открытых чеков пользователя
+        total_open = await session.scalar(
+            select(func.count(Check.uuid))
+            .join(Check.users)
+            .where(and_(User.id == user_id, Check.status == "OPEN"))
+        )
+        # Подсчёт количества закрытых чеков пользователя
+        total_closed = await session.scalar(
+            select(func.count(Check.uuid))
+            .join(Check.users)
+            .where(and_(User.id == user_id, Check.status == "CLOSE"))
+        )
+
         # Определяем общее количество страниц и проверяем диапазон страницы
         total_pages = (total_checks + page_size - 1) // page_size
         if page < 1 or page > total_pages:
@@ -482,6 +495,8 @@ async def get_all_checks_for_user(session: AsyncSession,
                     restaurant=check.check_data.get('restaurant') if check.check_data else None,
                 ).model_dump()
                 for check in checks_page],
+            "total_open": total_open,
+            "total_closed": total_closed,
             "total": total_checks,
             "page": page,
             "page_size": page_size,
