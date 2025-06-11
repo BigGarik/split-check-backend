@@ -1,11 +1,13 @@
 from typing import Optional
 
+from aiogram.utils.web_app import WebAppInitData
 from fastapi import Request, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from starlette.websockets import WebSocket
 
 from src.auth.dependencies import get_firebase_user
+from src.auth.providers.tg import check_tg_user, tg_auth_optional
 from src.config import ACCESS_SECRET_KEY
 from src.core.security import verify_token
 from src.redis.utils import get_token_from_redis, add_token_to_redis
@@ -22,11 +24,12 @@ http_bearer = HTTPBearer(auto_error=False)
 async def get_current_user(
         request: Request,
         oauth2_token: Optional[str] = Depends(oauth2_scheme),
-        http_auth: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer)
+        http_auth: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+        tg_auth_data: Optional[WebAppInitData] = Depends(tg_auth_optional)
 ):
     """
     Dependency для проверки и получения текущего пользователя.
-    Теперь поддерживает:
+    Поддерживает:
     - Куки (access_token)
     - OAuth2
     - Bearer токен
@@ -35,6 +38,7 @@ async def get_current_user(
     try:
         logger.debug(f"oauth2_token: {oauth2_token}")
         logger.debug(f"http_auth: {http_auth}")
+        logger.debug(f"auth_data: {tg_auth_data}")
 
         firebase_token = None
         email = None
@@ -60,7 +64,17 @@ async def get_current_user(
                 await add_token_to_redis(firebase_token, claims)
             email = claims.get('email')
 
-        # 🟡 Приоритет 3: Authorization header вручную
+        # 🟢 Приоритет 3: Telegram WebApp
+        elif tg_auth_data:
+            logger.debug("Приоритет 3: Telegram WebApp")
+            user = await check_tg_user(tg_auth_data)
+
+            if user.is_soft_deleted:
+                await unmark_user_as_deleted(user)
+
+            return user
+
+        # 🟡 Приоритет 4: Authorization header вручную
         else:
             auth_header = request.headers.get('Authorization')
             if auth_header:

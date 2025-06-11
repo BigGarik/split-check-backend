@@ -50,3 +50,5 @@ sentry-sdk[flask]
 
 aiohttp
 openai
+
+aiogram
