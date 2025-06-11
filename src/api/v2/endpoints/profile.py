@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, Request
 from starlette import status
 from starlette.exceptions import HTTPException
+from starlette.responses import JSONResponse
 
 from src.api.deps import get_current_user
 from src.models.user import User
@@ -24,7 +25,7 @@ router = APIRouter()
 async def get_profile(
     request: Request,
     user: User = Depends(get_current_user)
-):
+) -> JSONResponse:
     """Получить профиль текущего пользователя."""
     profile = await get_user_profile_db(user.id)
     if not profile:
@@ -32,12 +33,10 @@ async def get_profile(
 
     profile_response = UserProfileResponse.model_validate(profile)
     email = await get_user_email(user.id)
-    logger.debug(f"email: {email}")
+    profile_payload = profile_response.model_dump(mode="json")
+    profile_payload['email'] = email
 
-    profile_payload = profile_response.model_dump(include={"nickname", "language", "avatar_url"})
-    profile_payload["email"] = email
-
-    return profile_payload
+    return JSONResponse(status_code=200, content=profile_payload)
 
 
 @router.put(
