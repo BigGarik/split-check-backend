@@ -404,13 +404,13 @@ async def get_all_checks_for_user(session: AsyncSession,
                          end_date: Optional[str] = None) -> dict:
     try:
         # Преобразование строковых дат в объекты `date`
-        if start_date:
+        if start_date and type(start_date) == str:
             try:
                 start_date = date.fromisoformat(start_date)  # Преобразование строки в дату
             except ValueError:
                 raise ValueError(f"Invalid start_date format: {start_date}. Expected format: YYYY-MM-DD")
 
-        if end_date:
+        if end_date and type(end_date) == str:
             try:
                 end_date = date.fromisoformat(end_date)  # Преобразование строки в дату
             except ValueError:
