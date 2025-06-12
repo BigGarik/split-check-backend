@@ -9,7 +9,7 @@ from src.config.type_events import Events
 from src.redis import redis_client
 from src.repositories.check import get_check_data_from_database, get_all_checks_for_user, get_main_page_checks, \
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \
-    is_check_author
+    is_check_author, get_check_data
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
 from src.repositories.user_selection import get_user_selection_by_check_uuid, delete_user_selection_by_user_id
 from src.services.user import join_user_to_check
@@ -23,26 +23,7 @@ logger = logging.getLogger(__name__)
 # refac
 async def send_check_data_task(user_id: int, check_uuid: str, session: AsyncSession):
 
-    redis_key = f"check_uuid:{check_uuid}"
-    logger.debug(f"redis_key: {redis_key}")
-
-    # Попытка получить данные из Redis
-    check_data = await redis_client.get(redis_key)
-
-    if check_data:
-        logger.debug(f"check_data from redis: {check_data}")
-        if isinstance(check_data, (str, bytes, bytearray)):
-            check_data = json.loads(check_data)
-    else:
-        check_data = await get_check_data_from_database(session, check_uuid)
-        logger.debug(f"check_data from DB: {check_data}")
-    participants, user_selections, _ = await get_user_selection_by_check_uuid(session, check_uuid)
-
-    logger.debug(f"participants: {json.loads(participants)}")
-    logger.debug(f"user_selections: {json.loads(user_selections)}")
-
-    check_data["participants"] = json.loads(participants)
-    check_data["user_selections"] = json.loads(user_selections)
+    check_data = await get_check_data(session, user_id, check_uuid)
 
     msg = create_event_message(
         message_type=Events.BILL_DETAIL_EVENT,

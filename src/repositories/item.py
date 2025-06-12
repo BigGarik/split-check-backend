@@ -135,6 +135,8 @@ async def add_item_to_check(session: AsyncSession, check_uuid: str, item_data: d
 
         name = item_data.get("name")
         float_quantity = to_float(item_data.get("quantity"))
+        if float_quantity < 1:
+            float_quantity = 1
         if float_quantity.is_integer():
             quantity = int(float_quantity)
         else:

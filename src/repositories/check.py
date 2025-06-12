@@ -671,20 +671,23 @@ async def get_check_data(session: AsyncSession, user_id: int, check_uuid: str) -
         if not is_check_association:
             raise HTTPException(status_code=404, detail="Check not found")
 
-        check_data = await get_check_data_by_uuid(session, check_uuid)
+        redis_key = f"check_uuid:{check_uuid}"
 
-        logger.debug(f"check_data: {check_data}")
+        # Попытка получить данные из Redis
+        check_data = await redis_client.get(redis_key)
+
+        if check_data:
+            logger.debug(f"check_data from redis: {check_data}")
+            if isinstance(check_data, (str, bytes, bytearray)):
+                check_data = json.loads(check_data)
+        else:
+            check_data = await get_check_data_from_database(session, check_uuid)
+            logger.debug(f"check_data from DB: {check_data}")
 
         participants, user_selections, _ = await get_user_selection_by_check_uuid(session, check_uuid)
 
         check_data["participants"] = json.loads(participants)
         check_data["user_selections"] = json.loads(user_selections)
-        check = await get_check_by_uuid(session, check_uuid)
-        check_data["name"] = check.name
-        check_data["date"] = check.created_at.strftime("%d.%m.%Y")
-        check_data["uuid"] = check_uuid
-        check_data["author_id"] = check.author_id
-        check_data["status"] = check.status.value
 
         return check_data
     except HTTPException:
