@@ -464,7 +464,7 @@ async def get_all_checks_for_user(session: AsyncSession,
 
         # Определяем общее количество страниц и проверяем диапазон страницы
         total_pages = (total_checks + page_size - 1) // page_size
-        if page < 1 or page > total_pages:
+        if page < 1:
             logger.warning(
                 f"Запрошенная страница {page} выходит за пределы допустимого диапазона для пользователя {user_id}.")
             return {
@@ -474,6 +474,8 @@ async def get_all_checks_for_user(session: AsyncSession,
                 "page_size": page_size,
                 "total_pages": total_pages
             }
+        if page > total_pages:
+            page = total_pages
 
         # Получаем список чеков с пагинацией
         offset = (page - 1) * page_size

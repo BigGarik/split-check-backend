@@ -46,8 +46,8 @@ IMAGE_PROCESSING_QUEUE = "image_processing_tasks"
 async def get_all_check(
                         check_name: Optional[str] = None,
                         check_status: Optional[StatusEnum] = None,
-                        start_date: Optional[date] = Query(None, description="Start date in YYYY-MM-DD format"),
-                        end_date: Optional[date] = Query(None, description="End date in YYYY-MM-DD format"),
+                        start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD format"),
+                        end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD format"),
                         page: int = Query(default=1, ge=1),
                         page_size: int = Query(default=20, ge=1, le=100),
                         user: User = Depends(get_current_user),
