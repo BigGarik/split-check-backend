@@ -59,8 +59,8 @@ async def get_all_check(
 
         payload = {
             "checks": checks_data["items"],
-            "total_open": checks_data["total_open"],
-            "total_closed": checks_data["total_closed"],
+            "total_open": checks_data.get("total_open", 0),
+            "total_closed": checks_data.get("total_closed", 0),
             "pagination": {
                 "total": checks_data["total"],
                 "page": checks_data["page"],

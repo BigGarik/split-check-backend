@@ -449,6 +449,15 @@ async def get_all_checks_for_user(session: AsyncSession,
         # Подсчёт общего количества чеков
         total_checks = await session.scalar(select(func.count()).select_from(query.subquery()))
 
+        if total_checks == 0:
+            return {
+                "items": [],
+                "total": total_checks,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0
+            }
+
         # Подсчёт количества открытых чеков пользователя
         total_open = await session.scalar(
             select(func.count(Check.uuid))
@@ -464,6 +473,7 @@ async def get_all_checks_for_user(session: AsyncSession,
 
         # Определяем общее количество страниц и проверяем диапазон страницы
         total_pages = (total_checks + page_size - 1) // page_size
+
         if page < 1:
             logger.warning(
                 f"Запрошенная страница {page} выходит за пределы допустимого диапазона для пользователя {user_id}.")
