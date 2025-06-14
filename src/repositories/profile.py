@@ -42,16 +42,18 @@ async def create_user_profile_db(session, user_id: int, profile_data: UserProfil
 
 
 @with_db_session()
-async def update_user_profile_db(session, user_id: int, profile_data: dict) -> UserProfile:
+async def update_user_profile_db(session, user_id: int, profile_data: UserProfileUpdate) -> UserProfile:
     """Обновление профиля пользователя."""
     stmt = select(UserProfile).filter_by(user_id=user_id)
     result = await session.execute(stmt)
     profile = result.scalars().first()
 
+    logger.debug(f"Profile data: {profile_data}")
+
     if not profile:
         raise HTTPException(status_code=404, detail="User profile not found")
 
-    for field, value in profile_data.items():
+    for field, value in profile_data.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
 
     await session.commit()
