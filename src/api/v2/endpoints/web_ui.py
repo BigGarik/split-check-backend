@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.deps import get_current_user
 from src.config import ADMIN_IDS
 from src.models import User
-from src.repositories.check import get_all_checks_for_admin, get_check_data, get_check_data_by_uuid, get_check_by_uuid
+from src.repositories.check import get_all_checks_for_admin, get_check_data, get_check_by_uuid
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.utils.db import get_session
 

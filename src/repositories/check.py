@@ -319,25 +319,25 @@ async def add_check_to_database(session: AsyncSession, check_uuid: str, user_id:
 
         if abs(expected_total - total) > 0.01:  # Допускаем погрешность 0.01 из-за float
             error_comments.append(
-                f"Total ({total}) does not match calculated total ({expected_total}) "
-                f"(subtotal: {subtotal}, service_charge: {service_charge_amount}, "
-                f"vat: {vat_amount}, discount: {discount_amount})"
+                f"Итого ({total}) не совпадает с рассчитанным итогом ({expected_total}) "
+                f"(промежуточный итог: {subtotal}, плата за обслуживание: {service_charge_amount}, "
+                f"НДС: {vat_amount}, скидка: {discount_amount})"
             )
 
         # Если есть ошибки, записываем их в error_comment
         if error_comments:
             new_check.error_comment = "; ".join(error_comments)
-            logger.warning(f"Validation issues for check {check_uuid}: {new_check.error_comment}")
+            logger.warning(f"Проблемы с валидацией чека {check_uuid}: {new_check.error_comment}")
 
         # Сохраняем изменения в базе данных
         await session.commit()
 
-        logger.debug(f"Check {check_uuid} added to database for user {user_id} as author with items.")
+        logger.debug(f"Чек {check_uuid} добавлен в базу данных для пользователя {user_id} как автор с позициями.")
 
         # Получаем данные чека в формате JSON. функция кеширует данные в редис
         check_dict = await get_check_data_from_database(session, check_uuid)
 
-        logger.debug(f"Check {check_uuid} details: {check_dict}")
+        logger.debug(f"Детали чека {check_uuid}: {check_dict}")
 
         return check_dict
 
@@ -500,11 +500,12 @@ async def get_all_checks_for_user(session: AsyncSession,
                 CheckListResponse(
                     uuid=check.uuid,
                     name=check.name,
-                    currency=check.check_data.get('currency') if check.check_data else None,
+                    currency=check.currency,
                     status=check.status.value,
                     date=check.created_at.strftime("%d.%m.%Y"),
-                    total=check.check_data.get('total') if check.check_data else None,
-                    restaurant=check.check_data.get('restaurant') if check.check_data else None,
+                    total=check.total,
+                    restaurant=check.restaurant,
+
                 ).model_dump()
                 for check in checks_page],
             "total_open": total_open,
@@ -580,11 +581,11 @@ async def get_main_page_checks(session: AsyncSession, user_id: int) -> dict:
                 CheckListResponse(
                     uuid=check.uuid,
                     name=check.name,
-                    currency=check.check_data.get('currency') if check.check_data else None,
+                    currency=check.currency,
                     status=check.status.value,
                     date=check.created_at.strftime("%d.%m.%Y"),
-                    total=check.check_data.get('total') if check.check_data else 0,
-                    restaurant=check.check_data.get('restaurant') if check.check_data else None,
+                    total=check.total,
+                    restaurant=check.restaurant,
                 ).model_dump()
                 for check in checks
             ],
@@ -648,32 +649,6 @@ async def is_user_check_association(session: AsyncSession, user_id: int, check_u
     return exists
 
 
-async def get_check_data_by_uuid(session: AsyncSession, check_uuid: str) -> Dict[str, Any]:
-    redis_key = f"check_uuid:{check_uuid}"
-
-    # Попытка получить данные из Redis
-    cached_data = await redis_client.get(redis_key)
-    if cached_data:
-        logger.debug(f"Получены данные чека из Redis: {cached_data}")
-        return json.loads(cached_data)
-
-    # Если нет в Redis, ищем в базе данных
-    check = await get_check_by_uuid(session, check_uuid)
-    if not check:
-        logger.warning(f"Чек не найден: {check_uuid}")
-        raise HTTPException(status_code=404, detail="Check not found")
-
-    # Кэширование в Redis
-    await redis_client.set(
-        redis_key,
-        json.dumps(check.check_data),
-        expire=REDIS_EXPIRATION
-    )
-
-    logger.debug(f"Данные чека получены из БД: {check.check_data}")
-    return check.check_data
-
-
 async def get_check_data(session: AsyncSession, user_id: int, check_uuid: str) -> dict:
     try:
         is_check_association = await is_user_check_association(session, user_id, check_uuid)
@@ -687,12 +662,12 @@ async def get_check_data(session: AsyncSession, user_id: int, check_uuid: str) -
         check_data = await redis_client.get(redis_key)
 
         if check_data:
-            logger.debug(f"check_data from redis: {check_data}")
+            logger.debug(f"Данные чека из Redis: {check_data}")
             if isinstance(check_data, (str, bytes, bytearray)):
                 check_data = json.loads(check_data)
         else:
             check_data = await get_check_data_from_database(session, check_uuid)
-            logger.debug(f"check_data from DB: {check_data}")
+            logger.debug(f"Данные чека из базы данных: {check_data}")
 
         participants, user_selections, _ = await get_user_selection_by_check_uuid(session, check_uuid)
 
