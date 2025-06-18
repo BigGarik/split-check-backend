@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from sqlalchemy import ForeignKey, UniqueConstraint, Enum, event, String, Float, ForeignKeyConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, Enum, String, Float, ForeignKeyConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

@@ -5,12 +5,12 @@ from typing import Optional
 from decimal import Decimal, ROUND_HALF_UP
 import aiohttp
 
-from src.config import OPEN_EXCHANGE_RATES_API_KEY
+from src.config import config
 from src.redis import redis_client
 
 logger = logging.getLogger(__name__)
 
-api_key = OPEN_EXCHANGE_RATES_API_KEY
+api_key = config.exchange.open_exchange_rates_api_key.get_secret_value()
 cache_key = "exchange_rates"
 
 

@@ -4,7 +4,7 @@ import os
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config import ENVIRONMENT, REDIS_EXPIRATION
+from src.config import config
 from src.config.type_events import Events
 from src.redis import redis_client
 from src.repositories.check import add_check_to_database
@@ -60,7 +60,7 @@ async def recognize_image_task(
         classification_result = await classifier_image(image_path)
         if classification_result == "Allowed Content":
             # Распознавание чека
-            if ENVIRONMENT == "prod":
+            if config.app.is_production:
                 recognized_json = await recognize_check_by_anthropic(file_location_directory)
             else:
                 # recognized_json = await recognize_check_by_anthropic(file_location_directory)
@@ -72,7 +72,7 @@ async def recognize_image_task(
 
                 redis_key = f"check_uuid:{check_uuid}"
 
-                await redis_client.set(redis_key, json.dumps(check_data), expire=REDIS_EXPIRATION)
+                await redis_client.set(redis_key, json.dumps(check_data), expire=config.redis.expiration)
 
                 msg = create_event_message(
                     message_type=Events.IMAGE_RECOGNITION_EVENT,

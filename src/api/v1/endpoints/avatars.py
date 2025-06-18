@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from starlette.responses import JSONResponse
 
 from src.api.deps import get_current_user
-from src.config import BASE_URL
+from src.config import config
+
 from src.models import User
 
 logger = logging.getLogger(__name__)
@@ -15,8 +16,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-AVATAR_DIR = "images/avatars"
-AVATAR_URL_PREFIX = f"{BASE_URL}/images/avatars"
+AVATAR_DIR = f"{config.app.upload_directory}/avatars"
+AVATAR_URL_PREFIX = f"{config.app.base_url}/{config.app.upload_directory}/avatars"
 
 # Ensure directory exists
 os.makedirs(AVATAR_DIR, exist_ok=True)

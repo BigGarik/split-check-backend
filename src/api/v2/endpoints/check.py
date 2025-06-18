@@ -16,7 +16,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from src.api.deps import get_current_user
-from src.config import UPLOAD_DIRECTORY, REDIS_EXPIRATION, BASE_URL
+from src.config import config
 from src.config.type_events import Events
 from src.models import User, StatusEnum
 from src.redis import redis_client
@@ -157,7 +157,7 @@ async def upload_image(
     session: AsyncSession = Depends(get_session)
 ):
     check_uuid = str(uuid.uuid4())
-    directory = os.path.join(UPLOAD_DIRECTORY, check_uuid)
+    directory = os.path.join(config.app.upload_directory, check_uuid)
     os.makedirs(directory, exist_ok=True)
 
     file_path = os.path.join(directory, file.filename)
@@ -185,7 +185,7 @@ async def upload_image(
         check_data = result.get("result")
         check_data = await add_check_to_database(session, check_uuid, user.id, check_data)
 
-        await redis_client.set(f"check_uuid:{check_uuid}", json.dumps(check_data), expire=REDIS_EXPIRATION)
+        await redis_client.set(f"check_uuid:{check_uuid}", json.dumps(check_data), expire=config.redis.expiration)
 
         msg = create_event_message(
             message_type=Events.IMAGE_RECOGNITION_EVENT,
@@ -577,7 +577,7 @@ async def get_images(uuid: UUID = Path(..., description="UUID чека"), user: 
     """
     Возвращает список URL-ов на изображения из папки UUID.
     """
-    folder_path = os.path.join(UPLOAD_DIRECTORY, str(uuid))
+    folder_path = os.path.join(config.app.upload_directory, str(uuid))
     try:
         image_files = [f for f in os.scandir(folder_path) if f.is_file() and f.name.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))]
     except FileNotFoundError:
@@ -586,7 +586,7 @@ async def get_images(uuid: UUID = Path(..., description="UUID чека"), user: 
     if not image_files:
         raise HTTPException(status_code=404, detail="Изображения не найдены")
 
-    base_url = f"{BASE_URL}/images/{uuid}/"
+    base_url = f"{config.app.base_url}/images/{uuid}/"
 
     return {
         "uuid": str(uuid),

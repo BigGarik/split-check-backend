@@ -6,12 +6,11 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.type_events import Events
-from src.redis import redis_client
 from src.repositories.check import get_check_data_from_database, get_all_checks_for_user, get_main_page_checks, \
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \
     is_check_author, get_check_data
 from src.repositories.user import get_users_by_check_uuid, get_user_by_id
-from src.repositories.user_selection import get_user_selection_by_check_uuid, delete_user_selection_by_user_id
+from src.repositories.user_selection import delete_user_selection_by_user_id
 from src.services.user import join_user_to_check
 from src.utils.exchange import get_exchange_rate, round_half_up
 from src.utils.notifications import create_event_message, create_event_status_message

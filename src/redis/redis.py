@@ -1,11 +1,11 @@
 from .queue_processor import get_queue_processor
 from .redis_client import RedisClient
-from ..config import REDIS_HOST, REDIS_PORT, REDIS_DB
+from src.config import config
 
 # Инициализация Redis клиента
-redis_client = RedisClient(host=REDIS_HOST,
-                           port=REDIS_PORT,
-                           db=REDIS_DB)
+redis_client = RedisClient(host=config.redis.host,
+                           port=config.redis.port,
+                           db=config.redis.db,)
 
 # Создаем единственный экземпляр QueueProcessor через фабрику
 queue_processor = get_queue_processor(redis_client, "task_queue")

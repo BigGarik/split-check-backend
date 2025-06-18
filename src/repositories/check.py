@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, date
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from sqlalchemy import select, insert, delete, func, and_, update, exists
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import flag_modified
 from starlette.exceptions import HTTPException
 
-from src.config import REDIS_EXPIRATION
+from src.config import config
 from src.models import Check, user_check_association, User, UserSelection, StatusEnum
 from src.redis import redis_client
 from src.repositories.item import get_items_by_check_uuid, add_item_to_check
@@ -103,7 +103,7 @@ async def get_check_data_from_database(session: AsyncSession, check_uuid: str) -
         await redis_client.set(
             redis_key,
             json.dumps(check_data),
-            expire=REDIS_EXPIRATION
+            expire=config.redis.expiration
         )
 
         return check_data

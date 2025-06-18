@@ -1,195 +1,159 @@
 import json
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
+
+from pydantic import Field, field_validator, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-ADMIN_IDS = json.loads(os.getenv("ADMIN_IDS", "[47, 2]"))
-
-MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
-MAIL_FROM = os.getenv("MAIL_FROM")
-MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
-MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
-MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", False)
-MAIL_STARTTLS = os.getenv("MAIL_STARTTLS", True)
-USE_CREDENTIALS = os.getenv("USE_CREDENTIALS", True)
-
-ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
-
-### fastapi
-BASE_URL = os.getenv("BASE_URL", "https://scannsplit.com")
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # путь до корня проекта
 
 
-### api_anthropic.py
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL_NAME = os.getenv("ANTHROPIC_MODEL_NAME")
+class ConfigBase(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 
-### api_openai.py
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME")
+class AppConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="APP_")
+
+    base_url: str = "https://biggarik.ru"
+    admin_ids: list[int] = [47, 2, 4]
+    environment: str = "dev"
+    log_level: str = "DEBUG"
+    service_name: str = "scannsplit-app"
+    upload_directory: str = "images"
+    deep_link_url: str = "sscannsplit://scannsplit.com/shared/"
+    enable_docs: bool = True
+    allowed_ips: list[str] = ["127.0.0.1", "192.168.0.1"]
+    max_processes: int = 4
+    host: str = "0.0.0.0"
+    port: int = 8080
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "prod"
+
+    @property
+    def is_development(self) -> bool:
+        return self.environment in ["dev", "local"]
+
+    @field_validator('admin_ids', 'allowed_ips', mode='before')
+    def parse_json(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
+        return v
 
 
-### Database
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = int(os.getenv("DB_PORT", 5432))
-DATABASE = os.getenv("DATABASE", "split_check")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
+class DatabaseConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="DB_")
 
-ASYNC_DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DATABASE}"
-SYNC_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DATABASE}"
+    host: str = "localhost"
+    port: int = 5432
+    user: str = "postgres"
+    password: SecretStr = "postgres"
+    database: str = "scannsplit"
 
+    @property
+    def async_url(self) -> str:
+        return f"postgresql+asyncpg://{self.user}:{self.password.get_secret_value()}@{self.host}:{self.port}/{self.database}"
 
-### redis
-REDIS_USERNAME = os.getenv("REDIS_USERNAME")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_DB = int(os.getenv("REDIS_DB", 0))
-REDIS_EXPIRATION = int(os.getenv("REDIS_EXPIRATION", 3600))
+    @property
+    def sync_url(self) -> str:
+        return f"postgresql://{self.user}:{self.password.get_secret_value()}@{self.host}:{self.port}/{self.database}"
 
 
-### auth.py
-# Секретные ключи для токенов
-ACCESS_SECRET_KEY = os.getenv("ACCESS_SECRET_KEY")
-REFRESH_SECRET_KEY =os.getenv("REFRESH_SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
+class RedisConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="REDIS_")
+
+    host: str = "localhost"
+    port: int = 6379
+    db: int = 0
+    expiration: int = 3600
 
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
-SERVICE_NAME = os.getenv("SERVICE_NAME", "scannsplit-app")
 
-# Настройки для Syslog
-SYSLOG_HOST = os.getenv("SYSLOG_HOST", "biggarik.ru")
-SYSLOG_PORT = int(os.getenv("SYSLOG_PORT", 1514))
-SYSLOG_ENABLED = os.getenv("SYSLOG_ENABLED", False)
+class TelegramConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="TELEGRAM_")
 
-# GRAYLOG
-GRAYLOG_HOST = os.getenv("GRAYLOG_HOST", "biggarik.ru")
-GRAYLOG_PORT = int(os.getenv("GRAYLOG_PORT", 12201))
-GRAYLOG_ENABLED = os.getenv("GRAYLOG_ENABLED", True)
-
-# Время действия токенов
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 600))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 365))
-
-REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 525600) ) # 365*24*60 = 1 year
+    bot_token: SecretStr = "default"
 
 
-UPLOAD_DIRECTORY = os.getenv("UPLOAD_DIRECTORY", "images")
+class EmailConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="MAIL_")
 
-DEEP_LINK_URL = os.getenv("DEEP_LINK_URL")
+    username: str = "your-email@example.com"
+    password: SecretStr = "your-password"
+    from_email: str = "your-email@example.com"
+    port: int = 587
+    server: str = "smtp.gmail.com"
+    ssl_tls: bool = False
+    starttls: bool = True
+    use_credentials: bool = True
 
-ENABLE_DOCS = os.getenv("ENABLE_DOCS", True)
 
-ALLOWED_IPS = json.loads(os.getenv("ALLOWED_IPS", '["127.0.0.1"]'))
+class AiConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="AI_")
 
-OPEN_EXCHANGE_RATES_API_KEY = os.getenv("OPEN_EXCHANGE_RATES_API_KEY")
+    anthropic_api_key: SecretStr = "sk-ant-api03-jAR5EFlJrpkjw4QeQ69NGzVo"
+    anthropic_model_name: str = "claude-sonnet-4-0"
 
-# from typing import ClassVar, List
-#
-# from pydantic import PostgresDsn, RedisDsn, field_validator
-# from pydantic_settings import BaseSettings, SettingsConfigDict
-#
-# from .type_events import Events
-#
-#
-# class Settings(BaseSettings):
-#     # email
-#     mail_username: str
-#     mail_password: str
-#     mail_from: str
-#     mail_port: int
-#     mail_server: str
-#     mail_ssl_tls: bool
-#     mail_starttls: bool
-#     use_credentials: bool
-#
-#     environment: str
-#
-#     # fastapi
-#     base_url: str
-#
-#     # API Anthropic
-#     api_key: str
-#     claude_model_name: str
-#
-#     # Database
-#     db_host: str
-#     db_port: int
-#     database: str
-#     db_user: str
-#     db_password: str
-#
-#     @property
-#     def async_database_url(self) -> PostgresDsn:
-#         return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.database}"
-#
-#     @property
-#     def sync_database_url(self) -> PostgresDsn:
-#         return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.database}"
-#
-#     # Redis
-#     redis_username: str
-#     redis_password: str
-#     redis_host: str
-#     redis_port: int
-#     redis_db: int
-#     redis_expiration: int  # Добавлено
-#
-#     @property
-#     def redis_url(self) -> RedisDsn:
-#         return f"redis://{self.redis_username}:{self.redis_password}@{self.redis_host}"
-#
-#     # Auth
-#     access_secret_key: str
-#     refresh_secret_key: str
-#     algorithm: str = "HS256"
-#     access_token_expire_minutes: int = 600
-#     refresh_token_expire_days: int = 365
-#     refresh_token_expire_minutes: int  # Добавлено
-#
-#     # GRAYLOG
-#     # GRAYLOG_HOST: str = "localhost"
-#     # GRAYLOG_PORT: int = 12201
-#     LOG_LEVEL: str = "DEBUG"
-#     SERVICE_NAME: str = "fastapi-app"
-#
-#     SYSLOG_HOST: str = "localhost"
-#     SYSLOG_PORT: int = 1514
-#
-#     # Storage
-#     upload_directory: str = "images"
-#
-#     # google
-#     # google_android_client_id: str
-#     # google_ios_client_id: str
-#     # google_redirect_uri: str = "http://localhost:8089/api/auth/google"
-#
-#     deep_link_url: str
-#
-#     enable_docs: bool
-#
-#     allowed_ips: List[str]
-#
-#     # События
-#     Events: ClassVar[type] = Events
-#
-#     model_config = SettingsConfigDict(
-#         env_file=".env",
-#         env_file_encoding="utf-8",
-#         case_sensitive=False
-#     )
-#
-#     # Валидатор для преобразования строки в список
-#     @field_validator("allowed_ips", mode="before")
-#     def parse_allowed_ips(cls, value):
-#         if isinstance(value, str):
-#             return [ip.strip() for ip in value.split(",")]
-#         return value
-#
-#
-# # Создаем глобальный экземпляр настроек
-# settings = Settings()
+    openai_api_key: SecretStr = "sk-proj-VdvIppc7mktetmIrN30kZIgb5iPKW5JfktSCNBJ4m4ygfSHuGZ"
+    openai_model_name: str = "gpt-4o"
+
+
+class AuthConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="AUTH_")
+
+    access_secret_key: SecretStr = "jAR5EFlJrpkjw4QeQ69NGz"
+    refresh_secret_key: SecretStr = "cw0VRathl089NGzVoypmDcC3"
+
+    algorithm: str = "HS256"
+    # Время действия токенов
+    access_token_expire_minutes: int = 600
+    refresh_token_expire_days: int = 365
+    refresh_token_expire_minutes: int = 525600
+
+
+class LoggingConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="LOG_")
+
+    # Настройки для Syslog
+    syslog_host: str = "localhost"
+    syslog_port: int = 1514
+    syslog_enabled: bool = False
+
+    # GRAYLOG
+    graylog_host: str = "192.168.67.101"
+    graylog_port: int = 12201
+    graylog_enabled: bool = True
+
+
+class ExchangeConfig(ConfigBase):
+    model_config = SettingsConfigDict(env_prefix="EXCHANGE_")
+
+    open_exchange_rates_api_key: SecretStr = "64878c982e8e42e089b8fae75496740a"
+
+
+class Config(BaseSettings):
+    telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    app: AppConfig = Field(default_factory=AppConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
+    ai: AiConfig = Field(default_factory=AiConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    exchange: ExchangeConfig = Field(default_factory=ExchangeConfig)
+
+    @classmethod
+    def load(cls) -> "Config":
+        return cls()
+
+
+config = Config.load()

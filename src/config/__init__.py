@@ -1,1 +1,1 @@
-from .settings import *
+from .settings import config, BASE_DIR

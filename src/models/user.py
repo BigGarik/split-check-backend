@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import Base

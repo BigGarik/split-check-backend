@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from typing import Optional, Dict, Any
@@ -6,20 +5,20 @@ from typing import Optional, Dict, Any
 import httpx
 from anthropic import Anthropic
 
-from src.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL_NAME, ENVIRONMENT
+from src.config import config
 from src.services.ai.prompt import prompt
 from src.utils.image_recognition import is_valid_json_response, extract_json_from_response
 from .message import message_for_anthropic
 
 logger = logging.getLogger(__name__)
 
-if ENVIRONMENT == "prod":
-    client = Anthropic(api_key=ANTHROPIC_API_KEY)
+if config.app.is_production:
+    client = Anthropic(api_key=config.ai.anthropic_api_key.get_secret_value())
 else:
     # Создание HTTP клиента с настроенным прокси
     http_client = httpx.Client(proxy="http://127.0.0.1:12334")
 
-    client = Anthropic(http_client=http_client, api_key=ANTHROPIC_API_KEY)
+    client = Anthropic(http_client=http_client, api_key=config.ai.anthropic_api_key.get_secret_value())
 
 
 async def send_request_to_anthropic(message: list, max_retries: int = 2) -> Optional[str]:
@@ -39,7 +38,7 @@ async def send_request_to_anthropic(message: list, max_retries: int = 2) -> Opti
             start_time = time.time()
 
             response = client.messages.create(
-                model=ANTHROPIC_MODEL_NAME,
+                model=config.ai.anthropic_model_name,
                 max_tokens=2048,
                 messages=message
             )

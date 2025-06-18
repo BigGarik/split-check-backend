@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from fastapi import Request, HTTPException, Depends, status
@@ -6,11 +7,10 @@ from jose import JWTError
 from starlette.websockets import WebSocket
 
 from src.auth.dependencies import get_firebase_user
-from src.config import ACCESS_SECRET_KEY
+from src.config import config
 from src.core.security import verify_token
 from src.redis.utils import get_token_from_redis, add_token_to_redis
 from src.repositories.user import get_user_by_email, unmark_user_as_deleted
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +43,12 @@ async def get_current_user(
         cookie_token = request.cookies.get('access_token')
         if cookie_token:
             logger.debug("Приоритет 0: access_token из куки")
-            email, _ = await verify_token(ACCESS_SECRET_KEY, token=cookie_token)
+            email, _ = await verify_token(config.auth.access_secret_key.get_secret_value(), token=cookie_token)
 
         # 🥈 Приоритет 1: OAuth2 токен
         elif oauth2_token:
             logger.debug("Приоритет 1: OAuth2 токен")
-            email, _ = await verify_token(ACCESS_SECRET_KEY, token=oauth2_token)
+            email, _ = await verify_token(config.auth.access_secret_key.get_secret_value(), token=oauth2_token)
 
         # 🥉 Приоритет 2: Firebase токен из заголовка
         elif http_auth:
@@ -132,7 +132,7 @@ async def get_current_user_for_websocket(websocket: WebSocket):
 
         if token:
             # OAuth2 токен
-            email, _ = await verify_token(ACCESS_SECRET_KEY, token=token)
+            email, _ = await verify_token(config.auth.access_secret_key.get_secret_value(), token=token)
         elif id_token:
             # Firebase токен
             claims = await get_token_from_redis(id_token)

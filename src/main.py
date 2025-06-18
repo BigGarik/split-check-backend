@@ -12,8 +12,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette.staticfiles import StaticFiles
 
 from src.api.routes import include_routers
-from src.config import ENABLE_DOCS, SYSLOG_HOST, SYSLOG_PORT, LOG_LEVEL, SERVICE_NAME, UPLOAD_DIRECTORY, ENVIRONMENT, \
-    GRAYLOG_HOST, GRAYLOG_PORT, SYSLOG_ENABLED, GRAYLOG_ENABLED
+from src.config import config
 from src.config.logger import setup_logging
 from src.db.base import Base
 from src.db.session import sync_engine
@@ -40,10 +39,11 @@ async def lifespan(app: FastAPI):
     if not hasattr(multiprocessing, 'get_start_method') or multiprocessing.get_start_method() != 'spawn':
         multiprocessing.set_start_method('spawn', force=True)
 
-    if ENVIRONMENT == 'prod':
+    if config.app.is_production:
         classifier = init_classifier()
     else:
-        classifier = init_classifier()
+        pass
+        # classifier = init_classifier()
 
     # Подключаемся к Redis
     await redis_client.connect()
@@ -141,7 +141,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         logger.info("user_delete_task cancelled")
 
-    if ENVIRONMENT == 'prod':
+    if config.app.is_production:
         if classifier:
             classifier.cleanup()
 
@@ -155,7 +155,7 @@ sentry_logging = LoggingIntegration(
     event_level=logging.ERROR  # Отправлять как события только ERROR и выше
 )
 
-if ENVIRONMENT == 'prod':
+if config.app.is_production:
     sentry_sdk.init(
         dsn="https://37e3cff9e212e28d8dfd0c03a6e6501c@o4509195406016512.ingest.de.sentry.io/4509195408244816",
         integrations=[sentry_logging],
@@ -171,23 +171,23 @@ if ENVIRONMENT == 'prod':
 
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
-              docs_url="/docs" if ENABLE_DOCS else None,
-              redoc_url="/redoc" if ENABLE_DOCS else None,
-              openapi_url="/openapi.json" if ENABLE_DOCS else None,
+              docs_url="/docs" if config.app.enable_docs else None,
+              redoc_url="/redoc" if config.app.enable_docs else None,
+              openapi_url="/openapi.json" if config.app.enable_docs else None,
               version=APP_VERSION
               )
 
 # Настраиваем логирование
 logger = setup_logging(
     app,
-    syslog_host=SYSLOG_HOST,
-    syslog_port=SYSLOG_PORT,
-    graylog_host=GRAYLOG_HOST,
-    graylog_port=GRAYLOG_PORT,
-    log_level=LOG_LEVEL,
-    syslog_enabled=SYSLOG_ENABLED,
-    graylog_enabled=GRAYLOG_ENABLED,
-    service_name=SERVICE_NAME
+    syslog_host=config.logging.syslog_host,
+    syslog_port=config.logging.syslog_port,
+    graylog_host=config.logging.graylog_host,
+    graylog_port=config.logging.graylog_port,
+    log_level=config.app.log_level,
+    syslog_enabled=config.logging.syslog_enabled,
+    graylog_enabled=config.logging.graylog_enabled,
+    service_name=config.app.service_name
 )
 
 
@@ -204,7 +204,7 @@ app.add_middleware(
     allow_headers=["*"],
 
 )
-app.mount("/images", StaticFiles(directory=UPLOAD_DIRECTORY), name="images")
+app.mount("/images", StaticFiles(directory=config.app.upload_directory), name="images")
 
 # Подключаем маршруты
 include_routers(app)
@@ -219,4 +219,4 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080, log_level=LOG_LEVEL)
+    uvicorn.run(app, host=config.app.host, port=config.app.port, log_level=config.app.log_level)

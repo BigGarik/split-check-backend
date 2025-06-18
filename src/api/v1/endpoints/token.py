@@ -5,8 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from starlette.requests import Request
 
-from src.config import REFRESH_SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, \
-    REFRESH_TOKEN_EXPIRE_MINUTES
+from src.config import config
 from src.core.security import verify_token
 from src.schemas import RefreshTokenRequest, TokenResponse
 from src.services.auth import authenticate_user, generate_tokens
@@ -48,7 +47,7 @@ async def login_for_access_token(request: Request,
         httponly=False,
         secure=False,  # для HTTPS
         samesite="strict",
-        max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60
+        max_age=config.auth.refresh_token_expire_minutes * 60
     )
 
     # Также сохраним access_token в куки
@@ -58,7 +57,7 @@ async def login_for_access_token(request: Request,
         httponly=False,
         secure=False,
         samesite="strict",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        max_age=config.auth.access_token_expire_minutes * 60
     )
 
     return tokens
@@ -84,7 +83,7 @@ async def refresh_access_token(request: RefreshTokenRequest, response: Response)
 
     try:
         email, user_id = await verify_token(
-            secret_key=REFRESH_SECRET_KEY,
+            secret_key=config.auth.refresh_secret_key.get_secret_value(),
             token=token
         )
         tokens = await generate_tokens(email, user_id)
@@ -96,7 +95,7 @@ async def refresh_access_token(request: RefreshTokenRequest, response: Response)
             httponly=False,
             secure=False,
             samesite="strict",
-            max_age=REFRESH_TOKEN_EXPIRE_MINUTES * 60
+            max_age=config.auth.refresh_token_expire_minutes * 60
         )
 
         response.set_cookie(
@@ -105,7 +104,7 @@ async def refresh_access_token(request: RefreshTokenRequest, response: Response)
             httponly=False,
             secure=False,
             samesite="strict",
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            max_age=config.auth.access_token_expire_minutes * 60
         )
 
         return tokens

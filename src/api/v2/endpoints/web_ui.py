@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_current_user
-from src.config import ADMIN_IDS
+from src.config import config
 from src.models import User
 from src.repositories.check import get_all_checks_for_admin, get_check_data, get_check_by_uuid
 from src.repositories.user_selection import get_user_selection_by_check_uuid
@@ -60,7 +60,7 @@ async def checks(request: Request,
                 restaurant: Optional[str] = Query(None),
                 author_id: Optional[int] = Query(None),
                 currency: Optional[str] = Query(None),):
-    if user.id not in ADMIN_IDS:
+    if user.id not in config.app.admin_ids:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorized")
 
     result = await get_all_checks_for_admin(session=session,
@@ -104,7 +104,7 @@ async def check_detail_page(
 ):
     try:
         check_uuid = str(uuid)
-        check_data = await get_check_data_by_uuid(session, check_uuid)
+        check_data = await get_check_data(session, check_uuid)
 
         logger.debug(f"check_data: {check_data}")
 

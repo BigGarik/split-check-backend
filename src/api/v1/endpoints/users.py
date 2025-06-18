@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from typing import Dict
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi import HTTPException
 from fastapi_mail import FastMail
 from jose import jwt
@@ -13,13 +13,13 @@ from starlette.responses import Response
 
 from src import schemas
 from src.api.deps import get_current_user
-from src.config import ACCESS_TOKEN_EXPIRE_MINUTES, ACCESS_SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
+from src.config import config
 from src.config.mail import mail_config
 from src.core.exceptions import UserAlreadyExistsError, DatabaseOperationError
 from src.core.security import create_token, async_hash_password
 from src.models import User
 from src.repositories.user import create_new_user, get_user_by_email, mark_user_as_deleted
-from src.schemas import PasswordResetRequest, PasswordReset, UserDeleteResponse
+from src.schemas import PasswordResetRequest, PasswordReset
 from src.services.auth import send_password_reset_email, generate_tokens
 from src.utils.db import with_db_session, get_async_db
 
@@ -90,8 +90,8 @@ async def request_password_reset(
             # Генерируем временный токен для сброса пароля
             reset_token = await create_token(
                 data={"email": user.email, "user_id": user.id, "type": "password_reset"},
-                expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-                secret_key=ACCESS_SECRET_KEY
+                expires_delta=timedelta(minutes=config.auth.access_token_expire_minutes),
+                secret_key=config.auth.access_secret_key.get_secret_value()
             )
             await send_password_reset_email(request.email, reset_token, fastmail)
 
@@ -120,8 +120,8 @@ async def reset_password(
         # Проверяем токен сброса пароля
         payload = jwt.decode(
             reset_data.token,
-            ACCESS_SECRET_KEY,
-            algorithms=[ALGORITHM]
+            config.auth.access_secret_key.get_secret_value(),
+            algorithms=[config.auth.algorithm]
         )
 
         if payload.get("type") != "password_reset":
@@ -154,7 +154,7 @@ async def reset_password(
                 httponly=True,
                 secure=True,
                 samesite="strict",
-                max_age=REFRESH_TOKEN_EXPIRE_DAYS
+                max_age=config.auth.refresh_token_expire_days
             )
 
             return tokens

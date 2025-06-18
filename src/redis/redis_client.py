@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Optional, Any, Dict, Coroutine
+from typing import Optional, Any, Dict
+
 from redis import asyncio as aioredis
 
 logger = logging.getLogger(__name__)

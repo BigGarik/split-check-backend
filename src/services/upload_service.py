@@ -1,19 +1,18 @@
 # src/services/upload_service.py
 import logging
 import os
-import uuid
 
 import aiofiles
 from starlette.datastructures import UploadFile
 
-from src.config import UPLOAD_DIRECTORY
+from src.config import config
 
 logger = logging.getLogger(__name__)
 
 
 async def prepare_image_upload(user_id: int, file: UploadFile, check_uuid: str) -> dict:
     """Подготовка данных для задачи загрузки и обработки изображения."""
-    directory = os.path.join(UPLOAD_DIRECTORY, check_uuid)
+    directory = os.path.join(config.app.upload_directory, check_uuid)
     os.makedirs(directory, exist_ok=True)
 
     file_name = file.filename

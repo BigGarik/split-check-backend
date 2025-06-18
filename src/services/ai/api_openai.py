@@ -1,18 +1,16 @@
-import base64
-import json
 import logging
 from typing import Optional, Dict, Any
 
 from openai import AsyncOpenAI
 
-from src.config import OPENAI_API_KEY, OPENAI_MODEL_NAME
+from src.config import config
 from src.services.ai.prompt import prompt
 from src.utils.image_recognition import is_valid_json_response, extract_json_from_response
 from .message import message_for_anthropic
 
 logger = logging.getLogger(__name__)
 
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=config.ai.openai_api_key.get_secret_value())
 
 
 async def send_request_to_openai(message: list, max_retries: int = 2) -> Optional[str]:
@@ -29,7 +27,7 @@ async def send_request_to_openai(message: list, max_retries: int = 2) -> Optiona
     for attempt in range(max_retries):
         try:
             response = await client.chat.completions.create(
-                model=OPENAI_MODEL_NAME,
+                model=config.ai.openai_model_name,
                 messages=message
             )
 
