@@ -8,6 +8,7 @@ from starlette import status
 from starlette.exceptions import HTTPException
 
 from src.api.deps import get_current_user
+from src.config import config
 from src.config.type_events import Events
 from src.models import User
 from src.repositories.check import get_check_data_from_database
@@ -18,7 +19,7 @@ from src.utils.db import get_session
 from src.utils.notifications import create_event_message
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

@@ -4,12 +4,13 @@ from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.future import select
 
+from src.config import config
 from src.models import User
 from src.models.profile import UserProfile
 from src.schemas import UserProfileUpdate
 from src.utils.db import with_db_session
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 @with_db_session()

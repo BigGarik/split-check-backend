@@ -11,7 +11,7 @@ from src.core.security import async_verify_password
 from src.core.security import create_token
 from src.repositories.user import get_user_by_email
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def authenticate_user(email: str, password: str):

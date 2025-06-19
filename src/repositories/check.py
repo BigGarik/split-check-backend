@@ -18,7 +18,7 @@ from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.schemas import CheckListResponse
 from src.utils.check import to_float
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def get_check_by_uuid(session: AsyncSession, check_uuid: str) -> Optional[Check]:

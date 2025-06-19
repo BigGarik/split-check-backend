@@ -15,7 +15,7 @@ from src.utils.notifications import create_event_message
 from src.utils.system import get_memory_usage
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 def calculate_price(json_data):

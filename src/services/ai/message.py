@@ -3,9 +3,10 @@ import logging
 import os
 from typing import Optional, List
 
+from src.config import config
 from src.utils.image_processing import process_image
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def message_for_anthropic(file_location_directory: str, prompt: Optional[str] = "") -> List[dict]:

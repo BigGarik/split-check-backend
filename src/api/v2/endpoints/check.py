@@ -34,7 +34,7 @@ from src.websockets.manager import ws_manager
 queue_processor = get_queue_processor()
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

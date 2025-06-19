@@ -7,7 +7,7 @@ from starlette.datastructures import UploadFile
 
 from src.config import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def prepare_image_upload(user_id: int, file: UploadFile, check_uuid: str) -> dict:

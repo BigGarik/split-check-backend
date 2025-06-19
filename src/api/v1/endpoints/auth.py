@@ -4,11 +4,12 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from firebase_admin import auth
 
+from src.config import config
 from src.redis.utils import add_token_to_redis, get_token_from_redis
 from src.repositories.user import get_user_by_email, create_new_user
 from src.schemas import UserCreate
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

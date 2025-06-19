@@ -137,9 +137,14 @@ def setup_logging(
         root_logger.removeHandler(handler)
 
     log_format = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(name)s | %(module)s:%(lineno)d | "
+        "%(asctime)s | %(levelname)s | %(pathname)s:%(lineno)d | "
         f"service={service_name} | %(message)s"
     )
+
+    # log_format = logging.Formatter(
+    #     "%(asctime)s | %(levelname)s | %(name)s | %(module)s:%(lineno)d | "
+    #     f"service={service_name} | %(message)s"
+    # )
 
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(log_format)
@@ -188,41 +193,41 @@ def setup_logging(
 
     return logger
 
-
-def get_context_logger(name: str, **context) -> logging.Logger:
-    """
-    Создает логгер с дополнительной контекстной информацией.
-
-    Args:
-        name: Имя логгера
-        context: Дополнительная контекстная информация
-
-    Returns:
-        Логгер с добавленным контекстом
-    """
-    logger = logging.getLogger(name)
-    old_factory = logging.getLogRecordFactory()
-
-    def record_factory(*args, **kwargs):
-        record = old_factory(*args, **kwargs)
-        record.__dict__.update(context)  # Добавляем контекст напрямую в запись лога
-        return record
-
-    logging.setLogRecordFactory(record_factory)
-    return logger
-
-
-def get_request_logger(request: Request) -> logging.Logger:
-    """
-    Создает логгер, включающий ID запроса из контекста запроса.
-
-    Args:
-        request: Объект запроса FastAPI
-
-    Returns:
-        Логгер с контекстом запроса
-    """
-    if not hasattr(request.state, "request_id"):
-        request.state.request_id = str(uuid.uuid4())
-
-    return get_context_logger("request", request_id=request.state.request_id)
+#
+# def get_context_logger(name: str, **context) -> logging.Logger:
+#     """
+#     Создает логгер с дополнительной контекстной информацией.
+#
+#     Args:
+#         name: Имя логгера
+#         context: Дополнительная контекстная информация
+#
+#     Returns:
+#         Логгер с добавленным контекстом
+#     """
+#     logger = logging.getLogger(name)
+#     old_factory = logging.getLogRecordFactory()
+#
+#     def record_factory(*args, **kwargs):
+#         record = old_factory(*args, **kwargs)
+#         record.__dict__.update(context)  # Добавляем контекст напрямую в запись лога
+#         return record
+#
+#     logging.setLogRecordFactory(record_factory)
+#     return logger
+#
+#
+# def get_request_logger(request: Request) -> logging.Logger:
+#     """
+#     Создает логгер, включающий ID запроса из контекста запроса.
+#
+#     Args:
+#         request: Объект запроса FastAPI
+#
+#     Returns:
+#         Логгер с контекстом запроса
+#     """
+#     if not hasattr(request.state, "request_id"):
+#         request.state.request_id = str(uuid.uuid4())
+#
+#     return get_context_logger("request", request_id=request.state.request_id)

@@ -3,6 +3,7 @@ import logging
 import os
 from dotenv import load_dotenv
 
+from src.config import config
 from src.utils.check import to_float, to_int
 
 # Загружаем .env до всех импортов, зависящих от settings
@@ -20,7 +21,7 @@ engine = sync_engine
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 def migrate_check(check_uuid):

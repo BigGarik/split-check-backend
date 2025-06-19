@@ -1,16 +1,14 @@
 import json
 import logging
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from src.config import config
 from src.config.type_events import Events
 from src.repositories.profile import get_user_profile_db, update_user_profile_db, get_user_email
 from src.repositories.user import user_delete
 from src.schemas import UserProfileBase, UserProfileResponse
-from src.utils.db import with_db_session
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def get_user_profile_task(user_id: int):

@@ -23,7 +23,7 @@ from src.schemas import PasswordResetRequest, PasswordReset
 from src.services.auth import send_password_reset_email, generate_tokens
 from src.utils.db import with_db_session, get_async_db
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

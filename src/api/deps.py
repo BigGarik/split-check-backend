@@ -12,7 +12,7 @@ from src.core.security import verify_token
 from src.redis.utils import get_token_from_redis, add_token_to_redis
 from src.repositories.user import get_user_by_email, unmark_user_as_deleted
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 # Используем обе схемы аутентификации
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token", auto_error=False)

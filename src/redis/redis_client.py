@@ -4,7 +4,9 @@ from typing import Optional, Any, Dict
 
 from redis import asyncio as aioredis
 
-logger = logging.getLogger(__name__)
+from src.config import config
+
+logger = logging.getLogger(config.app.service_name)
 
 
 class RedisClient:
@@ -94,3 +96,5 @@ class RedisClient:
 
     async def get(self, key: str) -> Optional[str]:
         return await self.client.get(key)
+
+

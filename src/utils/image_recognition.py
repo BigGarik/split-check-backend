@@ -3,7 +3,9 @@ import logging
 import re
 from typing import Optional, Dict, Any
 
-logger = logging.getLogger(__name__)
+from src.config import config
+
+logger = logging.getLogger(config.app.service_name)
 
 
 def is_valid_json_response(response_text: str) -> bool:

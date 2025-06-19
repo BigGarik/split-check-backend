@@ -1,9 +1,10 @@
 import logging
 import os
 
+from src.config import config
 from src.services.classifier.classifier_instance import get_classifier
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def classifier_image(file_location):

@@ -3,6 +3,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import config
 from src.config.type_events import Events
 from src.repositories.check import get_check_data_from_database
 from src.repositories.item import update_item_quantity, add_item_to_check, remove_item_from_check, edit_item_in_check
@@ -10,7 +11,7 @@ from src.repositories.user import get_users_by_check_uuid
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 # refac

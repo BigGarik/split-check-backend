@@ -5,6 +5,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import config
 from src.config.type_events import Events
 from src.repositories.check import get_check_data_from_database, get_all_checks_for_user, get_main_page_checks, \
     add_check_to_database, edit_check_name_to_database, edit_check_status_to_database, delete_association_by_check_uuid, \
@@ -16,7 +17,7 @@ from src.utils.exchange import get_exchange_rate, round_half_up
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 # refac

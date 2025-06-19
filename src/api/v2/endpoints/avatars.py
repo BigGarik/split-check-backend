@@ -10,7 +10,7 @@ from src.api.deps import get_current_user
 from src.config import config
 from src.models import User
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

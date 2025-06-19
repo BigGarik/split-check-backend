@@ -6,11 +6,12 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from src.api.deps import get_current_user
+from src.config import config
 from src.models.user import User
 from src.repositories.profile import get_user_profile_db, get_user_email, update_user_profile_db
 from src.schemas import UserProfileUpdate, UserProfileResponse, UserProfileBase
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

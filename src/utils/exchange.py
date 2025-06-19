@@ -8,7 +8,7 @@ import aiohttp
 from src.config import config
 from src.redis import redis_client
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 api_key = config.exchange.open_exchange_rates_api_key.get_secret_value()
 cache_key = "exchange_rates"

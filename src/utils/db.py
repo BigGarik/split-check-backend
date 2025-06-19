@@ -6,9 +6,10 @@ from typing import TypeVar, ParamSpec, Callable, AsyncGenerator
 from sqlalchemy.exc import SQLAlchemyError, DatabaseError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import config
 from src.db.session import AsyncSessionLocal
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 # Типизация

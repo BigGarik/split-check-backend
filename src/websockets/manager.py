@@ -2,7 +2,9 @@ import logging
 
 from fastapi import WebSocket
 
-logger = logging.getLogger(__name__)
+from src.config import config
+
+logger = logging.getLogger(config.app.service_name)
 
 
 # Менеджер для работы с WebSocket

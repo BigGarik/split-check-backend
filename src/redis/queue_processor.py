@@ -5,8 +5,9 @@ import os
 from typing import Callable, Dict, Set, Optional
 
 from .redis_client import RedisClient
+from ..config import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 class QueueProcessor:

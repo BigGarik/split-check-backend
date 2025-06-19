@@ -11,7 +11,7 @@ from jose import jwt, JWTError
 
 from src.config import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 # Создаем пул потоков для выполнения блокирующих операций
 executor = ThreadPoolExecutor()

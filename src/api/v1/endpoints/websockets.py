@@ -7,10 +7,11 @@ from starlette.exceptions import HTTPException
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from src.api.deps import get_current_user_for_websocket
+from src.config import config
 from src.models import User
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 

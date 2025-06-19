@@ -3,13 +3,14 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import config
 from src.config.type_events import Events
 from src.repositories.user import get_users_by_check_uuid
 from src.repositories.user_selection import add_or_update_user_selection
 from src.utils.notifications import create_event_message, create_event_status_message
 from src.websockets.manager import ws_manager
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 # refac

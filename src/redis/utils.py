@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 
 from starlette.exceptions import HTTPException
 
+from src.config import config
 from src.redis import redis_client
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def get_token_from_redis(id_token):

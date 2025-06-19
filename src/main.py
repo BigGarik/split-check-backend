@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
+from redis import Redis
 from sentry_sdk.integrations.logging import LoggingIntegration
 from starlette.staticfiles import StaticFiles
 
@@ -47,6 +48,7 @@ async def lifespan(app: FastAPI):
 
     # Подключаемся к Redis
     await redis_client.connect()
+
     # Регистрируем обработчики Redis
     register_redis_handlers()
 
@@ -177,6 +179,20 @@ app = FastAPI(lifespan=lifespan,
               version=APP_VERSION
               )
 
+sync_redis = Redis(
+    host=config.redis.host,
+    port=config.redis.port,
+    db=config.redis.db,
+    decode_responses=True
+)
+log_level = sync_redis.get(f"{config.app.service_name}:log_level")
+if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+    log_level = config.app.log_level
+    print(f"log_level from config: {log_level}")
+else:
+    print(f"log_level from redis: {log_level}")
+
+
 # Настраиваем логирование
 logger = setup_logging(
     app,
@@ -184,7 +200,7 @@ logger = setup_logging(
     syslog_port=config.logging.syslog_port,
     graylog_host=config.logging.graylog_host,
     graylog_port=config.logging.graylog_port,
-    log_level=config.app.log_level,
+    log_level=log_level,
     syslog_enabled=config.logging.syslog_enabled,
     graylog_enabled=config.logging.graylog_enabled,
     service_name=config.app.service_name

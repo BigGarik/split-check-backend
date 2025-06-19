@@ -16,7 +16,7 @@ from src.repositories.check import get_all_checks_for_admin, get_check_data, get
 from src.repositories.user_selection import get_user_selection_by_check_uuid
 from src.utils.db import get_session
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates/webui")

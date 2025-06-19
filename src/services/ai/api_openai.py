@@ -8,7 +8,7 @@ from src.services.ai.prompt import prompt
 from src.utils.image_recognition import is_valid_json_response, extract_json_from_response
 from .message import message_for_anthropic
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 client = AsyncOpenAI(api_key=config.ai.openai_api_key.get_secret_value())
 

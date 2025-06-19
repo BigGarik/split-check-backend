@@ -10,7 +10,7 @@ from src.models import UserSelection
 from src.redis import redis_client
 from src.repositories.user import get_users_by_check_uuid
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 async def add_or_update_user_selection(session: AsyncSession, user_id: int, check_uuid: str, selection_data: dict):

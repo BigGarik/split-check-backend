@@ -7,7 +7,9 @@ from typing import Optional
 
 from PIL import Image
 
-logger = logging.getLogger(__name__)
+from src.config import config
+
+logger = logging.getLogger(config.app.service_name)
 
 executor = ThreadPoolExecutor()
 

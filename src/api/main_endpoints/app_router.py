@@ -1,11 +1,46 @@
-from fastapi import Request, APIRouter
+import logging
+
+from fastapi import Request, APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from starlette.responses import HTMLResponse
 
+from src.api.deps import get_current_user
+from src.config import config
 from src.config.type_events import EVENT_DESCRIPTIONS
+from src.models import User
+from src.redis import redis_client
+from src.schemas.app import LogLevelUpdateRequest
 from src.version import APP_VERSION
 
 router = APIRouter()
+
+
+@router.post("/log-level")
+async def set_log_level(
+        req: LogLevelUpdateRequest,
+        user: User = Depends(get_current_user),
+):
+    if user.id not in config.app.admin_ids:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    level = req.level.upper()
+    if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        raise HTTPException(status_code=400, detail=f"Invalid log level: {level}")
+
+    logger = logging.getLogger(config.app.service_name)
+    logger.setLevel(level)
+
+    for handler in logger.handlers:
+        handler.setLevel(level)
+
+    redis_key = f"{config.app.service_name}:log_level"
+
+    # Кэширование в Redis
+    await redis_client.set(
+        redis_key,
+        level
+    )
+
+    return {"message": f"Log level changed to {level}"}
 
 
 @router.get("/download")

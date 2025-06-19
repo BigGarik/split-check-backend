@@ -3,10 +3,11 @@ import logging
 from fastapi import HTTPException, status
 from sqlalchemy.future import select
 
+from src.config import config
 from src.models.check import Check, user_check_association
 from src.utils.db import with_db_session
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(config.app.service_name)
 
 
 @with_db_session()
