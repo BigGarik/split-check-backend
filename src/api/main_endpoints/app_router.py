@@ -2,6 +2,7 @@ import logging
 
 from fastapi import Request, APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
+from starlette import status
 from starlette.responses import HTMLResponse
 
 from src.api.deps import get_current_user
@@ -15,16 +16,46 @@ from src.version import APP_VERSION
 router = APIRouter()
 
 
-@router.post("/log-level")
+@router.post(
+    "/log-level",
+    summary="Установить уровень логирования",
+    description="""
+**Установить уровень логирования приложения**
+
+🔒 Доступ: только администраторы
+
+✅ Допустимые значения:
+- `DEBUG`
+- `INFO`
+- `WARNING`
+- `ERROR`
+- `CRITICAL`
+
+📌 Обновляет уровень логирования основного логгера приложения в рантайме и сохраняет в Redis.
+    """,
+    response_description="Подтверждение изменения уровня логирования",
+    status_code=status.HTTP_200_OK,
+    tags=["Администрирование"]
+)
 async def set_log_level(
         req: LogLevelUpdateRequest,
         user: User = Depends(get_current_user),
 ):
+    """
+    Установить уровень логирования (только для администраторов)
+
+    - Устанавливает уровень логирования основного логгера FastAPI.
+    - Сохраняет выбранный уровень в Redis (ключ: `<service_name>:log_level`).
+
+    :param req: Модель запроса с полем level (Literal)
+    :param user: Авторизованный пользователь
+    :raises HTTPException 403: если пользователь не является администратором
+    :return: Подтверждение установки
+    """
     if user.id not in config.app.admin_ids:
         raise HTTPException(status_code=403, detail="Forbidden")
-    level = req.level.upper()
-    if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-        raise HTTPException(status_code=400, detail=f"Invalid log level: {level}")
+
+    level = req.level
 
     logger = logging.getLogger(config.app.service_name)
     logger.setLevel(level)
@@ -32,13 +63,7 @@ async def set_log_level(
     for handler in logger.handlers:
         handler.setLevel(level)
 
-    redis_key = f"{config.app.service_name}:log_level"
-
-    # Кэширование в Redis
-    await redis_client.set(
-        redis_key,
-        level
-    )
+    await redis_client.set(f"{config.app.service_name}:log_level", level)
 
     return {"message": f"Log level changed to {level}"}
 

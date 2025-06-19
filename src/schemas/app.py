@@ -1,5 +1,7 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
 class LogLevelUpdateRequest(BaseModel):
-    level: str = "INFO"
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
