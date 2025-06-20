@@ -60,7 +60,7 @@ async def checks(request: Request,
                 restaurant: Optional[str] = Query(None),
                 author_id: Optional[int] = Query(None),
                 currency: Optional[str] = Query(None),):
-    if user.id not in config.app.admin_ids:
+    if user.email not in config.app.admin_emails:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorized")
 
     result = await get_all_checks_for_admin(session=session,

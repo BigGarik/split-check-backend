@@ -52,7 +52,7 @@ async def set_log_level(
     :raises HTTPException 403: если пользователь не является администратором
     :return: Подтверждение установки
     """
-    if user.id not in config.app.admin_ids:
+    if user.email not in config.app.admin_emails:
         raise HTTPException(status_code=403, detail="Forbidden")
 
     level = req.level

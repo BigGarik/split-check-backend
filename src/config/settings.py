@@ -20,7 +20,7 @@ class AppConfig(ConfigBase):
     model_config = SettingsConfigDict(env_prefix="APP_")
 
     base_url: str = "https://biggarik.ru"
-    admin_ids: list[int] = [47, 2, 4]
+    admin_emails: list[str]  = ["eduard.demerchyan@gmail.com", "inetsmol@gmail.com", "smolinet@yandex.ru"]
     environment: str = "dev"
     log_level: str = "DEBUG"
     service_name: str = "scannsplit-app"
@@ -40,7 +40,7 @@ class AppConfig(ConfigBase):
     def is_development(self) -> bool:
         return self.environment in ["dev", "local"]
 
-    @field_validator('admin_ids', 'allowed_ips', mode='before')
+    @field_validator('admin_emails', 'allowed_ips', mode='before')
     def parse_json(cls, v):
         if isinstance(v, str):
             try:
