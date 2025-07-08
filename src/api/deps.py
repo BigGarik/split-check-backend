@@ -35,6 +35,7 @@ async def get_current_user(
     try:
         logger.debug(f"oauth2_token: {oauth2_token}")
         logger.debug(f"http_auth: {http_auth}")
+        logger.debug(f"request headers: {dict(request.headers)}")
 
         firebase_token = None
         email = None
