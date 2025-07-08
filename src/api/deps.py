@@ -59,6 +59,7 @@ async def get_current_user(
                 claims = get_firebase_user(firebase_token)
                 await add_token_to_redis(firebase_token, claims)
             email = claims.get('email')
+            logger.debug(f"claims для firebase user {email}: {claims}")
 
         # 🟡 Приоритет 3: Authorization header вручную
         else:
