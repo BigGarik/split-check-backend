@@ -450,6 +450,12 @@ async def delete_check(
     """
     check_uuid = str(uuid)
 
+    if not is_check_author(session, user.id, check_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Вы не можете удалить чек, которым вы не являетесь автором."
+        )
+
     try:
         users = await get_users_by_check_uuid(session, check_uuid)
         if not users:
@@ -457,25 +463,22 @@ async def delete_check(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Чек с UUID {check_uuid} не найден или у вас нет прав."
             )
-
-        await delete_association_by_check_uuid(session, check_uuid, user.id)
-
         msg_for_all = create_event_message(
             message_type=Events.CHECK_DELETE_EVENT,
             payload={"check_uuid": check_uuid},
         )
-
-        all_user_ids = {u.id for u in users}
-        logger.debug(f"Чек {check_uuid} удалён пользователем {user.id}. Уведомляем: {all_user_ids}")
-
-        for uid in all_user_ids:
+        for u in users:
+            await delete_user_selection_by_user_id(session, u.id, check_uuid)
+            await delete_association_by_check_uuid(session, check_uuid, u.id)
             try:
                 await ws_manager.send_personal_message(
                     message=json.dumps(msg_for_all),
-                    user_id=uid
+                    user_id=u.id
                 )
             except Exception as e:
-                logger.warning(f"WebSocket ошибка при отправке пользователю {uid}: {e}")
+                logger.warning(f"WebSocket ошибка при отправке пользователю {u.id}: {e}")
+
+        logger.debug(f"Чек {check_uuid} удалён пользователем {user.id}.")
 
         return {"check_uuid": check_uuid}
 

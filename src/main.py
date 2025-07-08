@@ -30,11 +30,10 @@ Base.metadata.create_all(bind=sync_engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ограничиваем количество процессов на уровне Python multiprocessing
-    import os
     import multiprocessing
 
     # Устанавливаем максимальное количество процессов
-    max_processes = int(os.getenv("MAX_PROCESSES", "4"))  # По умолчанию 4 процесса
+    max_processes = config.app.max_processes
 
     # Устанавливаем метод запуска процессов 'spawn' для более контролируемого поведения
     if not hasattr(multiprocessing, 'get_start_method') or multiprocessing.get_start_method() != 'spawn':
