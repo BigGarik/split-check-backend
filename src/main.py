@@ -24,7 +24,6 @@ from src.utils.memory_monitor import MemoryMonitor, monitor_memory_improved
 from src.utils.system import get_memory_usage
 from src.version import APP_VERSION
 
-
 Base.metadata.create_all(bind=sync_engine)
 
 
@@ -135,14 +134,17 @@ if config.app.is_production:
     sentry_sdk.init(
         dsn="https://37e3cff9e212e28d8dfd0c03a6e6501c@o4509195406016512.ingest.de.sentry.io/4509195408244816",
         integrations=[sentry_logging],
-        # Выключаем отладочный режим
         debug=False,
-        traces_sample_rate=1.0,
-        profile_session_sample_rate=1.0,
-        profile_lifecycle="trace",
-        # Отключаем внутреннее логирование сети
-        transport_queue_size=1000,  # Увеличиваем буфер для снижения частоты логирования
-        send_client_reports=False  # Отключаем отправку клиентских отчетов
+        # КРИТИЧНЫЕ ИЗМЕНЕНИЯ:
+        traces_sample_rate=0.01,    # 1% вместо 100%
+        profiles_sample_rate=0,     # Полностью отключаем профилирование
+        max_breadcrumbs=5,          # Минимум breadcrumbs
+        attach_stacktrace=False,
+        transport_queue_size=50,    # Минимальный буфер
+        before_send=lambda event, hint: None if event.get('level') == 'info' else event,  # Фильтруем info
+        max_value_length=256,       # Ограничиваем размер данных
+        # Игнорируем частые события
+        ignore_errors=[KeyboardInterrupt, SystemExit]
     )
 
 app = FastAPI(lifespan=lifespan,
