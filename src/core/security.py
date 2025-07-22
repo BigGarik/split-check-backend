@@ -1,5 +1,7 @@
+# src/core/security.py
 import asyncio
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
@@ -13,13 +15,33 @@ from src.config import config
 
 logger = logging.getLogger(config.app.service_name)
 
-# Создаем пул потоков для выполнения блокирующих операций
-executor = ThreadPoolExecutor()
+# Создаем пул потоков для выполнения блокирующих операций с ограничением
+_executor = None
+
+def get_executor():
+    """Получить или создать ThreadPoolExecutor для bcrypt операций"""
+    global _executor
+    if _executor is None:
+        # Для bcrypt операций достаточно небольшого пула
+        max_workers = min(4, os.cpu_count() or 1)
+        _executor = ThreadPoolExecutor(max_workers=max_workers)
+        logger.info(f"Создан ThreadPoolExecutor для bcrypt с {max_workers} потоками")
+    return _executor
+
+
+def cleanup_executor():
+    """Корректно завершить работу executor при остановке приложения"""
+    global _executor
+    if _executor is not None:
+        _executor.shutdown(wait=True)
+        _executor = None
+        logger.info("ThreadPoolExecutor для bcrypt завершен")
 
 
 # Функция для выполнения хеширования в пуле потоков
 async def async_hash_password(password: str) -> str:
     loop = asyncio.get_running_loop()
+    executor = get_executor()
     hashed = await loop.run_in_executor(executor, bcrypt.hashpw, password.encode('utf-8'), bcrypt.gensalt())
     return hashed.decode('utf-8')
 
@@ -27,6 +49,7 @@ async def async_hash_password(password: str) -> str:
 # Функция для выполнения проверки пароля
 async def async_verify_password(password: str, hashed_password: str) -> bool:
     loop = asyncio.get_running_loop()
+    executor = get_executor()
     return await loop.run_in_executor(executor, bcrypt.checkpw, password.encode('utf-8'),
                                       hashed_password.encode('utf-8'))
 

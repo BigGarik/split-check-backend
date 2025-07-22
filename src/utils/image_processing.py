@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
@@ -11,7 +12,27 @@ from src.config import config
 
 logger = logging.getLogger(config.app.service_name)
 
-executor = ThreadPoolExecutor()
+# Ограничиваем количество потоков и переиспользуем executor
+_executor = None
+
+def get_executor():
+    """Получить или создать ThreadPoolExecutor с ограниченным количеством потоков"""
+    global _executor
+    if _executor is None:
+        # Используем min(32, (os.cpu_count() or 1) + 4) как в asyncio
+        max_workers = min(32, (os.cpu_count() or 1) + 4)
+        _executor = ThreadPoolExecutor(max_workers=max_workers)
+        logger.info(f"Создан ThreadPoolExecutor для обработки изображений с {max_workers} потоками")
+    return _executor
+
+
+def cleanup_executor():
+    """Корректно завершить работу executor при остановке приложения"""
+    global _executor
+    if _executor is not None:
+        _executor.shutdown(wait=True)
+        _executor = None
+        logger.info("ThreadPoolExecutor для обработки изображений завершен")
 
 
 async def process_image(img_path: str) -> Optional[dict]:
@@ -39,7 +60,7 @@ async def process_image(img_path: str) -> Optional[dict]:
 
                 # Преобразуем изображение в base64
                 with io.BytesIO() as buffer:
-                    img.save(buffer, format="JPEG")
+                    img.save(buffer, format="JPEG", quality=85)  # Добавляем quality для экономии памяти
                     img_bytes = buffer.getvalue()
                     base64_data = base64.b64encode(img_bytes).decode('utf-8')
                     return {
@@ -52,6 +73,7 @@ async def process_image(img_path: str) -> Optional[dict]:
                     }
 
         # Выполняем обработку изображения в ThreadPoolExecutor
+        executor = get_executor()
         return await asyncio.get_event_loop().run_in_executor(executor, process)
     except Exception as e:
         logger.error(f"Error processing image {img_path}: {e}")

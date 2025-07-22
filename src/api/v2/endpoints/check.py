@@ -453,7 +453,7 @@ async def delete_check(
     if not is_check_author(session, user.id, check_uuid):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Вы не можете удалить чек, которым вы не являетесь автором."
+            detail="Вы не можете удалить чек, если не являетесь его автором."
         )
 
     try:
@@ -461,7 +461,7 @@ async def delete_check(
         if not users:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Чек с UUID {check_uuid} не найден или у вас нет прав."
+                detail=f"Не найдено пользователей для чека с UUID {check_uuid}."
             )
         msg_for_all = create_event_message(
             message_type=Events.CHECK_DELETE_EVENT,

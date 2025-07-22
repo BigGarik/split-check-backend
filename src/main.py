@@ -20,6 +20,7 @@ from src.db.session import sync_engine
 from src.redis import redis_client, register_redis_handlers
 from src.services.classifier.classifier_instance import init_classifier
 from src.tasks import user_delete_task
+from src.utils.memory_monitor import MemoryMonitor, monitor_memory_improved
 from src.utils.system import get_memory_usage
 from src.version import APP_VERSION
 
@@ -60,61 +61,19 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"Старт, память: {get_memory_usage():.2f} MB")
 
-    async def monitor_memory():
-        import psutil
-        import gc
+    # Создаем монитор памяти
+    memory_monitor = MemoryMonitor(history_size=120)  # История за 2 часа при интервале 60 сек
 
-        process = psutil.Process()
-
-        while True:
-            # Вызываем сборщик мусора вручную
-            gc.collect()
-
-            # Получаем информацию о памяти
-            memory_info = process.memory_info()
-            memory_mb = memory_info.rss / (1024 * 1024)
-
-            # Получаем все процессы Python, связанные с нашим приложением
-            python_processes = []
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                try:
-                    # Проверяем, является ли это Python-процессом
-                    if proc.info['name'] == 'python3' or proc.info['name'] == 'python':
-                        # Проверяем, содержит ли командная строка имя нашего приложения или модуля
-                        cmdline = " ".join(proc.info['cmdline'] or [])
-                        if 'multiprocessing' in cmdline or 'spam_main' in cmdline:
-                            python_processes.append(proc)
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    pass
-
-            logger.info(f"Активных Python процессов: {len(python_processes)}, использовано памяти: {memory_mb:.2f} МБ")
-
-            # Можно также вывести детали процессов
-            for proc in python_processes[:5]:  # Ограничиваем вывод первыми 5 для краткости
-                try:
-                    proc_info = {
-                        'pid': proc.pid,
-                        'cpu': proc.cpu_percent(),
-                        'memory': proc.memory_info().rss / (1024 * 1024),
-                        'status': proc.status()
-                    }
-                    logger.debug(f"Процесс {proc.pid}: {proc_info}")
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-
-            if memory_mb > 1500:  # Порог, например 500 МБ
-                logger.warning(f"Высокое потребление памяти: {memory_mb:.2f} МБ")
-
-                # Опционально: вывод информации о типах объектов
-                from collections import Counter
-                obj_counts = Counter(type(o).__name__ for o in gc.get_objects())
-                top_types = obj_counts.most_common(10)
-                logger.warning(f"Топ объектов в памяти: {top_types}")
-
-            await asyncio.sleep(600)  # Проверять каждые 600 секунд
-
-    # Запускаем мониторинг в фоновом режиме
-    memory_task = asyncio.create_task(monitor_memory())
+    # Запускаем улучшенный мониторинг в фоновом режиме
+    memory_task = asyncio.create_task(
+        monitor_memory_improved(
+            monitor=memory_monitor,
+            interval=600,  # Каждые 10 минут
+            warning_threshold_mb=1500,
+            critical_threshold_mb=2000,
+            enable_tracemalloc=config.app.is_development  # Только в dev окружении
+        )
+    )
 
     async def periodic_user_cleanup():
         while True:
@@ -133,6 +92,11 @@ async def lifespan(app: FastAPI):
     user_cleanup_task.cancel()
 
     try:
+        await memory_task
+    except asyncio.CancelledError:
+        logger.info("Memory monitor cancelled")
+
+    try:
         await queue_task
     except asyncio.CancelledError:
         logger.info("QueueProcessor cancelled")
@@ -147,6 +111,17 @@ async def lifespan(app: FastAPI):
             classifier.cleanup()
 
     await redis_client.disconnect()
+
+    # Добавляем очистку ThreadPoolExecutor'ов
+    logger.info("Завершение работы ThreadPoolExecutor'ов")
+
+    # Очищаем executor для обработки изображений
+    from src.utils.image_processing import cleanup_executor as cleanup_image_executor
+    cleanup_image_executor()
+
+    # Очищаем executor для bcrypt операций
+    from src.core.security import cleanup_executor as cleanup_security_executor
+    cleanup_security_executor()
 
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
 
