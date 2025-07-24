@@ -46,7 +46,7 @@ PyJWT
 graypy
 prometheus_fastapi_instrumentator
 rfc5424-logging-handler
-sentry-sdk[flask]
+sentry-sdk[fastapi]
 
 aiohttp
 openai

@@ -1,3 +1,4 @@
+# src/services/classifier/classifier_instance.py
 from src.services.classifier.classifier import AsyncImageClassifier
 
 # Переменная для хранения экземпляра AsyncImageClassifier

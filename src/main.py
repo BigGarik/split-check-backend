@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from contextlib import asynccontextmanager
 
 import firebase_admin
@@ -9,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis import Redis
-from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 from starlette.staticfiles import StaticFiles
 
 from src.api.routes import include_routers
@@ -124,29 +124,29 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"Завершение, память: {get_memory_usage():.2f} MB")
 
-# Отключаем логирование from Sentry
-sentry_logging = LoggingIntegration(
-    level=None,  # Не перехватывать логи
-    event_level=logging.ERROR  # Отправлять как события только ERROR и выше
-)
 
 if config.app.is_production:
     sentry_sdk.init(
         dsn="https://37e3cff9e212e28d8dfd0c03a6e6501c@o4509195406016512.ingest.de.sentry.io/4509195408244816",
-        integrations=[sentry_logging],
-        debug=False,
-        # КРИТИЧНЫЕ ИЗМЕНЕНИЯ:
-        traces_sample_rate=0.01,    # 1% вместо 100%
-        profiles_sample_rate=0,     # Полностью отключаем профилирование
-        max_breadcrumbs=5,          # Минимум breadcrumbs
-        attach_stacktrace=False,
-        transport_queue_size=50,    # Минимальный буфер
-        before_send=lambda event, hint: None if event.get('level') == 'info' else event,  # Фильтруем info
-        max_value_length=256,       # Ограничиваем размер данных
-        # Игнорируем частые события
-        ignore_errors=[KeyboardInterrupt, SystemExit]
+        send_default_pii=True,
+        traces_sample_rate=0,
+        default_integrations=False,
+        integrations=[
+            StarletteIntegration(),
+            FastApiIntegration(),
+        ],
     )
-
+if config.app.is_development:
+    sentry_sdk.init(
+        dsn="https://ae440d775755d0dd2d4e7df320b97400@o4509212320989184.ingest.us.sentry.io/4509716251344896",
+        send_default_pii=True,
+        traces_sample_rate=0,
+        default_integrations=False,
+        integrations=[
+            StarletteIntegration(),
+            FastApiIntegration(),
+        ],
+    )
 app = FastAPI(lifespan=lifespan,
               title="Split Check API",
               docs_url="/docs" if config.app.enable_docs else None,

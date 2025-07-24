@@ -16,13 +16,20 @@ class AsyncImageClassifier:
     def __init__(
             self,
             model_name: str = "openai/clip-vit-base-patch32",
+            model_dir: str = "./hf_models/clip-vit-base-patch32",
             batch_size: int = 4,
             num_threads: int = None
     ):
+        """
+        Асинхронный классификатор изображений на базе CLIP.
+        :param model_name: Имя модели HuggingFace (если локальных файлов нет)
+        :param model_dir: Папка для локального хранения модели и процессора
+        :param batch_size: Размер батча для обработки
+        :param num_threads: Число потоков для препроцессинга
+        """
         self.num_threads = num_threads or min(os.cpu_count(), 4)
         self.batch_size = batch_size
         self.executor = ThreadPoolExecutor(max_workers=self.num_threads)
-
         torch.set_num_threads(self.num_threads)
         torch.set_num_interop_threads(max(1, self.num_threads // 2))
         torch.backends.cpu.enabled = True
@@ -30,14 +37,32 @@ class AsyncImageClassifier:
         if hasattr(torch.backends, 'mkl'):
             torch.backends.mkl.enabled = True
 
-        self._initialize_model(model_name)
+        self._initialize_model(model_name, model_dir)
         self._setup_categories()
         self.text_inputs_prepared = self._prepare_text_inputs()
 
-    def _initialize_model(self, model_name: str) -> None:
-        self.model = CLIPModel.from_pretrained(model_name)
-        self.processor = CLIPProcessor.from_pretrained(model_name)
+    def _initialize_model(self, model_name: str, model_dir: str) -> None:
+        """
+        Загружает модель и процессор из локальной папки, либо скачивает и сохраняет их.
+        """
+        os.makedirs(model_dir, exist_ok=True)
+        # Проверяем, есть ли необходимые файлы (config/model/tokenizer/processor)
+        model_files_exist = (
+            os.path.exists(os.path.join(model_dir, "config.json")) and
+            (os.path.exists(os.path.join(model_dir, "pytorch_model.bin")) or
+             os.path.exists(os.path.join(model_dir, "model.safetensors"))) and
+            os.path.exists(os.path.join(model_dir, "preprocessor_config.json"))
+        )
+        if not model_files_exist:
+            # Скачиваем из HuggingFace и сохраняем локально
+            model = CLIPModel.from_pretrained(model_name)
+            processor = CLIPProcessor.from_pretrained(model_name, use_fast=False)
+            model.save_pretrained(model_dir)
+            processor.save_pretrained(model_dir)
 
+        # Грузим только из локальной папки (без выхода в интернет)
+        self.model = CLIPModel.from_pretrained(model_dir, local_files_only=True)
+        self.processor = CLIPProcessor.from_pretrained(model_dir, local_files_only=True, use_fast=False)
         self.model.eval()
         for param in self.model.parameters():
             param.requires_grad = False
@@ -133,8 +158,8 @@ class AsyncImageClassifier:
         if self.executor:
             self.executor.shutdown()
         if hasattr(self.model, 'cpu'):
-            self.model.cpu()  # Переместить модель на CPU
-        del self.model  # Удалить ссылку на модель
+            self.model.cpu()
+        del self.model
         del self.processor
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

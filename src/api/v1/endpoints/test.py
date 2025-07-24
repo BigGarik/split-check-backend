@@ -24,3 +24,8 @@ async def test_ws_page(request: Request):
 @router.get("/login")
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
+
+
+@router.get("/sentry-debug")
+async def trigger_error():
+    division_by_zero = 1 / 0

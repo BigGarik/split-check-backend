@@ -3,7 +3,6 @@ import asyncio
 import gc
 import logging
 import os
-import sys
 import tracemalloc
 from collections import deque, defaultdict
 from datetime import datetime
